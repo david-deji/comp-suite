@@ -1,0 +1,8 @@
+--
+<CEO Name>
+President & Chief Executive Officer | Président et chef de la direction
+<Company Name> | <Company Legal Name if different>
+<City>, <Province>
+
+Ce message est confidentiel. Si vous l'avez recu par erreur, veuillez le supprimer et en aviser l'expediteur.
+This message is confidential. If received in error, please delete it and notify the sender.

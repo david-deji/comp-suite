@@ -1,0 +1,329 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/david-deji/comp-comms-builder/master-schema/master-comms-section.schema.json",
+  "title": "Master Comms Section",
+  "description": "Validates master.comms.* per spec § 5.2. Owned exclusively by comp-comms-builder. Other skills MUST NOT write to this section.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Per-section semver per § 12.4. Independent of other sections."
+    },
+    "anti_patterns": {
+      "type": "array",
+      "description": "Org-level anti-patterns promoted from per-cycle findings. Carry across cycles.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ap-[0-9]{3,}$",
+            "description": "Stable anti-pattern ID referenced in decision_log entries."
+          },
+          "phrase": {
+            "type": "string",
+            "description": "The problematic phrase or word (e.g., 'merit')."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this phrase is flagged for this org."
+          },
+          "replacement": {
+            "type": "string",
+            "description": "Preferred replacement phrase."
+          },
+          "promoted_from_cycle": {
+            "type": "string",
+            "description": "Cycle slug where this anti-pattern was first surfaced."
+          },
+          "promoted_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date this was promoted from per-cycle to org-level."
+          },
+          "last_seen": {
+            "type": ["string", "null"],
+            "format": "date",
+            "description": "Last date this phrase was detected in a draft."
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date",
+            "description": "Last modification date. Used for tree-view freshness signals per § 7.3."
+          }
+        },
+        "required": ["id", "phrase", "reason", "replacement", "promoted_from_cycle", "promoted_date", "last_updated"],
+        "additionalProperties": false
+      }
+    },
+    "speaker_registers": {
+      "type": "array",
+      "description": "Long-lived speaker voice registers. Role identifiers only — no person names (schema-enforced per § 14.2 F2). 4-layer inheritance: bundled → org → engagement → artifact.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Role identifier (e.g., 'chro', 'vp_ops', 'hrbp'). Lowercase alphanumeric + underscore per § 14.2."
+          },
+          "tone_descriptors": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Adjectives describing the speaker's tone (e.g., 'warm', 'measured', 'plain-french')."
+          },
+          "do_words": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Preferred vocabulary for this speaker."
+          },
+          "dont_words": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Vocabulary to avoid for this speaker."
+          },
+          "sign_off": {
+            "type": "string",
+            "description": "Standard sign-off phrase for this speaker."
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date",
+            "description": "Used for tree-view freshness signals per § 7.3."
+          }
+        },
+        "required": ["role", "tone_descriptors", "do_words", "dont_words", "sign_off", "last_updated"],
+        "additionalProperties": false,
+        "propertyNames": {
+          "not": {
+            "enum": ["name", "full_name", "legal_name", "personal_name"]
+          }
+        }
+      }
+    },
+    "audience_profiles": {
+      "type": "array",
+      "description": "Long-lived audience profiles. Operator override of bundled defaults.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Audience identifier (e.g., 'hourly_union', 'salaried_corporate', 'people_managers')."
+          },
+          "reading_level": {
+            "type": "string",
+            "description": "e.g., 'grade_6', 'grade_10', 'professional'."
+          },
+          "vocabulary": {
+            "type": "string",
+            "description": "Vocabulary register (e.g., 'simple', 'business_neutral', 'technical')."
+          },
+          "key_concerns": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Primary concerns for this audience segment."
+          },
+          "channel_preference": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Preferred communication channels (e.g., 'email', 'bulletin_board', 'town_hall')."
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date",
+            "description": "Used for tree-view freshness signals per § 7.3."
+          }
+        },
+        "required": ["audience", "reading_level", "vocabulary", "key_concerns", "channel_preference", "last_updated"],
+        "additionalProperties": false,
+        "propertyNames": {
+          "not": {
+            "enum": ["name", "full_name", "legal_name", "personal_name"]
+          }
+        }
+      }
+    },
+    "channel_rules": {
+      "type": "array",
+      "description": "Org-level channel formatting rules (e.g., max word count, language order).",
+      "items": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Channel identifier (e.g., 'all_hands_email', 'manager_1on1', 'bulletin_board')."
+          },
+          "max_length_words": {
+            "type": ["integer", "null"],
+            "description": "Maximum word count for artifacts on this channel. null means no limit."
+          },
+          "formatting": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Formatting constraints (e.g., 'no_jargon', 'fr_first', 'en_secondary')."
+          },
+          "last_updated": {
+            "type": "string",
+            "format": "date",
+            "description": "Used for tree-view freshness signals per § 7.3."
+          }
+        },
+        "required": ["channel", "last_updated"],
+        "additionalProperties": false
+      }
+    },
+    "prior_comms_registry": {
+      "type": "array",
+      "description": "Registry of shipped comms artifacts, tagged by cycle. Read-only inheritance per § 7.2.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cycle_slug": {
+            "type": "string",
+            "description": "Cycle this artifact was produced in."
+          },
+          "artifact_type": {
+            "type": "string",
+            "description": "e.g., 'all-hands-announcement', 'manager-faq', 'hrbp-enablement-memo'."
+          },
+          "shipped_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Date the artifact was delivered."
+          },
+          "file": {
+            "type": "string",
+            "description": "Relative path to the shipped artifact."
+          }
+        },
+        "required": ["cycle_slug", "artifact_type", "shipped_date", "file"],
+        "additionalProperties": false
+      }
+    },
+    "cycle_state_pointers": {
+      "type": "array",
+      "description": "Per-cycle state file pointers. Actual cycle data lives in cycle_dir/comms/.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cycle_slug": {
+            "type": "string",
+            "description": "References a cycle_slug in master.cycles[]."
+          },
+          "state_file": {
+            "type": "string",
+            "description": "Relative path to the per-cycle comms config file."
+          }
+        },
+        "required": ["cycle_slug", "state_file"],
+        "additionalProperties": false
+      }
+    },
+    "pre_engagement_artifacts": {
+      "type": "array",
+      "description": "Pre-engagement comms artifacts produced before or outside the canonical cascade spine. NOT included in closed-cycle drift queries.",
+      "items": {
+        "type": "object",
+        "required": ["artifact_slug", "engagement_mode", "created_date", "intended_drive_path"],
+        "properties": {
+          "artifact_slug": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Stable identifier for this pre-engagement comms artifact."
+          },
+          "engagement_mode": {
+            "type": "string",
+            "enum": ["voice-extraction-only", "single-artifact", "revision-only"],
+            "description": "The partial-flow mode used to produce this artifact. voice-extraction-only = ingest-only run; single-artifact = one artifact drafted without a full cycle; revision-only = targeted edit outside a canonical cycle."
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date",
+            "description": "ISO date when the artifact was created."
+          },
+          "intended_drive_path": {
+            "type": "string",
+            "description": "Intended Drive path for the artifact file (provenance only — binary delivery is chat-download per C01)."
+          },
+          "decision_log_ref": {
+            "type": "string",
+            "description": "Pointer to the decision_log entry (dl-NNN) that captures the pre-engagement rationale, typically decision_type: null_out_rules_pending_v1_1 or a mode-specific entry."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "schema_version": "1.0.0",
+      "anti_patterns": [
+        {
+          "id": "ap-007",
+          "phrase": "merit",
+          "reason": "CHRO objects to performance-favoritism framing",
+          "replacement": "performance recognition",
+          "promoted_from_cycle": "pharmacy-qc-fy26",
+          "promoted_date": "2026-02-26",
+          "last_seen": "2026-04-08",
+          "last_updated": "2026-04-08"
+        }
+      ],
+      "speaker_registers": [
+        {
+          "role": "chro",
+          "tone_descriptors": ["warm", "measured", "plain-french"],
+          "do_words": ["reconnaissance", "équipe", "soutien"],
+          "dont_words": ["merit", "bonus-driven"],
+          "sign_off": "Avec gratitude, Direction RH",
+          "last_updated": "2026-04-08"
+        },
+        {
+          "role": "vp_ops",
+          "tone_descriptors": ["direct", "operational"],
+          "do_words": ["efficacité", "équipes", "terrain"],
+          "dont_words": ["synergies", "leverage"],
+          "sign_off": "Pour toute question, votre directeur d'opérations",
+          "last_updated": "2026-03-02"
+        }
+      ],
+      "audience_profiles": [
+        {
+          "audience": "hourly_union",
+          "reading_level": "grade_6",
+          "vocabulary": "simple",
+          "key_concerns": ["job_security", "scale_clarity", "bargaining_units"],
+          "channel_preference": ["bulletin_board", "town_hall", "paper_letter"],
+          "last_updated": "2026-02-25"
+        }
+      ],
+      "channel_rules": [
+        {
+          "channel": "all_hands_email",
+          "max_length_words": 350,
+          "formatting": ["no_jargon", "fr_first", "en_secondary"],
+          "last_updated": "2026-02-25"
+        }
+      ],
+      "prior_comms_registry": [
+        {
+          "cycle_slug": "pharmacy-qc-fy26",
+          "artifact_type": "all-hands-announcement",
+          "shipped_date": "2026-03-15",
+          "file": "_orgs/acme/cycles/pharmacy-qc-fy26/comms/artifacts/all-hands-announcement.md"
+        }
+      ],
+      "cycle_state_pointers": [
+        {
+          "cycle_slug": "pharmacy-qc-fy26",
+          "state_file": "_orgs/acme/cycles/pharmacy-qc-fy26/comms/engagement-comms-config.yaml"
+        }
+      ]
+    }
+  ]
+}

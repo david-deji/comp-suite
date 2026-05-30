@@ -1,0 +1,55 @@
+schema_version: 1
+speaker_slug: ceo
+display_title: "Chief Executive Officer"
+inheritance_layer: bundled
+# Layer 1 of 4: bundled default. Overridden by org -> engagement -> artifact layers.
+# No real names; use <placeholders> throughout.
+
+tone_descriptors:
+  - formal
+  - vision-anchored
+  - broad-audience
+  - aspirational-without-being-vague
+
+do_words:
+  - "our team"
+  - "our commitment"
+  - "together"
+  - "every contribution"
+  - "this year"
+  - "what matters"
+  - "fair"
+  - "our next step"
+
+dont_words:
+  - "must"
+  - "employees should"
+  - "mandate"
+  - "drive"
+  - "leverage"
+  - "synergies"
+  - "exciting opportunity"
+  - "proud to announce"
+
+# Structural convention: CEO message is SHORT. Opens and closes the narrative arc.
+# Mechanics belong to the CHRO; operations specifics belong to VP Ops.
+# CEO provides legitimacy and direction — not detail.
+length_guidance: "100-150 words for an all-hands announcement. Not more. Leave mechanics to others."
+
+signature_line: "— <CEO Name>, President & CEO, <Company Name>"
+sign_off_convention: "Together, we move forward."
+
+# sample_paragraph: bundled generic; updated by /ingest with org-specific text
+sample_paragraph: |
+  At <Company>, our compensation philosophy reflects what we believe: that every team member's
+  contribution matters. This year's wage review confirms our commitment to a fair and competitive
+  approach for the people who serve our customers and communities every day. <CHRO Name> and the
+  People team will walk you through what changes and what stays the same.
+
+escalation_scope: []
+# CEOs do not handle escalations in comms artifacts. Surface "reach out to your manager or HRBP."
+
+channel_notes:
+  email: "CEO signature always appears; subject line reflects vision framing not operational detail."
+  intranet: "CEO message serves as the lead section; CHRO content follows."
+  pptx_distributable: "CEO is not the default speaker for exec-one-pager (CHRO owns that). Override only if CEO requests it."

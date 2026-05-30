@@ -1,0 +1,144 @@
+# engagement-config — persistence-repo starter template
+#
+# Commit this to `configs/_template.yaml` in your `comp-advisor-state` repo on
+# first run. Copy + rename for each new engagement (e.g., `configs/pharmacy-fy26.yaml`).
+#
+# All sections are optional. Skill prompts only when a phase needs data the
+# config did not provide. Full schema reference and field-level guidance:
+# `references/engagement-config-template.md`.
+#
+# Field names match the validator in references/engagement-config-template.md
+# § Validation rules — a config produced from this template passes validation
+# without changes.
+#
+_meta:
+  schema_version: 1
+  created_date: YYYY-MM-DD
+  created_by_skill: compensation-advisor
+  created_via: /init
+  shared_folder_id: <drive-folder-id>
+  sibling_skills: [comp-comms-builder, comp-team-transformer, comp-training-designer]
+
+persistence:
+  last_verified: YYYY-MM-DD
+  backend: google-drive                                  # google-drive | paste — auto-detected at session start; this forces the mode
+  folder: "comp-advisor-state"                   # private Google Drive folder holding configs/, engagements/, ledger/, branding/, cba-library/, survey-archive/, vocabulary/, personas/, quickbench-archive/
+  folder_visibility: private                             # MUST be private — skill calls get_repository at session start and refuses to write to publicly shared folders
+
+engagement_scope:
+  last_verified: YYYY-MM-DD
+  budget_owner_role: "[VP Ops, <area>]"      # one engagement = one budget owner
+  budget_owner_name: "[Person's name]"
+  scope_label: "[Short label — e.g., 'Pharmacy FY26']"
+  banner_or_region: "[banner / region]"
+  in_scope_role_families: ["[role family 1]"]
+  out_of_scope: "[explicit list of what's NOT in scope]"
+  hr_lead: "[HRD or HRBP name]"
+
+cycle:
+  last_verified: YYYY-MM-DD
+  cycle_name: "FY26 Annual Wage Review"
+  cohort: "[Apr / May / Jun / Oct]"
+  effective_date: YYYY-MM-DD                  # day-0 anchor
+  current_stage: "[Discovery | Market Analysis | Scenario Modeling | Approval | Cascade | Implementation | Live]"
+  current_week_offset: -10                    # weeks before/after effective_date
+  # Override the canonical 7-stage workback below with your org's actual stage names + RACI.
+  # Skill keys behavior on the canonical neutral names; override labels drive display.
+  last_cycle:
+    cycle_name: "FY25 Annual Wage Review"
+    effective_date: 2025-05-01
+    headline_decision: "[1-2 sentences]"
+    cost_to_company: "[$ amount or %]"
+    known_outcomes: "[turnover trend, retention wins/losses observed since]"
+    deferred_items: "[anything explicitly deferred from last cycle to this one]"
+  this_cycle_goals:
+    primary_objective: "[what success looks like]"
+    must_address: ["[non-negotiable 1]"]
+    envelope_ceiling: "[$ cap if known]"
+
+org:
+  last_verified: YYYY-MM-DD
+  name: "[Company name]"
+  industry: "[grocery / manufacturing / healthcare / etc.]"
+  banner: ["[Banner 1]"]
+  union_landscape:
+    ON: "[union local or 'non-union']"
+    QC: "[union local or 'non-union']"
+  pay_philosophy: "[P50 / P50+retention / P75 lead / etc.]"
+  scale: "[approx headcount / revenue tier]"
+
+audience:
+  last_verified: YYYY-MM-DD
+  archetypes:
+    # Canonical schema per references/engagement-config-template.md § audience:
+    # id (string), who (string), beliefs (string), typical_objection (string),
+    # preferred_framing (enum: risk-first | strategy-with-options | implementation-detail | educational),
+    # slide_count_target (int, recommended).
+    - id: comp-committee
+      who: "Compensation committee — board-level pay-decision body"
+      beliefs: "[what they currently believe about pay]"
+      typical_objection: "[the objection that always comes up]"
+      preferred_framing: risk-first
+      slide_count_target: 8
+
+costing:
+  last_verified: YYYY-MM-DD
+  # Field names match validator. Per-province maps preferred where labour markets differ;
+  # single national value acceptable for approximation. See references/engagement-config-template.md
+  # § costing for full schema and references/costing-engine.md for default values.
+  roll_up_factor: 1.30                           # benefits + pension + premiums riding on base wage; OR per-province map with `default` key
+  pay_attribution_pct: 0.40                      # share of voluntary turnover attributed to pay
+  voluntary_turnover_pct: 0.18                   # OR per-province map with `default` key
+  payroll_burden_pct:                            # per-province; required field on costing slide caveats
+    QC: 0.13
+    ON: 0.11
+    default: 0.12
+  replacement_multipliers:                       # % of annual salary to replace, per level
+    hourly: 0.18
+    professional: 0.55
+    management: 1.25
+    executive: 1.80
+    unknown: 0.50
+  minimum_wage_treatment: ask_per_engagement     # cascade | step_1_only | ask_per_engagement
+  target_percentile: 50
+
+benchmark:
+  last_verified: YYYY-MM-DD
+  default_percentiles: [10, 25, 50, 75, 90]
+  default_province: QC
+  scope_provinces: [QC, ON]
+  include_economic_regions: true
+  source_priority: [market_mcp, indeed, web]
+  cba_lookup_required_for: ["unionized hourly"]
+  provincial_minimum_wages:
+    QC:
+      rate: 16.10
+      effective: 2025-05-01
+      next_review: 2026-05-01
+    ON:
+      rate: 17.20
+      effective: 2025-10-01
+      next_review: 2026-10-01
+
+deck:
+  last_verified: YYYY-MM-DD
+  brand: neutral                                 # neutral | <org-specific kit slug>
+  artifacts: [pptx]                              # add 'xlsx' / 'csv' to generate companions
+  production_mode: hybrid                        # interactive | silent | hybrid
+  slide_count_by_audience:
+    comp-committee: 8
+    chro: 15
+    hr-ops: 25
+  required_appendix: [methodology, sources]
+  decision_ask_pattern: "Approve $[envelope] for [scope] effective [date]?"
+
+council:
+  last_verified: YYYY-MM-DD
+  default_mode: reasoning                        # reasoning | memo | integrated
+  default_perspectives:                          # 4-6 recommended; 7 max. Pool per references/council-mode.md.
+    - employment-lawyer
+    - total-rewards-strategist
+    - cfo-finance
+    - hr-business-partner
+    - dei-pay-equity
+  synthesis_style: consensus-tensions

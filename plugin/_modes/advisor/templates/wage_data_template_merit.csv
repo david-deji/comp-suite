@@ -1,0 +1,7 @@
+job_code,job_title,location_code,grade,annual_salary,band_min,band_mid,band_max,weekly_hours,years_in_role
+M-PHM-MGR,Pharmacy Manager,QC-MTL-001,M3,92000,82000,95000,108000,40,3
+M-PHM-MGR,Pharmacy Manager,QC-MTL-002,M3,89500,82000,95000,108000,40,1
+M-STR-MGR,Store Manager,QC-MTL-001,M4,108000,98000,115000,132000,40,5
+M-STR-MGR,Store Manager,QC-MTL-002,M4,102000,98000,115000,132000,40,2
+M-DPT-LEAD,Department Lead,QC-MTL-001,M2,68000,58000,68000,78000,40,4
+M-DPT-LEAD,Department Lead,QC-MTL-001,M2,62000,58000,68000,78000,40,1

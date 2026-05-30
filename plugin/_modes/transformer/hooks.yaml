@@ -1,0 +1,7 @@
+# Per-mode hook subscription. The active mode sets COMP_ACTIVE_MODE env var;
+# hooks check this to decide whether to fire.
+opt_in:
+  - anti-slop
+  - french-accent-check
+  - fact-check
+opt_out: []

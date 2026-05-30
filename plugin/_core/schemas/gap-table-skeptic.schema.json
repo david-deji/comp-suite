@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "gap-table-skeptic.schema.json",
+  "title": "Pay-equity gap-table skeptic return (Phase 3)",
+  "description": "Validates one pay-equity Phase-8 gap-table skeptic's return inside the gap-table-skeptics panel that runs before Gate B (_core/primitives/gap-table-skeptics.md; SPEC-workflow-phases-2-5.md § 3b). Two skeptics read the Phase-8 gap analysis (compensation.json) + session-state.json only — zero tool calls, $0, Workflow-tool eligible: method-correctness (does the applied comparison method match the operator's declared method at session-state.json:operator_decisions.comparison_method (F8); was any female class silently dropped to warnings with no comparator) and regression-quality (R² < 0.50, slope ≤ 0, or n_male_classes < 3 logged as warnings-only when they warrant blocking-class attention). FLAG-only and advisory: a skeptic reports findings; it never edits the gap table and never auto-blocks. Findings surface ABOVE the Gate B display tagged pre-confirmation; Gate B stays human — the operator still types `confirmer` (invariant #3 — never auto-confirm a legal-compliance gate). Does NOT $ref statutory-evidence: skeptics make method/regression-correctness judgments, not statutory claims. additionalProperties:false at every level; no replacement_text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["skeptic", "severity", "findings"],
+  "properties": {
+    "skeptic": {
+      "type": "string",
+      "enum": ["method-correctness", "regression-quality"],
+      "description": "Which skeptic this return belongs to. method-correctness = does the applied comparison method match session-state.json:operator_decisions.comparison_method, and was any female class dropped to warnings with no comparator; regression-quality = are R² < 0.50 / slope ≤ 0 / n_male_classes < 3 conditions logged as warnings-only when they warrant blocking-class attention."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["block", "warn", "info"],
+      "description": "This skeptic's overall assessment — advisory routing only, for how prominently the orchestrator surfaces the finding above the Gate B display. severity:block means 'treat as a blocking-class concern the operator must address before confirming' — it NEVER auto-blocks Gate B. Gate B stays human: the operator still types `confirmer` (invariant #3). severity:info pairs with an empty findings array (skeptic found no concern)."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Findings under this skeptic. An empty array pairs with severity 'info'.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What is wrong and where in the gap analysis. State the observation; never the replacement (FLAG-only) — never rewrite the method, the regression, or a gap figure."
+          },
+          "location": {
+            "type": "string",
+            "description": "Optional. Where the finding applies — e.g. session-state.json:operator_decisions.comparison_method, a female class id dropped with no comparator, or the regression block in compensation.json. Omit for an aggregate finding with no single locus."
+          }
+        }
+      }
+    }
+  }
+}

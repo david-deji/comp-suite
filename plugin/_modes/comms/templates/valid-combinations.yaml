@@ -1,0 +1,70 @@
+schema_version: 1
+# Registry of valid (artifact_type × speaker × audience × channel × format × brand_template) tuples.
+# The skill refuses to render a combination not listed here.
+# Per-engagement override: edit engagement-comms-config.yaml valid_combinations_overrides[].
+
+combinations:
+  - artifact_type: all-hands-announcement
+    valid_speakers:
+      - ceo
+      - chro
+    valid_audiences:
+      - all_employees
+    valid_channels:
+      - email
+      - intranet
+    valid_formats:
+      - html
+      - pdf
+    brand_templates:
+      html: "comms-templates/email-header.html + comms-templates/email-signature/{speaker}.txt"
+      pdf: "comms-templates/pdf-master.yaml"
+    typical_length_words: 300
+    notes: "Ship same content to both channels; only the wrapper differs. Subject line <= 70 chars."
+
+  - artifact_type: manager-faq
+    valid_speakers:
+      - chro
+      - vp-ops
+    valid_audiences:
+      - people_managers
+    valid_channels:
+      - docx_distributable
+    valid_formats:
+      - docx
+      - pdf
+    brand_templates:
+      docx: "comms-templates/docx-master.docx"
+      pdf: "(DOCX->PDF conversion path; see SPEC.md § 11)"
+    typical_length_pages: 3
+    notes: "Q&A format; anticipate >= 10 questions; group by topic."
+
+  - artifact_type: hrbp-enablement-memo
+    valid_speakers:
+      - chro
+    valid_audiences:
+      - hrbps
+    valid_channels:
+      - docx_distributable
+    valid_formats:
+      - docx
+      - pdf
+    brand_templates:
+      docx: "comms-templates/docx-master.docx"
+      pdf: "(DOCX->PDF conversion path; see SPEC.md § 11)"
+    typical_length_pages: 4
+    notes: "Includes edge-case appendix; escalation paths required."
+
+  - artifact_type: exec-one-pager
+    valid_speakers:
+      - chro
+    valid_audiences:
+      - exec_board
+    valid_channels:
+      - pptx_distributable
+    valid_formats:
+      - pptx
+    brand_templates:
+      pptx: "branding/<org-slug>/masters/ + comms-templates/pptx-master/"
+    typical_length_slides: 2
+    notes: "1-3 slides max; reuses compensation-advisor PPTX master infrastructure."

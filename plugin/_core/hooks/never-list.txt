@@ -1,0 +1,86 @@
+# comp-suite v2 anti-slop never-list — banned terms in branded text deliverables.
+# One term per line. Lines starting with # are comments.
+# Sourced from v1 _shared/references/production-and-qa.md + AI-tell research (writing-standards.md).
+# Case-insensitive grep in anti-slop.sh.
+
+# === AI generation tells ===
+delve
+delving
+leverage
+leveraging
+synergy
+synergies
+plethora
+myriad
+realm
+landscape
+robust
+seamless
+seamlessly
+cutting-edge
+state-of-the-art
+unparalleled
+revolutionize
+revolutionary
+empower
+streamline
+holistic
+ecosystem
+journey
+unlock
+elevate
+transformative
+
+# === Lazy connectors ===
+in conclusion
+moreover
+furthermore
+in summary
+to summarize
+
+# === Stage-direction phrases ===
+it is important to note
+it's worth noting
+it should be noted
+
+# === Placeholder text ===
+TBD
+TODO
+FIXME
+Lorem ipsum
+lorem ipsum
+placeholder
+
+# === Hedging that signals lack of conviction ===
+might be considered
+could potentially
+may possibly
+arguably one of
+
+# === Performative emptyspeak compound phrases ===
+# Per writing-standards-comp.md § Performative emptyspeak. Banned in all branded
+# text outside the comms-mode "saying-nothing-with-many-words" track. These are
+# multi-word literal greps — anti-slop.sh treats them as case-insensitive substrings.
+decision points ahead of time
+ahead of time so nothing
+lands as a surprise
+stop-and-discuss point
+not a fly-by
+to keep momentum
+locks in your
+your decision points
+nothing lands as
+on the same page
+moving forward
+going forward
+at the end of the day
+in the spirit of
+with that said
+that being said
+suffice it to say
+needless to say
+in order to ensure
+ensure that nothing
+keep things on track
+keep us on track
+ahead of the curve

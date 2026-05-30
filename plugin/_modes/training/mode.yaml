@@ -1,0 +1,46 @@
+name: training
+display_name: Comp Training Designer
+description: |
+  Per-audience comp training bundle generator. Ingests transformation-briefs,
+  process docs, policy guidelines, and prior decks into a canonical message-map
+  with audience+depth tagging, then renders per-audience bundles: facilitator
+  guide + interactive blocks (poll / quiz / scenario / retrieval). Audiences:
+  employees, managers, HRBPs, execs. Differentiated depth: same fact at depth 1
+  for employees, depth 4 (tradeoffs / governance) for execs. Manager decks double
+  as cascade kits via /cascade. Integrates with master.yaml cross-mode discovery —
+  surfaces inheritable audience archetypes and glossary terms from prior cycles.
+  Cross-mode read: ingests transformer's transformation-briefs as preferred source.
+version: 2.0.1   # 2.0.1: perplexity made OPTIONAL — tools_required swaps perplexity-ask for the web-search builtin (guaranteed key-free web research); Perplexity stays an optional-when-configured enhancement (registry.yaml).
+tagline: Per-audience training bundles — facilitator guides, decks, comms maps
+
+model:
+  default: sonnet
+  overrides:
+    council: opus
+    synthesis: opus
+    extraction: haiku
+
+tools_required:
+  - web-search            # guaranteed web-research path (WebSearch builtin); perplexity-* is optional, preferred when configured
+  - filesystem
+
+hooks_enabled:
+  - anti-slop
+  - french-accent-check
+  - fact-check
+
+master_yaml_section: training
+schema: master-training-section.schema.json
+
+references:
+  - audience-depth-rules.md
+  - ingest-protocol.md
+  - generate-protocol.md
+  - cascade-protocol.md
+  - redaction-rules.md
+  - interactive-block-patterns.md
+
+templates:
+  - message-map-template.yaml
+  - facilitator-guide-template.md
+  - cascade-kit-template.md

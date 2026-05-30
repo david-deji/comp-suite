@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/david-deji/comp-comms-builder/master-schema/orgs-index.schema.json",
+  "title": "Orgs Index",
+  "description": "Validates _orgs/index.yaml — the org-slug registry per spec § 3. First skill to /init for a new org writes here. Slug canonicalization prevents duplicate orgs and split institutional memory.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver for the index schema. Minimal schema per founder decision (§ 3)."
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the last modification to this file."
+    },
+    "orgs": {
+      "type": "array",
+      "description": "Registry of all known org slugs. Skills must pick from this list or explicitly create a new entry.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "org_slug": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,40}$",
+            "description": "Canonical org slug per § 3 B1. Renames not supported in v1 — pick carefully at creation."
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date",
+            "description": "ISO 8601 date when this org was first registered."
+          },
+          "created_by_skill": {
+            "type": "string",
+            "enum": ["compensation-advisor", "comp-comms-builder", "comp-training-designer", "comp-team-transformer"],
+            "description": "The skill that ran /init and first registered this org."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "dormant", "archived"],
+            "description": "active: has recent activity. dormant: no activity in 18mo. archived: operator explicitly closed per § 3."
+          }
+        },
+        "required": ["org_slug", "created_date", "created_by_skill", "status"],
+        "additionalProperties": false
+      }
+    },
+    "transition_complete": {
+      "type": "boolean",
+      "description": "Dual-write transition flag per § 15.4. false during retrofit window (some skills not yet upgraded). Flips to true after all 4 retrofits ship and dual-write cleanup /build runs."
+    }
+  },
+  "required": ["schema_version", "last_updated", "orgs"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "schema_version": "1.0.0",
+      "last_updated": "2026-05-03",
+      "transition_complete": false,
+      "orgs": [
+        {
+          "org_slug": "acme",
+          "created_date": "2026-01-15",
+          "created_by_skill": "compensation-advisor",
+          "status": "active"
+        },
+        {
+          "org_slug": "widgets-co",
+          "created_date": "2026-03-02",
+          "created_by_skill": "comp-comms-builder",
+          "status": "active"
+        },
+        {
+          "org_slug": "lab-services-intl",
+          "created_date": "2025-09-10",
+          "created_by_skill": "comp-training-designer",
+          "status": "dormant"
+        }
+      ]
+    }
+  ]
+}

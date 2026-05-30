@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "intent-classification.schema.json",
+  "title": "Intent-router classification (Phase 2)",
+  "description": "Validates the free-text intent classification in intent-router.md § 3 before the router branches on confidence (SPEC-workflow-phases-2-5.md § 2b). Replaces the prior convention of branching on unvalidated parsed YAML: a malformed or typo'd classification fails the gate structurally instead of silently mis-routing. NOTE (A1): 'mode' is validated here only as a non-empty string; the dynamic membership check (mode ∈ the glob-discovered mode set) is an orchestrator post-check after schema validation — a static JSON schema cannot enumerate a runtime-discovered mode list. additionalProperties:false.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["mode", "confidence", "rationale"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The classified mode name. Schema checks non-empty string only; the orchestrator then post-validates membership in the glob-discovered mode set and re-asks on a miss (no silent mis-route)."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Routing confidence. high = dispatch directly; medium = confirm before dispatch; low = mandatory confirm with ranked candidates."
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line reason for the classification, surfaced to the founder on dispatch/confirm."
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "close-validation.schema.json",
+  "title": "Close-validation lens return (Phase 3)",
+  "description": "Validates one lens of the perspective-diverse close-validation panel that runs on the proposed master.yaml before the atomic close write (_core/primitives/close-validation.md; SPEC-workflow-phases-2-5.md § 3a). Three lenses run in parallel on the proposed master.yaml — internal-consistency (this cycle's decisions vs prior decision_log[] entries), statutory-accuracy (cited CNESST/equity figures vs current QC law — the one PAID lens; it fetches), budget-coherence (proposed comp costs vs the org's stated budget envelope). The orchestrator (never an agent) surfaces any 'flag' at the close gate and the founder resolves it before the atomic write. FLAG-only and advisory: a lens reports findings; it never edits master.yaml and never auto-blocks (invariants #2, #3). statutory_tags[] $refs the shared statutory-evidence schema so a statutory determination carries the same {url, quote} evidence contract the other gates verify against (F6). Invariant #5: a statutory-accuracy lens returning status:pass on a cited figure must carry a non-empty quote; an empty quote is asserted-but-not-confirmed and the orchestrator downgrades the pass to a flag. additionalProperties:false at every level; no replacement_text, no blocking.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["lens", "status", "findings"],
+  "properties": {
+    "lens": {
+      "type": "string",
+      "enum": ["internal-consistency", "statutory-accuracy", "budget-coherence"],
+      "description": "Which lens this return belongs to. internal-consistency = do this cycle's decisions contradict a prior decision_log[] entry ($0, Read); statutory-accuracy = do cited CNESST / pay-equity figures match current QC law (PAID — this lens fetches; runs inline per § 1, gated per-call by check_budget); budget-coherence = do the proposed comp costs fit the org's stated budget envelope ($0, Read)."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "flag"],
+      "description": "This lens's verdict. 'flag' surfaces at the close gate and blocks the atomic master.yaml write until the founder resolves it — advisory routing for the human, never an auto-block and never an auto-correct. For statutory-accuracy, status:pass requires a non-empty statutory_tags[].quote (invariant #5); the orchestrator downgrades a pass carrying no fetched quote to a flag."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Findings under this lens. An empty array pairs with status 'pass'.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What is wrong and where in the proposed master.yaml. State the observation; never the replacement (FLAG-only) — never rewrite a decision_log entry, a statute figure, or a cost line."
+          },
+          "location": {
+            "type": "string",
+            "description": "Optional. Where in the proposed master.yaml the finding applies — e.g. a decision_log entry id, a header field, or a cost line. Omit for an aggregate finding with no single locus (a budget-coherence overage spanning the whole proposal)."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Optional advisory weight for the human — not a block trigger. The 'flag' status, not severity, gates the write."
+          }
+        }
+      }
+    },
+    "statutory_tags": {
+      "type": "array",
+      "items": { "$ref": "statutory-evidence.schema.json" },
+      "description": "Optional. For the statutory-accuracy lens: the {url, quote} evidence backing each statutory determination (shared statutory-evidence schema, F6). A non-empty quote licenses a 'confirmed/pass' reading of a cited figure; an empty quote is asserted-but-not-confirmed and must never be read as confirmation (invariant #5) — the orchestrator treats a status:pass carrying no non-empty quote as a flag. The two $0 lenses (internal-consistency, budget-coherence) make no statutory claim and omit this array."
+    }
+  }
+}

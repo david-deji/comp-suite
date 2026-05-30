@@ -1,0 +1,145 @@
+{
+  "_schema_version": 1,
+  "_purpose": "Scope-parameterized intake question catalog. Read by references/intake-mode-protocol.md when generating Q4-Q9 variants. Match a variant by scope dimensions (provinces, banner_kind, role_family), substitute template variables, present to user for one-at-a-time approval. Adding a new variant = appending a JSON entry, no prose edit needed.",
+  "_template_variables": {
+    "{{provinces}}": "Comma-joined human-readable province list, e.g., 'QC and ON' / 'all 10 provinces' / 'BC'",
+    "{{banner}}": "Banner descriptor from user, e.g., 'Acme-banner stores' / 'a single banner' / 'all banners'",
+    "{{role_family}}": "Role family if scoped, e.g., 'meat departments' / 'pharmacy' / null (omits role-family clause)",
+    "{{role_family_examples}}": "Concrete role examples for the named role family, drawn from per-question examples_by_role_family",
+    "{{competitor_list}}": "Comma-joined per-province competitor list, drawn from peer_companies_by_province",
+    "{{cycle_name}}": "From engagement config cycle.cycle_name, e.g., 'FY26 Annual Wage Review'"
+  },
+  "peer_companies_by_province": {
+    "_doc": "Used to substitute {{competitor_list}} in Q8 variants. Override via engagement-config.benchmark.peer_companies if user provides their own peer set.",
+    "QC": ["Maxi", "Super C", "IGA", "Walmart Canada", "Costco"],
+    "ON": ["Loblaws", "Metro", "Food Basics", "FreshCo", "Walmart", "Costco"],
+    "BC": ["Save-On-Foods", "Real Canadian Superstore", "T&T", "Walmart", "Costco"],
+    "AB": ["Save-On-Foods", "Real Canadian Superstore", "Walmart", "Costco"],
+    "MB": ["Real Canadian Superstore", "Co-op", "Walmart", "Costco"],
+    "SK": ["Co-op", "Real Canadian Superstore", "Walmart", "Costco"],
+    "NS": ["Atlantic Superstore", "Walmart", "Costco"],
+    "NB": ["Atlantic Superstore", "Walmart", "Costco"],
+    "NL": ["Dominion", "Coleman's", "Walmart", "Costco"],
+    "PE": ["Atlantic Superstore", "Walmart", "Costco"]
+  },
+  "examples_by_role_family": {
+    "_doc": "Used to substitute {{role_family_examples}} in role-family-scoped variants. Add new role families as they appear in engagements.",
+    "meat departments": {
+      "QC": ["meat cutters in Montréal stores", "meat managers in Québec City", "meat clerks in Saguenay"],
+      "ON": ["meat cutters in GTA", "meat managers in Ottawa", "meat clerks in Hamilton"],
+      "BC": ["meat cutters in Lower Mainland", "meat managers on Vancouver Island"],
+      "DEFAULT": ["meat cutters", "meat managers", "meat clerks"]
+    },
+    "pharmacy": {
+      "QC": ["pharmacy assistants in Montréal", "pharmacy techs in Québec City"],
+      "ON": ["pharmacy assistants in GTA", "pharmacy techs in Ottawa"],
+      "DEFAULT": ["pharmacy assistants", "pharmacy techs", "pharmacy managers"]
+    },
+    "store managers": {
+      "DEFAULT": ["assistant store managers", "store managers", "district managers"]
+    },
+    "bakery": {
+      "DEFAULT": ["bakery clerks", "bakery managers", "decorators"]
+    },
+    "produce": {
+      "DEFAULT": ["produce clerks", "produce managers"]
+    }
+  },
+  "variants": [
+    {
+      "question_id": "q4_worry_roles",
+      "label": "Q4 — Worry roles",
+      "field_name": "q4_worry_roles",
+      "scope_match": {
+        "role_family": "any",
+        "provinces": "any",
+        "banner_kind": "any"
+      },
+      "prompt_template": "Which two or three roles in your {{provinces_clause}}{{banner_clause}}{{role_family_clause}} are you most worried about losing right now? Name the role and the reason.\n\nExamples of reasons: pay below market, manager issues, schedule, career path, location-specific.\nBe specific (e.g., {{role_family_examples_or_default}}).",
+      "clauses": {
+        "provinces_clause": {
+          "single_province": "{{provinces}} ",
+          "multi_province": "{{provinces}} ",
+          "all_provinces": "network "
+        },
+        "banner_clause": {
+          "named_banner": "{{banner}} ",
+          "all_banners": ""
+        },
+        "role_family_clause": {
+          "scoped": "{{role_family}}",
+          "unscoped": "stores"
+        },
+        "role_family_examples_or_default": {
+          "scoped": "{{role_family_examples}}",
+          "unscoped": "'meat cutters in Montréal stores' rather than 'meat department'"
+        }
+      }
+    },
+    {
+      "question_id": "q5_recruiting",
+      "label": "Q5 — Recruiting pain",
+      "field_name": "q5_recruiting",
+      "scope_match": {
+        "role_family": "any",
+        "provinces": "any",
+        "banner_kind": "any"
+      },
+      "prompt_template": "Where is recruiting hardest right now? Which roles, which geographies, what's the typical time-to-fill?\n\nIf you have specific vacancy durations or unfilled-headcount data, include it. {{multi_province_granularity}}",
+      "clauses": {
+        "multi_province_granularity": {
+          "single_province": "",
+          "multi_province": "Distinguish by province where the pattern differs.",
+          "all_provinces": "Distinguish by region (Atlantic, QC, ON, Prairies, BC) where the pattern differs."
+        }
+      }
+    },
+    {
+      "question_id": "q6_soft_intel",
+      "label": "Q6 — Soft intel",
+      "field_name": "q6_soft_intel",
+      "scope_match": {
+        "role_family": "any",
+        "provinces": "any",
+        "banner_kind": "any"
+      },
+      "prompt_template": "What's the back-channel telling you? Things you're hearing from store managers, district managers, HRBPs that won't show up in HRIS reports.\n\nExamples: groups thinking of unionizing, manager-level frustration with comp, retention story brewing in {{role_family_or_a_specific_segment}}, etc."
+    },
+    {
+      "question_id": "q8_competitor_moves",
+      "label": "Q8 — Competitor moves",
+      "field_name": "q8_competitor_moves",
+      "scope_match": {
+        "role_family": "any",
+        "provinces": "any",
+        "banner_kind": "any"
+      },
+      "prompt_template": "{{validation_grounding}}What have you heard about {{competitor_list}} doing on pay in {{provinces}} in the last six months? Posted rate changes, sign-on bonuses, retention programs, anything material.",
+      "clauses": {
+        "validation_grounding": {
+          "_doc": "Optional grounding line prepended when intake-mode-protocol's competitor wage validation pass returns a verified move. Format: '(Per <competitor> careers page accessed YYYY-MM-DD: <verified change>.) '",
+          "no_validation": "",
+          "validation_found": "{{validation_text}}"
+        }
+      },
+      "validation_cap": 3
+    },
+    {
+      "question_id": "q9_poaching",
+      "label": "Q9 — Poaching",
+      "field_name": "q9_poaching",
+      "scope_match": {
+        "role_family": "any",
+        "provinces": "any",
+        "banner_kind": "any"
+      },
+      "prompt_template": "Is any competitor actively poaching from {{poaching_target_clause}} — which competitor, in which roles, what are they offering?",
+      "clauses": {
+        "poaching_target_clause": {
+          "named_banner": "your {{banner}} stores",
+          "all_banners": "us"
+        }
+      }
+    }
+  ]
+}

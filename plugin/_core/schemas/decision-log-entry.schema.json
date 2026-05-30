@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/david-deji/comp-comms-builder/master-schema/decision-log-entry.schema.json",
+  "title": "Decision Log Entry",
+  "description": "Validates each entry in master.decision_log[]. Append-only per § 6.3 — skills append, never mutate prior entries. Full decision_type enum per § 6.2.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^dl-[0-9]{3,}$",
+      "description": "Monotonically incrementing ID per master.yaml. ID is authoritative; timestamp is informational per § 6.3."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of the decision. Informational only — ID is the authoritative ordering."
+    },
+    "skill": {
+      "type": "string",
+      "enum": ["compensation-advisor", "comp-comms-builder", "comp-training-designer", "comp-team-transformer"],
+      "description": "The skill that appended this entry. Skills only append, never write to others' sections."
+    },
+    "cycle_slug": {
+      "type": ["string", "null"],
+      "description": "Cycle this decision belongs to. null for org-level decisions (e.g., master_init, org_metadata_updated)."
+    },
+    "decision_type": {
+      "type": "string",
+      "enum": [
+        "cycle_opened",
+        "cycle_closed",
+        "cycle_reopened",
+        "cycle_primary_switched",
+        "master_init",
+        "org_metadata_updated",
+        "scenario_chosen",
+        "council_outcome",
+        "speaker_override",
+        "anti_pattern_promoted",
+        "framing_rejected",
+        "approval_chain_customized",
+        "audience_archetype_changed",
+        "channel_rule_set",
+        "training_block_pattern_set",
+        "module_shipped",
+        "waste_pattern_diagnosed",
+        "waste_pattern_remediated",
+        "glossary_term_promoted",
+        "brand_kit_extended"
+      ],
+      "description": "Full enum per § 6.2. 20 values covering cycle lifecycle, org lifecycle, all 4 skill scopes, and cross-skill shared events."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9_-]+$",
+        "description": "Free-form lowercase tags. Hyphens and underscores allowed."
+      },
+      "description": "Searchable tags. Lowercase, hyphen-or-underscore per § 6.1."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Operator-readable summary of the decision and rationale. Free-text, multi-line allowed. Soft warning (app layer) if capitalized two-word pattern matching person name detected per § 14.2."
+    },
+    "refs": {
+      "type": "object",
+      "description": "Optional pointers to related artifacts per § 6.1.",
+      "properties": {
+        "cycle_artifact": {
+          "type": ["string", "null"],
+          "description": "Path to the primary cycle artifact this decision references."
+        },
+        "council_file": {
+          "type": ["string", "null"],
+          "description": "Path to the council deliberation file. Used with decision_type: council_outcome per § 6.5."
+        },
+        "anti_pattern_id": {
+          "type": ["string", "null"],
+          "description": "ID of the anti-pattern promoted (e.g., 'ap-007'). Used with decision_type: anti_pattern_promoted."
+        },
+        "related_decision_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^dl-[0-9]{3,}$"
+          },
+          "description": "Linked decision log entry IDs. Used for cycle_reopened audit chains per § 9.3."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["id", "timestamp", "skill", "cycle_slug", "decision_type", "tags", "summary"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "dl-001",
+      "timestamp": "2026-02-25T14:30:00Z",
+      "skill": "comp-comms-builder",
+      "cycle_slug": "pharmacy-qc-fy26",
+      "decision_type": "scenario_chosen",
+      "tags": ["pharmacy", "qc", "all-hands-announcement"],
+      "summary": "Chose scenario B (modest 2.5% across-the-board) over scenario A (variable 1-4% by performance band) for pharmacy-qc-fy26. Rationale: union sensitivity around perceived favoritism.",
+      "refs": {
+        "cycle_artifact": "_orgs/acme/cycles/pharmacy-qc-fy26/comms/artifacts/all-hands-announcement.md",
+        "council_file": null,
+        "anti_pattern_id": null,
+        "related_decision_ids": []
+      }
+    },
+    {
+      "id": "dl-002",
+      "timestamp": "2026-02-26T09:15:00Z",
+      "skill": "comp-comms-builder",
+      "cycle_slug": "pharmacy-qc-fy26",
+      "decision_type": "anti_pattern_promoted",
+      "tags": ["chro", "all-hands"],
+      "summary": "CHRO requested removal of 'merit' from all-hands-announcement; replaced with 'performance recognition'. Promoted to org-level anti-pattern.",
+      "refs": {
+        "anti_pattern_id": "ap-007",
+        "cycle_artifact": null,
+        "council_file": null,
+        "related_decision_ids": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Friction event",
+  "description": "Comp-suite harness self-improvement loop event. One per line in <STATE_ROOT>/harness/friction.jsonl. See SPEC-learn.md § 4.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ts", "source", "severity", "target_class", "description", "signal_type"],
+  "properties": {
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of capture."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["manual", "auto", "post-session"],
+      "description": "manual = /comp friction, auto = orchestrator/hook signal, post-session = /comp close scan."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    },
+    "target_class": {
+      "type": "string",
+      "enum": [
+        "primitive",
+        "reference",
+        "hook",
+        "prompt",
+        "schema",
+        "intent-router",
+        "persona",
+        "perspective",
+        "glossary",
+        "unspecified"
+      ],
+      "description": "Class of harness target the friction touches."
+    },
+    "target_path": {
+      "type": ["string", "null"],
+      "description": "Optional asset-relative path hint, e.g. _core/primitives/mode-dispatcher.md."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000,
+      "description": "One-line operator-facing description of the friction."
+    },
+    "context_engagement_id": {
+      "type": ["string", "null"],
+      "description": "COMP_ENGAGEMENT_ID at capture time, or null if outside an engagement."
+    },
+    "context_mode": {
+      "type": ["string", "null"],
+      "description": "COMP_ACTIVE_MODE at capture time, or null."
+    },
+    "signal_type": {
+      "type": "string",
+      "enum": [
+        "operator-flagged",
+        "hook-fired-warn",
+        "askuserquestion-other-longform",
+        "primitive-runtime-error",
+        "intent-router-low-confidence",
+        "schema-validation-failure",
+        "repeated-clarification",
+        "post-session-broken-cite",
+        "post-session-unused-schema-field",
+        "post-session-hook-overridden",
+        "post-session-council-redundancy"
+      ],
+      "description": "Origin signal. Aggregator groups by signal_type within target groups."
+    }
+  }
+}

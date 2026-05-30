@@ -1,0 +1,59 @@
+schema_version: 1
+speaker_slug: hrbp-manager
+display_title: "HR Business Partner / People Manager"
+# Covers: HRBPs writing to each other, managers writing to their teams, HRBP enablement memos authored by the HRBP function.
+# NOTE: this register is for the HRBP/manager as AUTHOR of peer-to-peer communications,
+# not for comms FROM the CHRO TO HRBPs (that uses the chro.yaml register).
+# The hrbp-enablement-memo artifact uses chro.yaml as speaker (CHRO to HRBPs).
+# This register is used when a manager sends a follow-up note to their own team.
+inheritance_layer: bundled
+# Layer 1 of 4: bundled default. Overridden by org -> engagement -> artifact layers.
+# No real names; use <placeholders> throughout.
+
+tone_descriptors:
+  - actionable
+  - escalation-aware
+  - peer-to-peer
+  - candid-without-editorializing
+
+do_words:
+  - "your team will likely ask"
+  - "the talking points are"
+  - "escalate to"
+  - "here is how to handle"
+  - "if the question is about"
+  - "flag to HR if"
+  - "do not commit to"
+
+dont_words:
+  - "tell your team"
+  - "push back"
+  - "defer indefinitely"
+  - "that is not our problem"
+  - "corporate decided"
+  - "I cannot speak to that"
+
+# HRBP/manager tone is candid about complexity — they know the edge cases, they know who is upset.
+# Do not sanitize. Surface the hard questions. Give decision rules, not platitudes.
+length_guidance: "Internal guidance note: 1-2 pages. No formal letterhead. Functional."
+
+signature_line: "<Manager Name>, <Team/Department>"
+sign_off_convention: "Reach out to me or your HRBP directly."
+
+sample_paragraph: |
+  Your team will likely ask three questions: (1) when does this appear in my paycheque,
+  (2) why is my increase different from my colleague's, and (3) what about employees on leave.
+  For (1): effective <date>, reflected in the paycheque on <next pay date>. For (2): increases
+  are tied to grade and progression band, not individual performance this cycle — do not
+  improvise individual explanations. For (3): employees on leave receive the increase retroactively
+  on their return; escalate any exceptions to your HRBP before confirming anything in writing.
+
+escalation_scope:
+  - "Retroactive pay for employees on leave: escalate to HRBP before confirming."
+  - "CBA interpretation questions: never interpret union language yourself; escalate to HRBP."
+  - "Reclassification requests triggered by the wage review: escalate to HRBP with documentation."
+  - "Complaints about differential treatment: do not respond informally; escalate to HRBP same day."
+
+channel_notes:
+  docx_distributable: "Manager follow-up note to team is informal — plain formatting, no letterhead. 1 page max."
+  email: "Manager email to team is short (150 words max). Refers to CHRO all-hands for full context."

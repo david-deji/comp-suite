@@ -1,0 +1,231 @@
+# message-map.example.yaml — example canonical fact-set demonstrating audience+depth differentiation
+# Engagement: fictional "ACME Corp" (placeholder — no real client data)
+# Cycle: year-end-2026 (effective date 2027-01-01)
+
+schema_version: 1
+engagement_slug: acme-corp
+cycle_slug: year-end-2026
+ingested_at: 2026-11-08T14:30:00Z
+
+sources:
+  - id: tb-2026-q4-mwsr
+    type: transformation_brief
+    path_or_drive_id: drive:1abc...xyz/processes/acme-corp/annual-wage-scale-review/transformation-brief.md
+    extracted_messages: 8
+  - id: pol-merit-policy-v3
+    type: process_doc
+    path_or_drive_id: drive:1abc...xyz/policies/merit-policy-v3-2026.md
+    extracted_messages: 4
+  - id: prior-pptx-2025
+    type: prior_pptx
+    path_or_drive_id: drive:1abc...xyz/cycles/acme-corp/year-end-2025/managers.pptx
+    extracted_messages: 3
+  # Total messages extracted: 15. After /ingest dedup + council review: 12 retained.
+
+messages:
+  # ============================================
+  # MESSAGE 1: The headline 60/40 split
+  # All 4 audiences see this; depths increase as expected.
+  # ============================================
+  - id: msg-001
+    claim: "This cycle's merit-vs-market split is 60/40 — 60% market adjustment, 40% merit pool."
+    evidence:
+      - type: number
+        value: "60% market / 40% merit"
+        source_ref: tb-2026-q4-mwsr
+      - type: policy_clause
+        value: "Merit policy §3.2 — annual cycle splits ratified by Comp Committee"
+        source_ref: pol-merit-policy-v3
+    audiences:
+      employees:
+        depth: 1
+        framing: "Your raise this year has two parts. Most of it reflects the market — what comparable companies are paying. The rest reflects your performance."
+        anticipated_objections: []
+        cascade_prompt: null
+      managers:
+        depth: 2
+        framing: "60/40 split: 60% of total raise pool goes to market adjustments (compa-ratio normalization across band positions), 40% to merit (performance-based, higher %s for top performers). This is a shift from last cycle's 50/50."
+        anticipated_objections:
+          - "Why did the split change from last cycle?"
+          - "How do I explain this to my high-performer who's at top of band?"
+          - "Does this commit us to 60/40 next cycle too?"
+        cascade_prompt: "Ask your team: how do you understand the difference between a market raise and a merit raise? What was your assumption coming into this conversation?"
+      hrbps:
+        depth: 3
+        framing: "Cycle policy §3.2: 60/40 split ratified at Comp Committee on 2026-10-15. Mechanics: market component scales by compa-ratio band position; merit component scales by performance rating × manager-allocation. Edge cases: top-of-band employees (frozen on market component, full merit eligible); cross-band moves (handled outside cycle, escalate to comp manager); mixed-pay-structure teams (step employees follow scale lift; merit-band employees follow this split)."
+        edge_cases:
+          - "Top-of-band employees: market component frozen; merit component eligible at full %"
+          - "Cross-band moves: handled outside cycle pool; escalation to comp manager"
+          - "Mixed pay structure teams: step roles follow scale lift, merit-band roles follow the 60/40 split"
+        escalation_paths:
+          - "Cross-band exception: HRBP → Comp Manager → VP People (3-day SLA)"
+          - "Top-of-band-frozen dispute: HRBP handles via documented merit policy"
+      execs:
+        depth: 4
+        framing: "60/40 weighting represents a deliberate shift from 50/50 (last cycle) toward market-defense. Cost: $1.2M total raise envelope, of which 60% ($720K) is market-driven (largely non-discretionary given current vacancy/turnover signals) and 40% ($480K) is merit-discretionary. Tradeoff: rejected 70/30 alternative which would have left less differentiation across performance bands."
+        tradeoffs:
+          - "60/40 vs 70/30: chose 60/40 to preserve merit signal for top performers; 70/30 would have flattened performance differentiation"
+          - "60/40 vs 50/50: chose 60/40 because vacancy/turnover signals indicated market gap was widening faster than internal performance variance"
+        budget_framing: "$1.2M total cycle envelope. 60% ($720K) effectively non-discretionary given market signals; 40% ($480K) is the genuinely discretionary lever for next year's flexibility."
+        governance: "Approved by Comp Committee 2026-10-15. Ratification at Board Compensation Subcommittee scheduled 2026-12-08."
+    redaction_status: clean
+    council_review: pending
+
+  # ============================================
+  # MESSAGE 2: Top-of-band freeze (HRBP edge case + manager mechanics; not for employees or execs)
+  # ============================================
+  - id: msg-002
+    claim: "Top-of-band employees have market component frozen this cycle (eligible for merit only)."
+    evidence:
+      - type: policy_clause
+        value: "Merit policy §3.4 — top-of-band freeze rule"
+        source_ref: pol-merit-policy-v3
+      - type: number
+        value: "47 employees affected (band: 4-7 — anonymized)"
+        source_ref: tb-2026-q4-mwsr
+    audiences:
+      employees:
+        depth: null   # employees do not see this directly; it's mechanics they only encounter via 1:1 with manager
+      managers:
+        depth: 2
+        framing: "Top-of-band employees on your team: their market component is frozen this cycle. They're still eligible for the full merit %, but they don't receive a market lift. Reason: their pay is already at the top of the salary band."
+        anticipated_objections:
+          - "How do I explain this to a top performer who's frozen on market?"
+          - "Will this make them want to leave?"
+        cascade_prompt: null   # not for cascade — too sensitive for team meeting
+      hrbps:
+        depth: 3
+        framing: "Top-of-band freeze rule (Merit policy §3.4): employees at or above their band's max receive merit only. Manager has discretion to advocate for cross-band move (separate process, outside cycle). HRBP role: support manager in 1:1 conversations with top-of-band employees; flag retention risk to comp manager."
+        edge_cases:
+          - "Employee just promoted into top-of-band mid-cycle: prorate market component for the pre-promotion period"
+          - "Top-of-band high-performer flagged retention risk: trigger cross-band-move review (separate from cycle)"
+        escalation_paths:
+          - "Retention-risk top-of-band: HRBP → Comp Manager within 5 business days of cycle close"
+      execs:
+        depth: null   # execs don't need this operational detail; if it becomes a strategic issue, surface separately
+    redaction_status: clean
+    council_review: pending
+
+  # ============================================
+  # MESSAGE 3: Effective date + letter timing (universal — all audiences see it, all at headline level)
+  # ============================================
+  - id: msg-003
+    claim: "Effective date is 2027-01-01. Letters arrive in employee inboxes 2026-12-15."
+    evidence:
+      - type: policy_clause
+        value: "Cycle calendar §2.1 — effective dates"
+        source_ref: pol-merit-policy-v3
+    audiences:
+      employees:
+        depth: 1
+        framing: "Your new pay starts January 1, 2027. You'll get a letter explaining your specific increase by December 15, 2026."
+        anticipated_objections: []
+        cascade_prompt: null
+      managers:
+        depth: 1   # managers see at depth-1 too — same simple message, no extra mechanics needed
+        framing: "Effective Jan 1 2027. Letters land Dec 15 2026. Your team will ask you about specifics between letter delivery and effective date — your job is to answer where you can and route to HRBP where you can't."
+        anticipated_objections:
+          - "What if my team member's letter is wrong?"
+        cascade_prompt: "Ask your team: what's the timing question you have about this cycle?"
+      hrbps:
+        depth: 1
+        framing: "Effective Jan 1 2027. Letters Dec 15 2026. HRBP queue opens Dec 16 for letter-discrepancy questions; 48h SLA for response."
+        edge_cases:
+          - "Letter discrepancy: route to HRBP queue; 48h SLA"
+          - "Mid-cycle hires (after Oct 1, before Dec 15): pro-rated; explained in letter footnote"
+        escalation_paths:
+          - "Letter system failure: payroll partner → comp manager (production incident)"
+      execs:
+        depth: 1
+        framing: "Effective Jan 1 2027. Communication cascade: exec ratification (Dec 8) → manager training (Dec 10) → cascade kits (Dec 11-14) → letters (Dec 15) → effective (Jan 1)."
+        tradeoffs: []
+        budget_framing: ""
+        governance: "Comms timeline approved by HR Ops + Comp Committee 2026-10-15."
+    redaction_status: clean
+    council_review: pending
+
+  # ============================================
+  # MESSAGE 4: Total cycle envelope ($1.2M) — execs only (depth-4 budget framing)
+  # ============================================
+  - id: msg-004
+    claim: "Total cycle envelope: $1.2M raise pool, representing X% of total compensation budget."
+    evidence:
+      - type: number
+        value: "$1.2M envelope (banded — actual figure redacted from non-exec audiences)"
+        source_ref: tb-2026-q4-mwsr
+    audiences:
+      employees:
+        depth: null
+      managers:
+        depth: null   # managers do not see total envelope (commitment risk)
+      hrbps:
+        depth: null   # HRBPs work with allocations, not totals
+      execs:
+        depth: 4
+        framing: "$1.2M raise pool. 60% ($720K) market-driven, 40% ($480K) merit-discretionary. Effective 0.X% increase against total comp budget. ROI argument: vacancy/turnover signals indicated $1.5M-$2M opportunity cost from competitor poaching; $1.2M envelope is the defended-spending choice."
+        tradeoffs:
+          - "$1.2M defends; $1.5M would close gap to P50 fully; $0.9M would have left market gap widening"
+        budget_framing: "$1.2M directly. Implied $X.YM payroll-burden cost (CPP/QPP/EI/HSF approx 13% in QC). True total cost ~$X.YM."
+        governance: "Approved Comp Committee 2026-10-15. Final ratification at Board Subcommittee 2026-12-08."
+    redaction_status: clean
+    council_review: pending
+
+  # ============================================
+  # MESSAGE 5: Manager toolkit — cascade-only (depth-2 manager + cascade prompt; not for others)
+  # ============================================
+  - id: msg-005
+    claim: "Managers get a cascade kit (30-min team-meeting deck) for week 0 (week of Dec 15-19)."
+    evidence:
+      - type: quote
+        value: "Cascade kit delivers Dec 11; manager runs with team in week of Dec 15"
+        source_ref: tb-2026-q4-mwsr
+    audiences:
+      employees:
+        depth: null
+      managers:
+        depth: 2
+        framing: "Cascade kit lands in your inbox Dec 11. Run it with your team in week 0 (Dec 15-19). 30 minutes, discussion-led. The cascade prompts in the kit are the script — don't deviate. They're designed for team-specific conversation, not for you to deliver alone."
+        anticipated_objections:
+          - "What if my team meeting is week of Dec 8? Move it later or run early without the kit?"
+        cascade_prompt: null   # the cascade kit IS the cascade — no nested prompt
+      hrbps:
+        depth: null   # HRBPs aren't running cascade
+      execs:
+        depth: null
+    redaction_status: clean
+    council_review: pending
+
+# Coverage gaps surfaced during /ingest scripted_close
+coverage_gaps:
+  - audience: execs
+    gap: "Only 2 depth-4 messages (msg-001 tradeoffs, msg-004 envelope). Strategic framing for the board ratification ask is thin."
+    flagged_at: 2026-11-08
+    resolved: false
+  - audience: hrbps
+    gap: "Edge cases for 'mixed pay structure teams' (step + merit) are referenced in msg-001 but no dedicated message — risk of HRBP on-the-floor confusion."
+    flagged_at: 2026-11-08
+    resolved: false
+
+# Updated by /generate after each per-audience render — empty in this example
+audiences_rendered_for_this_message_map:
+  employees:
+    rendered_at: null
+    deck_path: null
+  managers:
+    rendered_at: null
+    deck_path: null
+  hrbps:
+    rendered_at: null
+    deck_path: null
+  execs:
+    rendered_at: null
+    deck_path: null
+  managers_cascade:
+    rendered_at: null
+    deck_path: null
+
+last_updated:
+  by: /ingest
+  at: 2026-11-08T15:45:00Z
+  mode: directed-interview
+  raw_capture: discovery/acme-corp/year-end-2026/2026-11-08-ingest-directed-interview.md

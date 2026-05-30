@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "_description": "Schema templates for the four broadcast-with-checkpoints block types. Loaded by /generate Step 4c (interactive blocks rendering). Each block in <audience>-interactive-blocks.md follows one of these four shapes.",
+  "block_types": {
+    "poll": {
+      "schema": {
+        "block_number": "integer (sequential within audience)",
+        "slide_ref": "integer (slide number this poll targets)",
+        "question": "string (single question, 1-2 sentences)",
+        "options": {
+          "type": "array",
+          "min_length": 2,
+          "max_length": 4,
+          "items": { "letter": "A | B | C | D", "label": "string" }
+        },
+        "expected_distribution": "string (e.g., 'Most A, some B, almost none C')",
+        "if_surprise_distribution": "string (follow-up prompt if distribution is unexpected)",
+        "time_minutes": "number (typically 2)"
+      },
+      "markdown_template": "## Block <N>: Poll\n\n**Slide ref:** Slide <M>\n**Question:** <question>\n**Options:**\n- A: <label>\n- B: <label>\n- C: <label>  (optional)\n- D: <label>  (optional, max 4)\n\n**Expected distribution:** <distribution>\n**If surprise distribution:** <follow-up>\n**Time:** ~<N> min",
+      "use_when": [
+        "audience needs to commit to a position before hearing the answer",
+        "the expected distribution itself is informative",
+        "you want to surface disagreement without forcing individual identification"
+      ],
+      "skip_when": [
+        "stakes are low",
+        "the right answer is obvious from prior context",
+        "async delivery without live response collection"
+      ]
+    },
+    "quiz": {
+      "schema": {
+        "block_number": "integer",
+        "slide_ref": "integer",
+        "question": "string (single comprehension question)",
+        "options": {
+          "type": "array",
+          "min_length": 2,
+          "max_length": 4,
+          "items": { "letter": "A | B | C | D", "label": "string" }
+        },
+        "correct_answer": "A | B | C | D",
+        "distractor_handling": {
+          "type": "object",
+          "description": "For each wrong option, one-line explanation of the misunderstanding it reveals + how to address",
+          "schema": { "<letter>": "string" }
+        },
+        "time_minutes": "number (typically 2-3)"
+      },
+      "markdown_template": "## Block <N>: Knowledge Check\n\n**Slide ref:** Slide <M>\n**Question:** <question>\n**Options:**\n- A: <label>\n- B: <label>\n- C: <label>  (optional, max 4)\n\n**Correct answer:** <letter>\n**Distractor handling:**\n- If audience picks <wrong-letter>: <explanation>\n- If audience picks <wrong-letter>: <explanation>\n\n**Time:** ~<N> min",
+      "use_when": [
+        "audience just learned a mechanic and you need to verify it landed",
+        "common misunderstandings are predictable — distractors expose them",
+        "async delivery (quiz with self-grading works well)"
+      ],
+      "skip_when": [
+        "the message is opinion / framing, not factual",
+        "the quiz feels like a test the audience can fail publicly"
+      ]
+    },
+    "scenario_card": {
+      "schema": {
+        "block_number": "integer",
+        "slide_ref": "integer",
+        "scenario": "string (3-5 sentences, concrete role-specific decision-forcing vignette)",
+        "prompt": "string (open question, e.g., 'What would you do? What information would you need first?')",
+        "discussion_frame": "string (what the facilitator is listening for during open discussion)",
+        "synthesis_prompt": "string (facilitator 1-line closer that ties discussion back to the message)",
+        "time_minutes": "number (typically 5-7)"
+      },
+      "markdown_template": "## Block <N>: Scenario Card\n\n**Slide ref:** Slide <M>\n**Scenario:**\n<3-5 sentence vignette — concrete, role-specific, decision-forcing>\n\n**Prompt:** <e.g., 'What would you do? What information would you need first?'>\n**Discussion frame:** <what the facilitator is listening for>\n**Synthesis prompt:** <facilitator's 1-line closer>\n\n**Time:** ~<N> min",
+      "use_when": [
+        "the message has nuance that breaks down only in real situations",
+        "the audience needs to translate abstract policy → concrete decision",
+        "multiple defensible answers exist (depth-3 HRBP edge cases especially)"
+      ],
+      "skip_when": [
+        "the training is depth-1 employee level (scenarios are too rich)",
+        "time-constrained delivery (<30 min)",
+        "async delivery without facilitator synthesis"
+      ]
+    },
+    "retrieval_prompt": {
+      "schema": {
+        "block_number": "integer",
+        "slide_ref": "integer",
+        "prompt": "string (e.g., 'Without looking at the slide — what was the key message of [prior section]?')",
+        "purpose": "string (reinforce retention | signal pacing | break content density)",
+        "time_minutes": "number (typically 0.5)"
+      },
+      "markdown_template": "## Block <N>: Retrieval Prompt\n\n**Slide ref:** Slide <M>\n**Prompt:** <prompt>\n**Purpose:** <reinforce retention | signal pacing | break content density>\n\n**Time:** ~<N> seconds",
+      "use_when": [
+        "you want to reinforce retention before moving to a new section",
+        "pacing is tight — retrieval prompts cost almost no time",
+        "async delivery (works cold)",
+        "cascade context (manager runs retrieval prompts with team after each major content block)"
+      ],
+      "skip_when": [
+        "nothing has been said yet (no prior message to retrieve)",
+        "the message is too short to retrieve meaningfully"
+      ]
+    }
+  },
+  "placement_rules": {
+    "cadence": "Every 3-5 content slides → 1 checkpoint slide. Tighter (every 2-3) for high-density audiences (execs, HRBPs). Looser (every 5) for low-stakes audiences (employees) where pacing matters.",
+    "preferred_per_audience": {
+      "employees": ["poll (low-stakes)", "retrieval_prompt"],
+      "managers": ["poll (commit-then-reveal)", "quiz (mechanic verification)", "retrieval_prompt"],
+      "hrbps": ["scenario_card (edge cases)", "quiz (mechanic verification)"],
+      "execs": ["poll (force-commit-on-decision)", "retrieval_prompt (sparingly)"]
+    },
+    "avoid_per_audience": {
+      "employees": ["quiz (feels like test)", "scenario_card (too rich)"],
+      "managers": ["scenario_card (reserve for cascade-recipients, not managers themselves)"],
+      "hrbps": ["poll (HRBPs hate group-vote on technical questions)"],
+      "execs": ["quiz (feels patronizing)", "scenario_card (execs want decision asks, not deliberation)"]
+    },
+    "preferred_per_depth": {
+      "1": ["retrieval_prompt", "poll"],
+      "2": ["quiz", "poll"],
+      "3": ["scenario_card", "quiz"],
+      "4": ["poll (force decision-commit)", "retrieval_prompt"]
+    },
+    "cascade_kit_rules": "Cascade kits use retrieval_prompt only. Polls / quizzes / scenarios are dropped per cascade-protocol.md § Lighten interactive blocks."
+  },
+  "embedded_or_separate_modes": {
+    "embedded": {
+      "_description": "Interactive blocks render as PPTX slides inline within the deck. Slide layout uses an existing master (04-section-divider.js or 09-callout.js) with block content rendered as bullets/callouts.",
+      "default": true,
+      "use_when": ["live training", "recorded video"]
+    },
+    "separate": {
+      "_description": "Interactive blocks render as standalone markdown cards alongside the deck. Deck contains placeholder slides ('Checkpoint — see card N'); facilitator pulls the card to run the block.",
+      "use_when": ["facilitator wants printed handouts", "async-delivery contexts where blocks are run separately"]
+    }
+  }
+}

@@ -1,0 +1,43 @@
+schema_version: 1
+audience_slug: exec_board
+display_name: "Executive / Board"
+inheritance_layer: bundled
+# Layer 1: bundled default. Override per org in org-comms-profile.yaml audience_profiles.
+# Covers: C-suite, board of directors, compensation committee.
+
+reading_level: college
+# Assume financial and governance literacy. Technical vocabulary is expected.
+# Brevity is critical — one slide per decision, not one slide per department.
+
+vocabulary: technical
+# Acceptable: market percentile, total comp budget envelope, actuarial, EBITDA impact, run rate
+# Acceptable: governance threshold, board resolution trigger, CBA ratification cycle
+# Avoid: emotional framing, employee-experience language, "our team" narrative (wrong register)
+
+key_concerns:
+  - "What is the total cost impact (annualized run rate)?"
+  - "How does this compare to the approved budget envelope?"
+  - "What is the governance rationale (CBA obligation, market lag, pay-equity compliance)?"
+  - "What is the peer-benchmark position (percentile vs. market median)?"
+  - "What are the key risks if we delay or reduce the increase?"
+  - "What board approval or disclosure obligations are triggered?"
+
+channel_preference:
+  - pptx_distributable
+
+key_message_framing:
+  lead_with: "Decision summary on slide 1. Cost on slide 2. Risk/governance on slide 2 or 3."
+  avoid: "Employee-experience narrative at the exec level — not wrong but wastes slide space. Reserve for appendix."
+  effective_date_prominence: medium
+  cta_style: "Single ask: 'Board to approve cost envelope / note for information / no action required.' State which."
+
+exec_specific_notes:
+  - "Exec-one-pager is board-ready: assume it may be appended to board package. Format accordingly."
+  - "Scenario framing: if comp-advisor ran scenarios, summarize the chosen scenario vs. runner-up with cost delta."
+  - "Compliance hook: if pay equity or Bill 96 compliance is a driver, state it explicitly — board needs the legal anchor."
+  - "Prior-year comparison: include prior-cycle envelope and this-cycle envelope side by side."
+  - "Language: EN is the default board language in most Quebec-headquartered companies with national boards. Confirm per engagement."
+
+accessibility_notes:
+  - "EN primary for board communications unless board members are FR-only (rare for public companies)."
+  - "PPTX: board decks distributed as PDF-rendered PPTX; confirm distribution format with operator."

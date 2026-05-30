@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "thinker-return.schema.json",
+  "title": "Council thinker return (Phase 2)",
+  "description": "Validates one council thinker's structured return inside council-parallel (SPEC-workflow-phases-2-5.md § 2a, § 2c). Each thinker (model: opus, $0 tools — thinker.md disallows web tools) writes a gap-first analysis; the barrier validates every return against this schema, re-dispatches once on failure, and records an unrecoverable failure in the orchestrator's missing[] (never silently dropped). statutory_tags[] $refs the shared statutory-evidence schema so a thinker's statutory claims carry the same {url, quote} evidence contract the gates verify against (F6). additionalProperties:false so a thinker cannot smuggle an unschema'd field; FLAG-only posture — a thinker reports gaps and positions, never replacement text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["perspective_name", "core_position", "knowledge_gaps", "recommendations"],
+  "properties": {
+    "perspective_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The perspective this thinker argued from (e.g. 'Compensation Strategist', 'Industry Outsider: pharma')."
+    },
+    "core_position": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The thinker's central position on the topic."
+    },
+    "knowledge_gaps": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "What this perspective flags as unknown or unverified — the gap-first discipline. Empty array = no gaps surfaced (report [], never omit)."
+    },
+    "recommendations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Concrete recommendations from this perspective. Empty array allowed."
+    },
+    "statutory_tags": {
+      "type": "array",
+      "items": { "$ref": "statutory-evidence.schema.json" },
+      "description": "Optional. Statutory/market claims this thinker made, each with its {url, quote} evidence (shared statutory-evidence schema). An item with an empty quote is asserted-but-not-confirmed (invariant #5) — never read it as confirmation."
+    },
+    "confidence_tag_counts": {
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 0 },
+      "description": "Optional. Per-confidence-tag counts across this thinker's claims (comp-suite tag vocabulary, e.g. CONSENSUS / SINGLE_SOURCE / REPORTED / UNVERIFIED / UNRESEARCHED). Keys are tag names; values are non-negative counts. Advisory orientation, not a quality score."
+    }
+  }
+}

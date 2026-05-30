@@ -1,0 +1,141 @@
+# Comp-suite v2 tool registry — final content per SPEC § 6.
+# Modes opt into tools via mode.yaml `tools_required`.
+# MCP server registration lives in v2/.claude/settings.json (per CC convention);
+# this file is the mode-level surface.
+
+tools:
+  # --- Perplexity — OPTIONAL enhancement -------------------------------------
+  # Perplexity is NOT required by any mode. `web-search` (the WebSearch builtin,
+  # below) is the guaranteed web-research path. When a colleague configures the
+  # optional Perplexity server (INSTALL.md § Optional power-up), these three tools
+  # become available and the protocols prefer them for richer multi-source
+  # synthesis; when absent, web research falls back to `web-search`. The server is
+  # optional-when-present — its tools stay registered so the refute-claim /
+  # close-validation evidence paths resolve when it is configured.
+  perplexity-research:
+    kind: mcp
+    server: perplexity
+    optional: true                           # absent → protocols fall back to web-search builtin
+    entry: perplexity_research
+    cost_tier: high
+    est_call_cost_usd: 0.30                  # consumed by budget-check primitive (SPEC § 6.1)
+    requires_user_confirm: false             # set true to gate per-call within-budget
+    description: Multi-source in-depth research with citations (~30s). Optional; web-search is the fallback.
+
+  perplexity-ask:
+    kind: mcp
+    server: perplexity
+    optional: true                           # absent → protocols fall back to web-search builtin
+    entry: perplexity_ask
+    cost_tier: low
+    est_call_cost_usd: 0.03
+    requires_user_confirm: false
+    description: Quick AI-answered question with citations (~5s). Optional; web-search is the fallback.
+
+  perplexity-reason:
+    kind: mcp
+    server: perplexity
+    optional: true                           # absent → protocols fall back to web-search builtin
+    entry: perplexity_reason
+    cost_tier: medium
+    est_call_cost_usd: 0.10
+    requires_user_confirm: false
+    description: Step-by-step analytical reasoning with citations. Optional; web-search is the fallback.
+
+  # Market server — 7 live tools at mcp.dallaire-jette.com/mcp/rpc (HTTP, Bearer ${MARKET_INTEL_TOKEN}).
+  # All $0.00 (included in the MCP subscription). Keys market-data + cba-wage-scale are load-bearing
+  # (referenced by mode.yaml tools_required + prose); the other five mirror the live tool set 1:1.
+  market-search-roles:
+    kind: mcp
+    server: market
+    entry: search_roles
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Discover roles in the data (NOC codes + mined titles); returns role_id + match_score
+
+  market-data:
+    kind: mcp
+    server: market
+    entry: get_role_intelligence
+    cost_tier: low
+    est_call_cost_usd: 0.00                  # included in MCP server subscription
+    requires_user_confirm: false
+    description: Full rate benchmarks (StatCan + live postings, all five percentiles) + YoY trends, hourly CAD
+
+  market-snapshot:
+    kind: mcp
+    server: market
+    entry: get_market_snapshot
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Province-wide overview of top hiring and fastest-growing roles (available; not yet wired into a protocol)
+
+  market-compare-roles:
+    kind: mcp
+    server: market
+    entry: compare_roles
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Benchmark comparisons across multiple roles or provinces in one call
+
+  market-compare-offer:
+    kind: mcp
+    server: market
+    entry: compare_offer_to_market
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Analysis of a single salary offer against all market signals
+
+  market-compare-pay-scale:
+    kind: mcp
+    server: market
+    entry: compare_pay_scale_to_market
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Step grid / pay band vs market benchmarks (entry/mid/top vs percentiles, competitiveness verdict)
+
+  cba-wage-scale:
+    kind: mcp
+    server: market
+    entry: get_cba_wage_scale
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Detailed wage scales from collective agreements (unionized sectors)
+
+  filesystem:
+    kind: builtin
+    est_call_cost_usd: 0.00
+    description: Read/Write/Edit/Glob/Grep on local filesystem
+
+  statute-fetch:
+    kind: builtin                            # WebFetch on a cited statute URL (CNESST, LégisQuébec)
+    est_call_cost_usd: 0.00                  # direct fetch — free-tier short-circuit in budget-check
+    description: >
+      Direct fetch of a cited statute/regulation page for the refute-claim statutory path
+      (SPEC-workflow-phase1.md § 3a). $0 builtin; registered for cost-log provenance on the
+      direct fetch. The paid fallback when no URL is present is perplexity-ask ($0.03).
+
+  web-search:
+    kind: builtin                            # WebSearch builtin — general web-research fallback
+    est_call_cost_usd: 0.00                  # no API key; $0 builtin, available in every CC session
+    description: >
+      General web research via the WebSearch builtin (Job Bank Canada, Glassdoor, LinkedIn
+      Salary, BLS, employer career sites). The guaranteed, key-free web-research path and the
+      default fallback to the Market MCP for any value not in market data. Required by all four
+      modes. When the OPTIONAL Perplexity server is configured the protocols prefer perplexity-*
+      for richer multi-source synthesis; when it is absent, web research lands here.
+
+mcp_servers:
+  # market is the one REQUIRED server (the colleague sets MARKET_INTEL_TOKEN). perplexity is
+  # OPTIONAL — see INSTALL.md § Optional power-up; absence degrades to the web-search builtin.
+  perplexity:
+    optional: true
+    setup_doc: INSTALL.md#optional-power-up-perplexity   # plugin-root-relative; EN heading
+  market:
+    setup_doc: INSTALL.md#step-2-run-the-setup-script     # plugin-root-relative; EN heading (token is set here)

@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "comms-review-lens.schema.json",
+  "title": "Comms /review lens return (Phase 4)",
+  "description": "Validates one lens of the perspective-diverse /review panel (_core/primitives/comms-panels.md Panel 3; SPEC-workflow-phases-2-5.md § 4c). Three read-only critics run in parallel — correctness, register, legal — each on the post-redaction draft; the orchestrator (never an agent) synthesizes the three returns. FLAG-only and advisory: a lens reports findings; it never authors corrected text and never auto-blocks. The legal lens is Read-only — it flags suspected overstatement for the human and a downstream refute-claim pass; it never asserts a statute is correct from training data (invariant #5). additionalProperties:false at every level; no replacement_text, no blocking.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["lens", "status", "findings"],
+  "properties": {
+    "lens": {
+      "type": "string",
+      "enum": ["correctness", "register", "legal"],
+      "description": "Which lens this return belongs to. correctness = does the draft match the decision it communicates (figures, effective dates, eligibility carried from the source recommendation); register = does the prose match the active C07 speaker register (tone_descriptors / do_words / dont_words); legal = does any claim overstate entitlement, misstate a pay-equity obligation, or assert a figure no source backs."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pass", "flag"],
+      "description": "This lens's verdict. 'flag' surfaces above the human acknowledgment / approval-stage gate; it is advisory, not an auto-block. The human resolves before advancing."
+    },
+    "findings": {
+      "type": "array",
+      "description": "Findings under this lens. An empty array pairs with status 'pass'.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "location"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What is wrong and where. State the observation; never the replacement (FLAG-only). For the legal lens, flag suspected overstatement — never rewrite the legal sentence."
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where in the draft the finding applies."
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "Advisory weight for the human — not a block trigger."
+          }
+        }
+      }
+    }
+  }
+}

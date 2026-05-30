@@ -1,0 +1,8 @@
+--
+<Manager Name>
+<Manager Title>, <Department or Store Name>
+<Company Name>
+<City>, <Province>
+
+Contactez-moi directement ou votre partenaire RH pour toute question.
+Contact me directly or your HR Business Partner for any questions.

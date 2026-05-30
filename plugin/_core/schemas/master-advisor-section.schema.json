@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/david-deji/comp-comms-builder/master-schema/master-advisor-section.schema.json",
+  "title": "Master Advisor Section",
+  "description": "Validates master.advisor.* per spec § 5.1. Owned exclusively by compensation-advisor. Other skills MUST NOT write to this section.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Per-section semver per § 12.4. Independent of other sections; bumps when advisor's internal schema changes."
+    },
+    "scenario_archetypes": {
+      "type": "array",
+      "description": "Long-lived org-level scenario patterns observed across cycles.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^sa-[0-9]{3,}$",
+            "description": "Stable scenario archetype ID."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of this scenario archetype (e.g., 'across-the-board flat percentage')."
+          },
+          "cycles_used": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Cycle slugs where this archetype was applied."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": ["shipped", "rejected_by_chro", "rejected_by_operator", "in_progress", "deferred"],
+            "description": "Final outcome when this archetype was used."
+          }
+        },
+        "required": ["id", "description", "cycles_used", "outcome"],
+        "additionalProperties": false
+      }
+    },
+    "preferred_council_perspectives": {
+      "type": "array",
+      "description": "Operator-confirmed council seats for this org. Role identifiers only — no person names per § 14.2.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "description": "Role identifier (e.g., 'cfo_proxy', 'union_voice', 'pay_equity_specialist')."
+          }
+        },
+        "required": ["role"],
+        "additionalProperties": false
+      }
+    },
+    "cycle_state_pointers": {
+      "type": "array",
+      "description": "Per-cycle state file pointers. Actual cycle data lives in cycle_dir/advisor/.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cycle_slug": {
+            "type": "string",
+            "description": "References a cycle_slug in master.cycles[]."
+          },
+          "state_file": {
+            "type": "string",
+            "description": "Relative path to the per-cycle advisor state file (e.g., '_orgs/acme/cycles/pharmacy-qc-fy26/advisor/engagement-state.yaml')."
+          }
+        },
+        "required": ["cycle_slug", "state_file"],
+        "additionalProperties": false
+      }
+    },
+    "pre_engagement_artifacts": {
+      "type": "array",
+      "description": "Pre-engagement narrative/data-light/costing artifacts produced before or outside the canonical engagement spine. NOT included in closed-engagement drift queries.",
+      "items": {
+        "type": "object",
+        "required": ["artifact_slug", "engagement_mode", "created_date", "intended_drive_path"],
+        "properties": {
+          "artifact_slug": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Stable identifier for this pre-engagement artifact."
+          },
+          "engagement_mode": {
+            "type": "string",
+            "enum": ["narrative-frame-only", "data-light-decision", "costing-only"],
+            "description": "The partial-flow mode used to produce this artifact."
+          },
+          "created_date": {
+            "type": "string",
+            "format": "date",
+            "description": "ISO date when the artifact was created."
+          },
+          "intended_drive_path": {
+            "type": "string",
+            "description": "Intended Drive path for the artifact file."
+          },
+          "decision_log_ref": {
+            "type": "string",
+            "description": "Pointer to the decision_log entry (dl-NNN) that captures the telescoping rationale, typically decision_type: too_early_pre_engagement_mode_chosen."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "schema_version": "1.0.0",
+      "scenario_archetypes": [
+        {
+          "id": "sa-001",
+          "description": "across-the-board flat percentage",
+          "cycles_used": ["pharmacy-qc-fy26"],
+          "outcome": "shipped"
+        },
+        {
+          "id": "sa-002",
+          "description": "variable by performance band",
+          "cycles_used": ["corporate-canada-fy25"],
+          "outcome": "rejected_by_chro"
+        }
+      ],
+      "preferred_council_perspectives": [
+        {"role": "cfo_proxy"},
+        {"role": "union_voice"},
+        {"role": "pay_equity_specialist"}
+      ],
+      "cycle_state_pointers": [
+        {
+          "cycle_slug": "pharmacy-qc-fy26",
+          "state_file": "_orgs/acme/cycles/pharmacy-qc-fy26/advisor/engagement-state.yaml"
+        }
+      ],
+      "pre_engagement_artifacts": [
+        {
+          "artifact_slug": "pharmacy-fy27-narrative-frame",
+          "engagement_mode": "narrative-frame-only",
+          "created_date": "2026-01-15",
+          "intended_drive_path": "engagements/pharmacy-fy27-pre/narrative-frame.yaml",
+          "decision_log_ref": "dl-004"
+        }
+      ]
+    }
+  ]
+}

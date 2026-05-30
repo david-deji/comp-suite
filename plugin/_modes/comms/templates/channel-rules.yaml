@@ -1,0 +1,112 @@
+schema_version: 1
+# Per-channel rules: length caps, formatting conventions, sender display patterns.
+# These are bundled defaults; override per-org in org-comms-profile.yaml channel_rules.
+
+channels:
+  email:
+    max_subject_chars: 70
+    max_body_words: 400
+    # 400-word cap for all-hands announcement email.
+    # Manager follow-up emails: 150 words max (manager register).
+    formatting:
+      allowed:
+        - bold
+        - bullets
+        - single-cta
+      disallowed:
+        - tables
+        - numbered-lists-longer-than-5-items
+        - inline-images-in-body
+        - attachments-referenced-in-body-text
+      # Email clients strip complex formatting. Bold + bullets only.
+    sender_display: "<speaker-name>, <speaker-title>"
+    # Example: "Marie Tremblay, Chief People Officer"
+    subject_line_convention:
+      fr_ca: "Annonce importante — <sujet> — <date>"
+      en: "Important update — <topic> — <date>"
+      # Keep subject factual. Avoid "exciting news" or "big announcement."
+    reply_to_convention: "hr@<company-domain>.ca or HRBP team alias; not the sender's personal mailbox."
+    distribution_notes:
+      - "All-hands email: sent from CHRO or CEO name, distributed via HR system or IT."
+      - "Manager email: sent from manager's own email; BCC to HRBP optional."
+      - "Do not use reply-all-enabled distribution lists for all-hands."
+
+  intranet:
+    max_body_words: 800
+    max_headline_chars: 100
+    formatting:
+      allowed:
+        - headings
+        - bullets
+        - callout-boxes
+        - bold
+        - internal-links
+      disallowed:
+        - external-links-in-body
+        - tables-with-more-than-4-columns
+    # Intranet post is a longer-form version of the email. Same content; more context allowed.
+    post_structure:
+      - "Headline (< 100 chars)"
+      - "Lead paragraph: what changes + effective date (< 80 words)"
+      - "Body: sections with H2 subheadings (what changes, what stays the same, who to ask)"
+      - "Callout box: single key takeaway or effective date"
+      - "Footer: contact HRBP or HR inbox link"
+    archival_note: "Intranet post stays live for 90 days minimum after effective date (employees returning from leave)."
+
+  docx_distributable:
+    max_pages: 4
+    # 4-page cap for both manager-faq and hrbp-enablement-memo.
+    # Edge-case appendix in hrbp-enablement-memo is EXTRA (does not count toward 4-page body).
+    formatting:
+      allowed:
+        - headings
+        - tables
+        - footnotes
+        - numbered-lists
+        - bold
+        - italic
+      disallowed:
+        - cover_page: false
+        # No cover page for FAQ or HRBP memo — operators open these docs quickly.
+        - tracked-changes-visible
+    page_setup:
+      paper_size: letter
+      # Letter (8.5 x 11 in) — standard Canadian office printing.
+      margins_in: "1 inch all sides"
+      font_family: "Calibri or org font (from brand kit)"
+      base_font_size_pt: 11
+      heading_font_size_pt: 14
+    header_convention: "<artifact-type> — <org-name> — <cycle-name>"
+    footer_convention: "Page X of Y — CONFIDENTIEL / CONFIDENTIAL — <effective-date>"
+    distribution_notes:
+      - "Distributed as DOCX (editable) or PDF (read-only) depending on operator preference."
+      - "Do NOT distribute via public-facing channels. Internal only."
+      - "Email subject line when distributing DOCX: 'Manager guidance — <cycle> — Ne pas transférer / Do not forward'."
+
+  pptx_distributable:
+    max_slides: 3
+    # 1-3 slide cap for exec-one-pager.
+    formatting:
+      allowed:
+        - single-headline-per-slide
+        - supporting-bullets
+        - source-footnote
+        - data-table-on-one-slide
+        - two-column-layout
+      disallowed:
+        - animation
+        - embedded-video
+        - speaker-notes-as-content
+        # Speaker notes are for presenter reference only; not printed in board package.
+    slide_structure_default:
+      slide_1: "Decision summary headline + 3-5 bullet rationale"
+      slide_2: "Cost impact table + governance / risk bullets"
+      slide_3: "Prior-year comparison (optional; omit if board saw prior cycle separately)"
+    font_size_guidance:
+      headline_min_pt: 24
+      body_min_pt: 18
+      footnote_min_pt: 12
+    distribution_notes:
+      - "Distributed as PDF-rendered PPTX for board packages."
+      - "PPTX source retained in Drive for revision history."
+      - "Do not include speaker notes in board-distributed PDF."

@@ -1,0 +1,20 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/_core/hooks/anti-slop.sh" },
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/_core/hooks/french-accent-check.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash ${CLAUDE_PLUGIN_ROOT}/_core/hooks/fact-check.sh" }
+        ]
+      }
+    ]
+  }
+}

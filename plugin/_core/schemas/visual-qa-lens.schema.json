@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "visual-qa-lens.schema.json",
+  "title": "Visual-QA lens return (Phase 4)",
+  "description": "Validates one visual-QA lens agent's return inside the parallel lens panel (SPEC-workflow-phases-2-5.md §4b). One lens (text-overflow+collision, logo+color-conformance, edge-clipping+empty-space, or cross-slide-consistency) inspects rendered slide PNGs and returns its defects plus a per-lens verdict. FLAG-only by contract (invariant #2): a lens reports what it sees; it never rewrites a slide. Any 'fail' blocks the done announcement, but the lens does not author the fix — the orchestrator surfaces the defects at the existing hard gate. The panel reads local PNGs only (engine: workflow-tool, paid: false); no Perplexity, no paid MCP. additionalProperties:false at every level so an extra key (notably 'replacement_text') fails structurally rather than slipping through.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["lens", "defects", "verdict"],
+  "properties": {
+    "lens": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The lens this return belongs to, e.g. text-overflow+collision, logo+color-conformance, edge-clipping+empty-space, cross-slide-consistency. Free-text so the panel can add lenses without a schema bump; the orchestrator supplies the lens name at dispatch."
+    },
+    "defects": {
+      "type": "array",
+      "description": "Every defect this lens found. Empty array means the lens saw nothing wrong; pair an empty array with verdict 'pass'. The lens lists defects only — it never proposes corrected text or a re-rendered slide (FLAG-only).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category", "description"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Short defect class, e.g. text-overflow, element-collision, off-brand-color, edge-clipping, logo-misplacement, inconsistency."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What is wrong and where on the slide. State the observation; do not state the replacement (FLAG-only)."
+          },
+          "slide": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1-based slide number the defect appears on. Omit for cross-slide-consistency findings that belong to no single slide."
+          }
+        }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["pass", "fail"],
+      "description": "This lens's gate verdict. 'fail' on any defect this lens judges blocking; the orchestrator blocks the done announcement on any lens returning 'fail'. The verdict is the lens's signal to the human gate, not an auto-advance."
+    }
+  }
+}

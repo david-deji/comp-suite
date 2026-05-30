@@ -1,0 +1,19 @@
+# Per-task LLM routing for comp-suite v2.
+# Per SPEC § 7. Resolution precedence (HIGHEST WINS):
+#   1. Mode override:  mode.yaml.model.overrides.<task>
+#   2. Task default:   routing.yaml.tasks.<task>  (this file)
+#   3. Global default: routing.yaml.default       (this file)
+#
+# After series is resolved (opus/sonnet/haiku), mode-dispatcher resolves to a specific
+# model ID via _core/model-registry.md.
+
+default: sonnet                              # fallback when no task tag
+
+tasks:
+  extraction: haiku                          # find facts in N files, classify
+  draft: sonnet                              # initial content writing
+  synthesis: opus                            # cross-source integration, judgment
+  council: opus                              # adversarial deliberation
+  research: sonnet                           # Perplexity-driven (model picks how to query)
+  validation: haiku                          # schema check, format check
+  long_horizon: opus                         # 50+ tool-call agentic loops

@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "name": "Default typography",
+    "version": 2,
+    "notes": "Font families consumed by build_template.js as the F lookup table. PowerPoint font matching: if the font isn't installed on the rendering machine, PowerPoint substitutes; pick fonts likely present on the audience's machine, or embed at export time."
+  },
+  "heading": "Noto Serif",
+  "body":    "Lexend Deca",
+  "_extended": {
+    "headingSizes": {
+      "title":     44,
+      "h1":        32,
+      "h2":        28,
+      "h3":        20,
+      "callout":   72
+    },
+    "bodySizes": {
+      "subtitle":   13,
+      "body":       11,
+      "caption":     9,
+      "tableHead":  10,
+      "tableCell":   9,
+      "footnote":    8
+    }
+  }
+}

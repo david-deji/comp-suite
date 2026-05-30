@@ -1,0 +1,131 @@
+schema_version: 1
+# Bundled common anti-patterns for the comp/HR communications domain.
+# These are generic — applicable across Quebec retail, pharmacy, and corporate employers.
+# No client-specific content. No real org names.
+#
+# Each org's org-comms-profile.yaml carries its own anti_patterns[] array (client-specific).
+# This bundled file provides starting-point patterns for cold-start engagements.
+#
+# Structure per entry:
+#   phrase: the problematic phrase or pattern
+#   reason: why it causes problems in compensation comms
+#   use_instead: preferred alternative
+#   applies_to_speakers: which speaker registers this applies to ([] = all)
+#   applies_to_audiences: which audience profiles this applies to ([] = all)
+
+anti_patterns:
+  - phrase: "merit increase"
+    reason: >
+      Union members interpret "merit" as discretionary performance-based pay.
+      If the wage increase is contractual (CBA) or scale-based (non-discretionary),
+      "merit increase" creates a union-vs-non-union confusion and may imply the increase
+      could be withheld for performance reasons.
+    use_instead: "wage scale increase"
+    applies_to_speakers:
+      - ceo
+      - chro
+      - vp-ops
+    applies_to_audiences:
+      - hourly-union
+      - hourly-non-union
+
+  - phrase: "transformation journey"
+    reason: >
+      Over-used corporate-speak. Reads as inauthentic to floor-level employees.
+      The CHRO function is the most common source of this phrase; it routinely draws
+      skepticism from hourly workforces who associate it with restructuring.
+    use_instead: "the changes this year"
+    applies_to_speakers: []
+    applies_to_audiences: []
+
+  - phrase: "competitive compensation"
+    reason: >
+      Employees hear this as "we pay what we have to, not what you deserve."
+      It also implies the org studied the market, which opens a conversation about
+      which comparators were used — a conversation most orgs do not want to have in an
+      all-hands announcement.
+    use_instead: "fair pay for the work you do"
+    applies_to_speakers:
+      - ceo
+      - chro
+    applies_to_audiences:
+      - hourly-union
+      - hourly-non-union
+      - salaried-corporate
+
+  - phrase: "right-sizing"
+    reason: >
+      Associated almost universally with job eliminations. Never appears in compensation
+      communications without triggering speculation about layoffs, regardless of context.
+    use_instead: "adjustments to the wage structure"
+    applies_to_speakers: []
+    applies_to_audiences: []
+
+  - phrase: "exciting news"
+    reason: >
+      Dismissive of the practical impact employees feel. A wage increase is not exciting;
+      it is a material improvement to a person's income. Emotional framing undercuts the
+      credibility of the announcement and reads as corporate cheerleading.
+    use_instead: "Here is what changes:"
+    applies_to_speakers:
+      - ceo
+      - chro
+      - vp-ops
+    applies_to_audiences: []
+
+  - phrase: "all employees will benefit"
+    reason: >
+      Rarely accurate. Wage reviews affect specific grades or bands. Using "all employees"
+      when some employees are excluded — seasonal, term, part-time — creates legal exposure
+      and erodes trust when excluded employees discover the inaccuracy.
+    use_instead: "employees in <eligible grades/classifications> will see the following changes:"
+    applies_to_speakers:
+      - chro
+      - vp-ops
+    applies_to_audiences:
+      - hourly-non-union
+      - salaried-corporate
+
+  - phrase: "at this time"
+    reason: >
+      Signals that a decision may change. Useful in press releases; disastrous in compensation
+      comms. "At this time, your rate will be X" implies X could be reversed. Use the effective
+      date to anchor the commitment instead.
+    use_instead: "effective <date>, your rate is <amount>"
+    applies_to_speakers: []
+    applies_to_audiences: []
+
+  - phrase: "we hear you"
+    reason: >
+      In comp comms, often appears in response to prior pay complaints. It signals
+      awareness without commitment, which employees have learned to read as dismissal
+      dressed up as empathy. Only use if the comms can substantiate what specifically was heard
+      and how it changed the outcome.
+    use_instead: "(omit entirely, or name the specific feedback that was acted on)"
+    applies_to_speakers:
+      - ceo
+      - chro
+    applies_to_audiences:
+      - hourly-union
+      - hourly-non-union
+
+  - phrase: "robust compensation framework"
+    reason: >
+      Technical language with no meaning to floor-level employees. "Robust" is a management
+      consulting adjective that signals the author was not thinking about the reader.
+    use_instead: "our pay approach"
+    applies_to_speakers: []
+    applies_to_audiences:
+      - hourly-union
+      - hourly-non-union
+
+  - phrase: "market-leading"
+    reason: >
+      Verifiable claim that is rarely true and routinely disputed by employees who check job
+      boards. If the org is not paying above market median, do not claim market leadership.
+      Triggers trust erosion when employees see counter-evidence.
+    use_instead: "aligned with the market for this region and sector"
+    applies_to_speakers:
+      - ceo
+      - chro
+    applies_to_audiences: []

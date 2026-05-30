@@ -1,0 +1,94 @@
+{
+  "template_id": "services-4factor",
+  "template_name": "Grille services — 4 facteurs",
+  "description": "Grille adaptée aux entreprises de services (relation clientèle, professionnel, soutien administratif). Pondération accentuant qualifications et responsabilités, respectant les règles de validation R6.",
+  "total_max_points": 1000,
+  "dimension_weights": {
+    "qualifications": 35.0,
+    "responsibilities": 30.0,
+    "effort": 20.0,
+    "conditions": 15.0
+  },
+  "sub_factors": [
+    {
+      "id": "Q1",
+      "name": "Formation requise",
+      "dimension": "qualifications",
+      "description": "Niveau de formation académique ou professionnelle requis.",
+      "levels": ["Secondaire", "DEP / DEC", "Baccalauréat", "Maîtrise", "Doctorat ou équivalent"],
+      "points_per_level": [50, 100, 150, 200, 250],
+      "max_points": 250,
+      "factor_weight_pct": 25.0
+    },
+    {
+      "id": "Q2",
+      "name": "Habiletés relationnelles",
+      "dimension": "qualifications",
+      "description": "Compétences de communication, négociation, écoute requises.",
+      "levels": ["Faibles", "De base", "Intermédiaires", "Avancées", "Expertes"],
+      "points_per_level": [20, 40, 60, 80, 100],
+      "max_points": 100,
+      "factor_weight_pct": 10.0
+    },
+    {
+      "id": "R1",
+      "name": "Responsabilité service à la clientèle",
+      "dimension": "responsibilities",
+      "description": "Impact des interactions sur la satisfaction et la rétention de la clientèle.",
+      "levels": ["Indirect", "Limité", "Modéré", "Important", "Stratégique"],
+      "points_per_level": [40, 80, 120, 160, 200],
+      "max_points": 200,
+      "factor_weight_pct": 20.0
+    },
+    {
+      "id": "R2",
+      "name": "Responsabilité documentaire",
+      "dimension": "responsibilities",
+      "description": "Précision et conformité de la documentation produite.",
+      "levels": ["Faible enjeu", "Modéré", "Élevé", "Critique", "Légal"],
+      "points_per_level": [20, 40, 60, 80, 100],
+      "max_points": 100,
+      "factor_weight_pct": 10.0
+    },
+    {
+      "id": "E1",
+      "name": "Effort intellectuel et mental",
+      "dimension": "effort",
+      "description": "Concentration soutenue, prise de décision rapide, gestion d'informations complexes.",
+      "levels": ["Faible", "Modéré", "Élevé", "Très élevé", "Extrême"],
+      "points_per_level": [30, 60, 90, 120, 150],
+      "max_points": 150,
+      "factor_weight_pct": 15.0
+    },
+    {
+      "id": "E2",
+      "name": "Effort physique",
+      "dimension": "effort",
+      "description": "Postures statiques prolongées, déplacements, manutention légère.",
+      "levels": ["Léger", "Modéré", "Soutenu", "Intense", "Très intense"],
+      "points_per_level": [10, 20, 30, 40, 50],
+      "max_points": 50,
+      "factor_weight_pct": 5.0
+    },
+    {
+      "id": "C1",
+      "name": "Charge émotionnelle",
+      "dimension": "conditions",
+      "description": "Exposition à clientèle difficile, situations conflictuelles, deuil.",
+      "levels": ["Faible", "Modérée", "Significative", "Élevée", "Très élevée"],
+      "points_per_level": [20, 40, 60, 80, 100],
+      "max_points": 100,
+      "factor_weight_pct": 10.0
+    },
+    {
+      "id": "C2",
+      "name": "Environnement de travail",
+      "dimension": "conditions",
+      "description": "Bruit, ergonomie, exposition à des conditions adverses.",
+      "levels": ["Confortable", "Variable", "Inconfortable", "Difficile", "Pénible"],
+      "points_per_level": [10, 20, 30, 40, 50],
+      "max_points": 50,
+      "factor_weight_pct": 5.0
+    }
+  ]
+}

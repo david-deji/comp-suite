@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "comms-tell-detector.schema.json",
+  "title": "Comms FR-CA tell-detector return (Phase 4)",
+  "description": "Validates the FR-CA tell-detector panel's return (_core/primitives/comms-panels.md Panel 2; SPEC-workflow-phases-2-5.md § 4c). One read-only critic reads the post-redaction FR-CA draft and flags the signatures of English-calque French (Bill 96 authenticity). FLAG-only and advisory: it never blocks and never rewrites — tells[] surface to the operator above the acknowledgment gate; the human decides. additionalProperties:false at every level; no replacement_text, no blocking. Note: the panel returns null (not this shape) when no FR-CA language is enabled for the engagement; this schema validates the non-null case.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["tells"],
+  "properties": {
+    "tells": {
+      "type": "array",
+      "description": "Every English-calque tell found in the FR-CA draft. Empty array means natively-reading French — report [], never omit the property.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category", "excerpt", "location"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["anglicism", "svo-rigidity", "register-slip", "vous-tu-mixing"],
+            "description": "anglicism = English loanword/calque where a QC-French term exists; svo-rigidity = English subject-verb-object order imposed on French; register-slip = formality drift away from the C07 speaker register; vous-tu-mixing = inconsistent second-person address within one artifact."
+          },
+          "excerpt": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The offending French text, quoted from the draft. State the observation; never propose the corrected phrasing (FLAG-only)."
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where in the draft the tell appears."
+          }
+        }
+      }
+    }
+  }
+}

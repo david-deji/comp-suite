@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "blocks": {
+    "scripted_opening": {
+      "applies_to_modes": ["directed-interview"],
+      "duration_target_minutes": 3,
+      "verbatim": [
+        "Thanks for taking the time. Quick framing before we start: I want to map how you actually do <process> today — not how it's documented, not how it should be. The goal is for us to find together where the time and frustration go, then we'll talk about what's worth changing.",
+        "Three ground rules: I'll talk less than 40% of the time; we'll go step-by-step, no skipping ahead to solutions; and if I ask something that sounds basic, it's because the obvious stuff is where most of the waste hides.",
+        "Sound good?"
+      ]
+    },
+    "intake": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "duration_target_minutes": 5,
+      "questions": [
+        "Which process are we mapping today? One-line name.",
+        "Who are the people involved? (Roles only — no names.)",
+        "How often does this process run? (Per cycle / weekly / ad-hoc / on-trigger)",
+        "What triggers it to start?",
+        "What signals it's complete?",
+        "Roughly how long does one full run take, end to end?"
+      ]
+    },
+    "cycle_mapping": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "mandatory_when": "team_config.cycle.stages == []",
+      "duration_target_minutes": 5,
+      "questions": [
+        "What's the anchor event the cycle hangs on? (e.g., effective date YYYY-MM-DD)",
+        "Walk me through the workback stages by name — from anchor backwards.",
+        "For each stage, what's the approximate week offset from anchor? (Negative = before anchor.)",
+        "Tag each stage: live (active execution, no transformations may ship), prep (preparation, no disruptive change), or slack (post-cycle, transformations may ship).",
+        "Today, what stage are we in? What's the current week offset?",
+        "Confirm: anchor date is _____."
+      ]
+    },
+    "process_walkthrough": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "duration_target_minutes": 20,
+      "questions": [
+        "Walk me through the process step by step. For each step, tell me: what goes in, what comes out, who does it, what tools they use, roughly how long it takes.",
+        "Any step where you regularly hit a wait or rework loop?",
+        "Which step do you most wish you didn't have to do manually?"
+      ],
+      "pacing_prompts": [
+        "Want me to summarize what we have so far?",
+        "Anything we should slow down on?",
+        "Are we still on the part you wanted to focus on?"
+      ]
+    },
+    "handoffs": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "duration_target_minutes": 8,
+      "questions": [
+        "Where does work cross between people or teams? List every handoff.",
+        "For each handoff: what format does the work cross in (file, email, ticket, conversation)?",
+        "Where do handoffs break — wrong format, missing data, late?"
+      ]
+    },
+    "tools": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "duration_target_minutes": 8,
+      "questions": [
+        "List every tool used in this process. (HRIS, Excel templates, Mercer/WTW survey, internal scripts, email threads — all of it.)",
+        "Which tools talk to each other automatically? Which require manual re-entry?",
+        "Which tool is the bottleneck or single-point-of-failure?"
+      ]
+    },
+    "pain_points": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "duration_target_minutes": 8,
+      "questions": [
+        "What's the most frustrating part of this process?",
+        "What's the part that quietly absorbs the most hours?",
+        "What's the part where you most often catch a mistake post-hoc?",
+        "If you could redesign one thing, what would it be?",
+        "What would happen if you didn't do this process for one cycle? (SPIN cost-of-inaction)"
+      ]
+    },
+    "scripted_close": {
+      "applies_to_modes": ["directed-interview"],
+      "duration_target_minutes": 5,
+      "verbatim": [
+        "OK — let me reflect back what I heard, and you tell me what I got wrong.",
+        "(Skill summarizes structured notes — Process Steps, Pain Points, Tools, Handoffs.)",
+        "Anything I missed or got wrong?",
+        "(Gap check — surface any sub-phase that wasn't covered: 'We didn't get into <X> — is that intentional or worth a follow-up?')",
+        "Next step on my side: I'll synthesize this into a current-state map and run a /diagnose pass. You'll see the diagnosis with 2-3 Quick Wins by <date>. Anything else before we close?"
+      ]
+    }
+  }
+}

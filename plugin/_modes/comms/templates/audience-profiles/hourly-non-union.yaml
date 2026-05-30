@@ -1,0 +1,41 @@
+schema_version: 1
+audience_slug: hourly-non-union
+display_name: "Hourly Employees — Non-Unionized"
+inheritance_layer: bundled
+# Layer 1: bundled default. Override per org in org-comms-profile.yaml audience_profiles.
+# Quebec retail / pharmacy context (generic; no org-specific detail).
+
+reading_level: grade-9
+# Same reading level as hourly-union — floor-level workforce.
+# Shorter average tenure; less familiarity with org-speak than long-tenured union employees.
+
+vocabulary: concrete
+# Prefer: paycheque, shift, store, your manager, effective date, hourly rate
+# Avoid: merit matrix, compensation band, market median, quartile
+
+key_concerns:
+  - "What is my new hourly rate?"
+  - "When does the change appear in my paycheque?"
+  - "Is this a raise for everyone or just some people?"
+  - "Does this affect my part-time / weekend / seasonal status?"
+  - "Who do I ask if something is wrong?"
+
+channel_preference:
+  - email
+  - intranet
+
+key_message_framing:
+  lead_with: "Your rate and your date. Non-union employees may not know they have a grade or band — avoid jargon."
+  avoid: "Comparisons to CBA employees that could prompt fairness complaints."
+  effective_date_prominence: high
+  cta_style: "Single: 'If you have questions, speak to your manager or HR.'"
+
+non_union_specific_notes:
+  - "Non-union employees may receive different increase amounts than union peers. Do not highlight the differential in all-hands comms — it is a manager-FAQ topic."
+  - "If the increase is tied to a performance factor, state it factually without implying those not receiving it are penalized."
+  - "Part-time: clarify if the rate applies to part-time as well. If not, state 'full-time positions' explicitly."
+  - "Seasonal or term employees: clarify eligibility. If excluded, do not use 'all employees' language."
+
+accessibility_notes:
+  - "FR-CA leads; EN follows per Bill 96 requirements."
+  - "Shorter average tenure than union employees: assume less org-context familiarity."

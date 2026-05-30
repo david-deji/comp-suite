@@ -1,0 +1,49 @@
+name: comms
+tagline: Post-decision cascade — bilingual messaging across audiences
+display_name: Comp Comms Builder
+description: |
+  Post-decision communications cascade for comp cycles. Takes a comp-advisor
+  recommendation (engagement master.yaml advisor section) and renders per-audience,
+  per-channel artifacts: all-hands announcement, manager FAQ, HRBP enablement memo,
+  exec one-pager. Speaker-register-aware (CEO, CHRO, VP Ops, HRBP). Bilingual via
+  FR-first co-draft — not translation. Drift-checks artifacts against the source
+  recommendation on every re-draft. Anti-pattern checklist runs before every render.
+version: 2.0.4   # 2.0.4: perplexity made OPTIONAL — tools_required swaps perplexity-ask for the web-search builtin (guaranteed key-free web research); Perplexity stays an optional-when-configured enhancement (registry.yaml). 2.0.3: + refute-claim in pre_write_gates (Phase 1 pre-Write accuracy gate — SPEC-workflow-phase1.md, F9). 2.0.2: + close_gates field (Phase 3 — § 3a). 2.0.1: + pre_write_gates field (Phase 4 — § 4c)
+model:
+  default: sonnet
+  overrides:
+    council: opus
+    synthesis: opus
+    extraction: haiku
+tools_required:
+  - web-search            # guaranteed web-research path (WebSearch builtin); perplexity-* is optional, preferred when configured
+  - filesystem
+hooks_enabled:
+  - anti-slop
+  - french-accent-check
+  - fact-check
+# Pre-write gate panels — orchestrator-discovered by glob (same mechanism as hooks_enabled),
+# run before a branded-text Write. Introduced in Phase 4 (coverage net); Phase 1 appended
+# `refute-claim`. Each name maps to $ASSET_ROOT/_core/primitives/<name>.md.
+pre_write_gates:
+  - completeness-critic   # post-assembly coverage check; blocking only on statutory affichage gaps
+  - comms-panels          # anti-pattern (hard-block) + FR-CA tell-detector + /review panel; POST-redaction (invariant #7)
+  - refute-claim          # pre-Write accuracy gate (PAID, inline); statutory disputed/unverifiable BLOCKS, market advisory
+# Close gate panels — orchestrator-discovered by glob (same mechanism as pre_write_gates),
+# run during `/comp close` on the proposed master.yaml before the atomic write (close-flow.md
+# Step 4.5). A `flag` blocks the write until founder-resolved; the close gate stays human.
+close_gates:
+  - close-validation      # internal-consistency + budget-coherence ($0) + statutory-accuracy (paid, inline)
+master_yaml_section: comms
+schema: master-comms-section.schema.json
+references:
+  - artifact-catalog.md
+  - speaker-register-rules.md
+  - bilingual-rules.md
+  - anti-patterns.md
+  - audience-profiles.md
+templates:
+  - all-hands-announcement.md
+  - manager-faq.md
+  - hrbp-enablement-memo.md
+  - exec-one-pager.md

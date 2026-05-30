@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/david-deji/comp-comms-builder/master-schema/cycle-entry.schema.json",
+  "title": "Cycle Entry",
+  "description": "Validates each entry in master.cycles[]. Per spec § 4.1 and § 4.3 state machine (open → drafting → shipped → closed).",
+  "type": "object",
+  "properties": {
+    "cycle_slug": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,60}$",
+      "description": "Unique cycle identifier. Default convention: <line>-<region>-<fiscal> per § 4.2."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "drafting", "shipped", "closed"],
+      "description": "Cycle state per § 4.3 state machine."
+    },
+    "opened_date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date (YYYY-MM-DD) when this cycle was created."
+    },
+    "opened_by_skill": {
+      "type": "string",
+      "enum": ["compensation-advisor", "comp-comms-builder", "comp-training-designer", "comp-team-transformer"],
+      "description": "The skill that ran /init and created this cycle entry."
+    },
+    "primary": {
+      "type": "boolean",
+      "description": "Exactly one cycle per org has primary: true at any time (§ 4.3 C3). /switch-cycle flips this pointer."
+    },
+    "cycle_dir": {
+      "type": "string",
+      "description": "Relative path to the consolidated per-cycle directory. e.g., '_orgs/acme/cycles/pharmacy-qc-fy26/'."
+    },
+    "skills_touched": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["compensation-advisor", "comp-comms-builder", "comp-training-designer", "comp-team-transformer"]
+      },
+      "minItems": 0,
+      "uniqueItems": true,
+      "description": "Skills that have produced artifacts in this cycle."
+    },
+    "line": {
+      "type": "string",
+      "description": "Optional. Business line component of the cycle slug (e.g., 'pharmacy', 'corporate', 'lab')."
+    },
+    "region": {
+      "type": "string",
+      "description": "Optional. Geographic scope (e.g., 'qc', 'canada', 'intl')."
+    },
+    "fiscal": {
+      "type": "string",
+      "description": "Optional. Fiscal year tag (e.g., 'fy26', 'fy27')."
+    },
+    "closed_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "ISO 8601 date when /close-cycle was run. null if cycle is not yet closed."
+    }
+  },
+  "required": ["cycle_slug", "status", "opened_date", "opened_by_skill", "primary", "cycle_dir", "skills_touched"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "cycle_slug": "pharmacy-qc-fy26",
+      "status": "shipped",
+      "line": "pharmacy",
+      "region": "qc",
+      "fiscal": "fy26",
+      "opened_date": "2026-02-20",
+      "opened_by_skill": "comp-comms-builder",
+      "closed_date": "2026-04-10",
+      "primary": false,
+      "cycle_dir": "_orgs/acme/cycles/pharmacy-qc-fy26/",
+      "skills_touched": ["compensation-advisor", "comp-comms-builder"]
+    },
+    {
+      "cycle_slug": "corporate-canada-fy26",
+      "status": "drafting",
+      "line": "corporate",
+      "region": "canada",
+      "fiscal": "fy26",
+      "opened_date": "2026-04-15",
+      "opened_by_skill": "compensation-advisor",
+      "closed_date": null,
+      "primary": true,
+      "cycle_dir": "_orgs/acme/cycles/corporate-canada-fy26/",
+      "skills_touched": ["compensation-advisor"]
+    }
+  ]
+}

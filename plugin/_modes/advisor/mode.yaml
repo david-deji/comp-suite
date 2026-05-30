@@ -1,0 +1,76 @@
+name: advisor
+tagline: Lead consulting work — market data, pay equity, decks, decisions
+display_name: Compensation Advisor
+description: |
+  Lead consulting work — market data, pay equity analysis, decks, decision
+  documents. Cycle-aware: tracks where an engagement sits in the multi-month
+  workback (intake → market → options → approval → cascade → payroll →
+  effective date). Dispatches market intelligence and web research (Perplexity
+  when configured, else the WebSearch builtin), renders branded outputs.
+  Scope-aware: enforces one engagement = one budget owner.
+version: 2.1.5   # 2.1.5: perplexity made OPTIONAL — tools_required swaps perplexity-research/perplexity-ask for the web-search builtin (guaranteed key-free web research); Perplexity stays an optional-when-configured enhancement (registry.yaml). 2.1.4: tools_required aligned to live 7-tool market server (mcp.dallaire-jette.com) — added search-roles/snapshot/compare-roles/compare-offer/compare-pay-scale. 2.1.3: + refute-claim in pre_write_gates (Phase 1 pre-Write accuracy gate — SPEC-workflow-phase1.md, F9). 2.1.2: + close_gates field (Phase 3 — § 3a). 2.1.1: + pre_write_gates field (Phase 4 — § 4a)
+
+model:
+  default: sonnet
+  overrides:
+    council: opus
+    synthesis: opus
+    extraction: haiku
+
+tools_required:
+  - web-search            # guaranteed web-research path (WebSearch builtin); perplexity-* is optional, preferred when configured
+  - market-search-roles
+  - market-data
+  - market-snapshot
+  - market-compare-roles
+  - market-compare-offer
+  - market-compare-pay-scale
+  - cba-wage-scale
+  - filesystem
+
+hooks_enabled:
+  - anti-slop
+  - french-accent-check
+  - fact-check
+
+# Pre-write gate panels — orchestrator-discovered by glob (same mechanism as hooks_enabled),
+# run before a branded-text Write. Introduced in Phase 4 (coverage net); Phase 1 appended
+# `refute-claim`. Each name maps to $ASSET_ROOT/_core/primitives/<name>.md.
+pre_write_gates:
+  - completeness-critic   # post-assembly coverage check; blocking only on statutory affichage gaps
+  - refute-claim          # pre-Write accuracy gate (PAID, inline); statutory disputed/unverifiable BLOCKS, market advisory
+
+# Close gate panels — orchestrator-discovered by glob (same mechanism as pre_write_gates),
+# run during `/comp close` on the proposed master.yaml before the atomic write (close-flow.md
+# Step 4.5). A `flag` blocks the write until founder-resolved; the close gate stays human.
+# Registered on advisor + comms only (statutory-accuracy lens is paid — see SKILL.md).
+close_gates:
+  - close-validation      # internal-consistency + budget-coherence ($0) + statutory-accuracy (paid, inline)
+
+master_yaml_section: advisor
+schema: master-advisor-section.schema.json
+
+# Curated list — see references/ directory for the full 28-file library.
+# main.md cites these by path; this list mirrors v1's primary entry points.
+references:
+  - consulting-protocol.md
+  - pay-equity-qc-protocol.md
+  - intake-mode-protocol.md
+  - council-mode.md
+  - persona-library.md
+  - costing-engine.md
+  - survey-house-protocol.md
+  - template-master.md
+  - library-resolution.md
+
+# Top-level templates; subdirectories (branding/_default, pay_equity_cnesst, scripts, examples)
+# are discovered automatically by the orchestrator's mode-dispatcher.
+templates:
+  - _template.yaml
+  - intake_variants.json
+  - build_intake_form_pdf.py
+  - wage_data_template_merit.csv
+  - wage_data_template_step.csv
+  - wage_data_template_README.md
+
+default_language: fr-ca

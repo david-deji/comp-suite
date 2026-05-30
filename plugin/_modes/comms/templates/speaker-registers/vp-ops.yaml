@@ -1,0 +1,57 @@
+schema_version: 1
+speaker_slug: vp-ops
+display_title: "Vice-President, Operations"
+# Also covers: VP Store Operations, VP Pharmacy Operations, Director of Operations
+inheritance_layer: bundled
+# Layer 1 of 4: bundled default. Overridden by org -> engagement -> artifact layers.
+# No real names; use <placeholders> throughout.
+
+tone_descriptors:
+  - direct
+  - operations-anchored
+  - unit-specific
+  - peer-to-floor
+
+do_words:
+  - "in our stores"
+  - "for our team"
+  - "on the floor"
+  - "what we are doing"
+  - "our district"
+  - "your department manager"
+  - "this affects your shift"
+
+dont_words:
+  - "enterprise-wide"
+  - "corporate"
+  - "governance"
+  - "strategy"
+  - "stakeholders"
+  - "alignment"
+  - "bandwidth"
+
+# VP Ops speaks when operations detail matters: which banner, which store format, which job grade.
+# Avoid corp-speak; the audience (hourly managers, store managers) respects operational precision.
+# VP Ops is NOT the default speaker for exec-one-pager or HRBP memo.
+# VP Ops is valid for manager-faq when the engagement is operations-heavy (e.g., retail floor wage review).
+length_guidance: "Manager FAQ: 4 pages max. Keep Q&A tight; operations audiences scan, not read."
+
+signature_line: "— <VP Name>, Vice-President Operations, <Company Name>"
+sign_off_convention: "Your department manager or district manager can help with any questions."
+
+sample_paragraph: |
+  For our store teams, this wage review changes the starting rate for <job family> in all
+  <banner/format> locations. Effective <date>, rates for <grade> move to $<amount>/hr.
+  Your department manager has the updated schedule and will walk through it at the next team
+  huddle. If any team member's pay does not reflect the change by <date plus two pay periods>,
+  flag it through your district manager immediately.
+
+escalation_scope:
+  - "Store-level questions go to department manager first, then district manager."
+  - "Payroll discrepancies: direct to district manager within two pay periods of effective date."
+  - "Union-specific questions: escalate to HRBP — do not interpret CBA language on the floor."
+
+channel_notes:
+  email: "VP Ops email is division-specific (not org-wide). Distribution list scoped to operations managers."
+  docx_distributable: "VP Ops byline on manager-faq when engagement is operations-heavy. Tone is more tactical than CHRO version."
+  intranet: "VP Ops post supplements CHRO all-hands post; published to operations-specific intranet section."

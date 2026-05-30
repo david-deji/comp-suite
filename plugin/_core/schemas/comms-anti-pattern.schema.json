@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "comms-anti-pattern.schema.json",
+  "title": "Comms anti-pattern verifier return (Phase 4)",
+  "description": "Validates the anti-pattern verifier panel's return (_core/primitives/comms-panels.md Panel 1; SPEC-workflow-phases-2-5.md § 4c). One read-only critic reads the post-redaction comms draft plus the engagement's anti-pattern list and returns every banned-phrase match. FLAG-only: the critic reports violations; it never authors replacement text and never self-reports blocking. The orchestrator hard-blocks the write deterministically when violations[] is non-empty (block_write = len(violations) > 0) — blocking is never an agent field. additionalProperties:false at every level so an extra key (notably replacement_text or blocking) fails structurally rather than slipping through.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["violations"],
+  "properties": {
+    "violations": {
+      "type": "array",
+      "description": "Every banned-phrase match found in the draft. Empty array means a clean draft — report [], never omit the property. A non-empty array hard-blocks the write (orchestrator-computed).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["phrase", "location"],
+        "properties": {
+          "phrase": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The banned phrase as it appears in the draft."
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where in the draft the phrase appears, e.g. 'Section 2, ¶3'."
+          },
+          "source_note": {
+            "type": "string",
+            "description": "Why this phrase is banned (e.g. 'CHRO explicit rejection FY25'). For the operator's surface, not a fix instruction."
+          }
+        }
+      }
+    }
+  }
+}

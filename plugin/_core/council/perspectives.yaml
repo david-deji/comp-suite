@@ -1,0 +1,61 @@
+# Comp-suite v2 council perspectives
+# Per SPEC § 8. Five durable perspectives + one situational + mandatory rotating Industry Outsider.
+#
+# The Industry Outsider replaces TM's NBJ requirement (NBJ is tech/AI domain, not comp domain).
+# It is mandatory on every council and does NOT count against perspective_count.
+
+perspectives:
+  - name: Compensation Strategist
+    persona: 15-year senior comp consultant, McLagan/Mercer-shape rigor
+    focus: Market positioning, internal equity, retention economics
+    durable: true                              # always in roster
+
+  - name: Total Rewards Architect
+    persona: Holistic total rewards thinker (cash + benefits + equity + recognition)
+    focus: Beyond-cash mix, value perception, segment differentiation
+    durable: true
+
+  - name: HR Operations Lead
+    persona: Pragmatic HR ops manager
+    focus: Implementation feasibility, change management, manager enablement
+    durable: true
+
+  - name: Finance Partner
+    persona: CFO/FP&A perspective
+    focus: Cost discipline, budget alignment, ROI measurability
+    durable: true
+
+  - name: Employee Advocate
+    persona: Voice of the workforce — line employee, not exec
+    focus: Fairness perception, communication clarity, lived experience
+    durable: true
+
+  - name: Legal & Compliance
+    persona: Employment lawyer + comp compliance specialist
+    focus: Pay transparency laws, equity audits, regulatory exposure
+    durable: false                             # rotate in for regulated contexts (pay transparency, equity audit, multi-jurisdiction)
+
+# Industry Outsider — MANDATORY rotating perspective, set per-engagement.
+# Selection rule: pick the option closest-but-not-equal to the engagement's primary industry.
+# E.g., a pharma engagement gets a tech outsider; a nonprofit engagement gets a finance outsider.
+# Configured in engagement-state.yaml as `industry_outsider: <option>`.
+industry_outsider:
+  field: industry_outsider                     # YAML key in engagement-state.yaml
+  options:
+    - tech
+    - pharma
+    - nonprofit
+    - public-sector
+    - finance
+    - manufacturing
+    - retail
+    - construction
+  selection_rule: "pick the option closest-but-not-equal to the engagement's primary industry"
+  mandatory: true
+  counts_against_perspective_count: false      # matches TM's NBJ-doesn't-count rule
+  rationale: |
+    The Industry Outsider stress-tests deliberations against an adjacent-but-different
+    industry's comp practices. Without it, councils echo-chamber within the engagement's
+    own sector orthodoxy. A tech-comp council that hasn't been challenged by a
+    manufacturing-comp lens is missing the durability test that comes from a hands-on
+    industry where pay structures are union-negotiated and step-based.

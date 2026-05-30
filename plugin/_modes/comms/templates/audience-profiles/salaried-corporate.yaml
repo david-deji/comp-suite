@@ -1,0 +1,42 @@
+schema_version: 1
+audience_slug: salaried-corporate
+display_name: "Salaried — Corporate / Head Office"
+inheritance_layer: bundled
+# Layer 1: bundled default. Override per org in org-comms-profile.yaml audience_profiles.
+# Generic corporate context; no org-specific detail.
+
+reading_level: grade-12
+# Comfortable with HR vocabulary; less comfortable with actuarial / governance language.
+# Shorter paragraphs still preferred. Scanning is dominant.
+
+vocabulary: mixed
+# Can handle: compensation band, market positioning, grade progression, cycle
+# Avoid (still): quartile positioning, actuarial surplus/deficit, technical CBA terms
+
+key_concerns:
+  - "How does this affect my salary?"
+  - "Am I in the range adjustment or the merit pool?"
+  - "What happens to my bonus target?"
+  - "How does this compare to prior cycles?"
+  - "Will there be a career-conversation trigger?"
+
+channel_preference:
+  - email
+  - intranet
+  - docx_distributable
+
+key_message_framing:
+  lead_with: "What changes, what stays the same, and by when. Salaried employees read the full email — do not front-load jargon."
+  avoid: "Percentages without anchoring to absolute amounts (salaried employees do mental math immediately)."
+  effective_date_prominence: high
+  cta_style: "Two CTAs acceptable: 'See your manager for your individual adjustment' + 'Workday will reflect changes by <date>'."
+
+salaried_specific_notes:
+  - "Salaried employees often receive merit increases separate from band adjustments — be precise about which this comms addresses."
+  - "Bonus eligibility: if the wage review changes anything about the incentive plan, state it explicitly or state explicitly that it does not affect the incentive plan."
+  - "Manager population may receive the all-hands comms AND a manager-FAQ. The all-hands should not reference the FAQ by name unless it is being distributed simultaneously."
+  - "Head-office employees compare laterally — avoid language that implies uniformity if the increase is grade-specific."
+
+accessibility_notes:
+  - "Bilingual (FR-CA / EN) per Bill 96 if employee's working language is FR-CA."
+  - "EN-primary acceptable if employee's official working language is EN and HR records confirm."

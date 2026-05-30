@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "statutory-evidence.schema.json",
+  "title": "Statutory evidence item",
+  "description": "Shared sub-schema for one piece of statutory/market evidence: a citation URL plus the verbatim quote fetched from it. $ref'd by thinker-return.schema.json (Phase 2 statutory_tags[]) and — when built — refute-claim.schema.json (Phase 1) and close-validation.schema.json (Phase 3), so 'what counts as statutory evidence' cannot drift across primitives (SPEC-workflow-phases-2-5.md § 2c, F6). Invariant #5: a lens/critic/thinker may treat a statutory claim as confirmed ONLY when it carries a fetched verbatim quote — reasoning from training data is never verification. An EMPTY quote is the explicit 'asserted but not confirmed' signal (the claim was tagged but no verbatim text was fetched); it must never be read as confirmation. additionalProperties:false so an extra field (e.g. a smuggled replacement_text) fails structurally.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["url", "quote"],
+  "properties": {
+    "url": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The citation URL the quote was fetched from (CNESST, LégisQuébec, a survey-house page, etc.)."
+    },
+    "quote": {
+      "type": "string",
+      "description": "The verbatim text fetched from `url` that backs the claim. EMPTY string = asserted-but-not-confirmed (no fetch performed); only a non-empty quote licenses a 'confirmed' reading (invariant #5). Quote verbatim — never paraphrase, never reconstruct from memory."
+    }
+  }
+}

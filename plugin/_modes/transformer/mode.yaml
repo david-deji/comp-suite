@@ -1,0 +1,40 @@
+name: transformer
+display_name: Comp Team Transformer
+description: |
+  Compensation team process discovery, systems-thinking diagnosis, and AI/automation
+  transformation advisor. Decomposes the work of running comp (annual wage scale,
+  benchmarking, pay equity, offer support, total rewards comms) into mappable processes,
+  diagnoses waste/loops/leverage points, produces buildable specs for AI augmentation,
+  and sequences transformations into a cycle-aware quarterly roadmap. Integrated with
+  master.yaml: writes master.transformer.* (team_identity, diagnosed_waste_patterns,
+  quarterly_roadmap_pointers, cycle_state_pointers). Cycle-aware: refuses rollouts into
+  live/prep windows without explicit override.
+tagline: Process discovery, diagnosis, transformation roadmaps
+version: 2.0.1   # 2.0.1: perplexity made OPTIONAL — tools_required swaps perplexity-research/perplexity-ask for the web-search builtin (guaranteed key-free web research); Perplexity stays an optional-when-configured enhancement (registry.yaml).
+model:
+  default: sonnet
+  overrides:
+    council: opus
+    synthesis: opus
+    extraction: haiku
+tools_required:
+  - web-search            # guaranteed web-research path (WebSearch builtin); perplexity-* is optional, preferred when configured
+  - filesystem
+hooks_enabled:
+  - anti-slop
+  - french-accent-check
+  - fact-check
+master_yaml_section: transformer
+schema: master-transformer-section.schema.json
+references:
+  - discovery-protocol.md
+  - diagnose-protocol.md
+  - transform-protocol.md
+  - roadmap-protocol.md
+  - cycle-gating-rules.md
+  - persona-library.md
+templates:
+  - current-state.md
+  - diagnosis.md
+  - transformation-brief.md
+  - roadmap.md

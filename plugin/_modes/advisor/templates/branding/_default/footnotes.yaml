@@ -1,0 +1,52 @@
+# Default brand kit — footnote and disclaimer library
+# Per-jurisdiction payroll burden disclaimers, methodology language, source-credit boilerplate.
+# Build_template.js loads these as text inserts on appropriate slides.
+# Override per-org by writing branding/<org>/footnotes.yaml — full file replacement, not merge.
+
+payroll_burden_disclaimers:
+  QC: |
+    Payroll burden estimate includes: RPC/RRQ employer contribution, AE/RQAP employer contribution,
+    CNESST premium, FSS contribution (employers ≥ $7M total payroll), and statutory holiday/vacation accrual.
+    Estimate range reflects employer size and industry rate; verify against current Revenu Québec
+    and CNESST published rates for the rate year of the engagement.
+  ON: |
+    Payroll burden estimate includes: CPP employer contribution, EI employer contribution,
+    EHT (employers > $1M total payroll), WSIB premium, and statutory holiday/vacation accrual.
+    Estimate range reflects employer size and industry rate; verify against current CRA
+    and WSIB published rates for the rate year of the engagement.
+  default: |
+    Payroll burden estimate includes federal contributions (CPP, EI), provincial contributions,
+    workers' compensation premium, and statutory holiday/vacation accrual. Verify against
+    current government-published rates for the rate year of the engagement.
+
+methodology_disclaimers:
+  market_data: |
+    Market positioning reflects published wage data sourced from Statistics Canada, Job Bank Canada,
+    and live job posting aggregators current to the engagement date. Live posting rates can move
+    materially within the period between scoping and presentation; figures are point-in-time.
+  cba_data: |
+    Collective agreement wage scales referenced in this analysis are sourced from publicly filed
+    or user-provided agreement texts. Where multiple sources for the same agreement exist, the most
+    recent dated version takes precedence; user-provided agreements supersede aggregator data.
+  survey_data: |
+    Survey-house wage benchmarks (where present) are aged forward by an annual factor specified
+    in the engagement configuration; geographic adjustment applied where the survey's regional cut
+    differs from the engagement's province. Vendor and survey year cited per claim.
+  scenario_costing: |
+    Cost figures represent annualized incremental wage cost relative to the current scale baseline,
+    with payroll burden applied per the rates above. Cost does not include benefits cost change,
+    severance, or one-time implementation expense unless explicitly noted.
+
+source_credit:
+  statcan: "Source: Statistics Canada, Table [TABLE-NUMBER], accessed [DATE]"
+  jobbank: "Source: Job Bank Canada wage tables, accessed [DATE]"
+  market_mcp: "Source: Live job posting data via Market intelligence service, accessed [DATE]"
+  cba_filed: "Source: [Agreement Title], filed [DATE], parties [EMPLOYER] and [UNION]"
+  survey: "Source: [VENDOR] [YEAR] [SURVEY NAME], [REGIONAL CUT], aged forward [PCT]% to engagement date"
+  user_cba: "Source: User-provided CBA [AGREEMENT-ID], expires [DATE]"
+
+confidentiality_marks:
+  internal:    "CONFIDENTIAL  ·  INTERNAL USE ONLY"
+  privileged:  "CONFIDENTIAL  ·  ATTORNEY-CLIENT PRIVILEGED"
+  draft:       "DRAFT  ·  NOT FOR DISTRIBUTION"
+  default:     "CONFIDENTIAL  ·  [MONTH YEAR]"

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "personas.schema.json",
+  "title": "Personas (per-org)",
+  "description": "Validates state/_orgs/<slug>/personas.yaml. Persona shape per v1 advisor/references/persona-library.md (id, label, lens, default_grounding_source_type, optional selection_heuristic). Schema is permissive to allow custom persona libraries and future extensions.",
+  "type": "object",
+  "required": ["schema_version", "org_slug", "personas"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "org_slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "personas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "lens"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "kebab-case unique identifier"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "lens": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default_grounding_source_type": {
+            "type": "string",
+            "description": "Per v1 persona-library.md § Grounding source types. Examples: actuarial-valuation-report, statute-or-regulation, market-survey, internal-pay-data, employee-feedback."
+          },
+          "default_grounding_source": {
+            "type": "string",
+            "description": "Free-text grounding source (alternate field name used in v1 bundled persona examples)."
+          },
+          "selection_heuristic": {
+            "type": "string"
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "added_by": {
+            "type": "string",
+            "enum": ["user", "skill", "council"]
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}

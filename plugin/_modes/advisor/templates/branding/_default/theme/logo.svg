@@ -1,0 +1,7 @@
+<svg width="223" height="60" viewBox="0 0 223 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="13" width="34" height="34" rx="8" fill="#4B2E83"/>
+  <rect x="8" y="22" width="18" height="5" rx="2.5" fill="#FFFFFF"/>
+  <rect x="8" y="32" width="12" height="5" rx="2.5" fill="#2A8C82"/>
+  <text x="46" y="32" font-family="DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="700" fill="#2F2A52">YOUR ORG</text>
+  <text x="46" y="47" font-family="DejaVu Sans, Arial, sans-serif" font-size="9" fill="#888888">replace in your brand kit</text>
+</svg>

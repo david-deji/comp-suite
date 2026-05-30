@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "brand-kit.schema.json",
+  "title": "Brand Kit (per-org)",
+  "description": "Validates the per-org brand directory structure rooted at state/_orgs/<slug>/brand/. The directory has a v1-shape directory tree (theme/{palette.json,typography.json,logos}, masters/*.js, footnotes.yaml). This schema validates the JSON files (palette.json, typography.json) and lists required directory presence. Directory existence is checked imperatively by the brand-kit primitive; this schema validates the JSON file shapes.",
+  "type": "object",
+  "description_internal": "This schema is META — it describes what files MUST exist in state/_orgs/<slug>/brand/, plus the inner shape of the JSON members. The brand-kit primitive uses this for both filesystem presence checks AND palette/typography validation.",
+  "properties": {
+    "directory_layout": {
+      "type": "object",
+      "description": "Filesystem layout invariants. The brand-kit primitive verifies these via os.path.exists, not via JSON schema validation.",
+      "properties": {
+        "required_files": {
+          "type": "array",
+          "default": [
+            "theme/palette.json",
+            "theme/typography.json",
+            "footnotes.yaml"
+          ]
+        },
+        "optional_files": {
+          "type": "array",
+          "default": [
+            "theme/logo.svg",
+            "theme/logo-large.png",
+            "theme/logo-small.png",
+            "theme/logo-white-large.png",
+            "theme/logo-white-small.png",
+            "build_deck_skeleton.js",
+            "build_template.js"
+          ]
+        },
+        "required_directories_for_advisor": {
+          "type": "array",
+          "default": ["masters/"],
+          "description": "When the active mode is advisor, masters/ MUST be populated (deck rendering needs it). For non-advisor modes, masters/ is optional."
+        }
+      }
+    },
+    "palette": {
+      "$ref": "#/$defs/palette"
+    },
+    "typography": {
+      "$ref": "#/$defs/typography"
+    }
+  },
+  "$defs": {
+    "palette": {
+      "type": "object",
+      "description": "Shape of theme/palette.json. v1 uses 16 named colors plus _meta. Schema is permissive (additionalProperties: true) to allow per-org extensions.",
+      "required": ["_meta"],
+      "properties": {
+        "_meta": {
+          "type": "object",
+          "required": ["name", "version"],
+          "properties": {
+            "name": {"type": "string"},
+            "version": {"type": "integer", "minimum": 1},
+            "notes": {"type": "string"}
+          }
+        }
+      },
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9]*$": {
+          "type": "string",
+          "pattern": "^[0-9A-Fa-f]{6}$",
+          "description": "Hex color WITHOUT leading '#' (consumed by build_template.js as C lookup)"
+        }
+      },
+      "additionalProperties": true
+    },
+    "typography": {
+      "type": "object",
+      "description": "Shape of theme/typography.json. v1 has heading/body font + size scales (title, h1, h2, h3, callout, subtitle, body, caption, tableHead, tableCell, footnote).",
+      "properties": {
+        "_meta": {"type": "object"},
+        "heading": {
+          "type": "object",
+          "properties": {
+            "family": {"type": "string"},
+            "weight": {"type": ["string", "integer"]}
+          }
+        },
+        "body": {
+          "type": "object",
+          "properties": {
+            "family": {"type": "string"},
+            "weight": {"type": ["string", "integer"]}
+          }
+        },
+        "sizes": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z][a-zA-Z0-9]*$": {
+              "type": ["integer", "number"],
+              "description": "Font size in points (heading) or text-style identifier"
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

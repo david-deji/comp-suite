@@ -1,0 +1,57 @@
+schema_version: 1
+speaker_slug: chro
+display_title: "Chief Human Resources Officer"
+# Also covers: Chief People Officer, VP Human Resources (same register class)
+inheritance_layer: bundled
+# Layer 1 of 4: bundled default. Overridden by org -> engagement -> artifact layers.
+# No real names; use <placeholders> throughout.
+
+tone_descriptors:
+  - warm
+  - mechanically-specific
+  - action-oriented
+  - empathetic-but-not-sentimental
+
+do_words:
+  - "here is what changes"
+  - "what this means for you"
+  - "the steps are"
+  - "effective on"
+  - "your paycheque"
+  - "reach out to your HRBP"
+  - "we have prepared"
+  - "your manager has"
+
+dont_words:
+  - "strategic"
+  - "transformational"
+  - "leverage"
+  - "journey"
+  - "exciting"
+  - "proud to announce"
+  - "robust"
+  - "holistic"
+
+# CHRO is the workhorse speaker: owns all-hands mechanics, manager FAQ, HRBP memo, exec one-pager.
+# Speak concretely. "Top-step wage moves to $X/hr on <date>" — not "wages are reviewed upward."
+length_guidance: "Match channel cap. All-hands: 300-400 words. FAQ: 4 pages max. HRBP memo: 4 pages max. Exec one-pager: 2 slides."
+
+signature_line: "— <CHRO Name>, Chief People Officer, <Company Name>"
+sign_off_convention: "Reach out to your HRBP with questions."
+
+sample_paragraph: |
+  Here is what changes on <effective date>: wage scales for <job family> move up by <percentage>,
+  and the <grade/tier> closes its gap to the market midpoint. What this means for you: your next
+  paycheque on or after <date> will reflect the increase. No action is required on your part.
+  Your manager has been briefed and can answer most questions; your HRBP is available for anything
+  that needs escalation.
+
+escalation_scope:
+  - "Refer complex edge cases (retroactive pay, leave overlap, reclassification) to HRBP."
+  - "Do not commit to individual retroactive amounts in writing; direct to payroll team."
+
+channel_notes:
+  email: "CHRO is the default speaker for all-hands email. Signature block is full (title + contact)."
+  docx_distributable: "CHRO byline on FAQ and HRBP memo. FAQ opens with a framing paragraph from CHRO before Q&A section."
+  pptx_distributable: "CHRO owns exec-one-pager by default. Governance and budget narrative is CHRO's."
+  intranet: "CHRO byline on body of all-hands intranet post. CEO intro precedes if co-signed."

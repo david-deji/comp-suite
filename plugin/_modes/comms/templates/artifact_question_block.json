@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "_description": "Per-artifact question banks for /draft mode. For each of the 4 v1 artifacts, framing questions the operator answers to refine the render beyond what the source recommendation provides. Questions are asked before drafting begins, after the anti-pattern checklist is surfaced. Structure: {artifact_type: [{question_id, question_text, default_answer, when_to_skip}]}.",
+  "artifacts": {
+    "all-hands-announcement": [
+      {
+        "question_id": "AHA-01",
+        "question_text": "Who is the primary speaker for this announcement — CEO or CHRO?",
+        "default_answer": "chro",
+        "when_to_skip": "Skip if engagement-comms-config.yaml artifact[].speaker is already set and operator has not requested override."
+      },
+      {
+        "question_id": "AHA-02",
+        "question_text": "Is this announcement going to both email and intranet, or one channel only?",
+        "default_answer": "both",
+        "when_to_skip": "Skip if valid_channels is set to a single channel in engagement-comms-config.yaml."
+      },
+      {
+        "question_id": "AHA-03",
+        "question_text": "What is the effective date that should appear prominently in the announcement?",
+        "default_answer": null,
+        "when_to_skip": "Skip if cycle.effective_date is present in compensation-advisor source (checkpoint.yaml or engagement-state.yaml)."
+      },
+      {
+        "question_id": "AHA-04",
+        "question_text": "Is there a single call-to-action at the end — e.g., 'contact your HRBP' or 'attend the team meeting on <date>'? If yes, what is it?",
+        "default_answer": "Contact your HRBP or manager with questions.",
+        "when_to_skip": "Skip if org-comms-profile channel_rules.email.cta_style is already set."
+      },
+      {
+        "question_id": "AHA-05",
+        "question_text": "Are there any populations to call out specifically (e.g., employees on leave, part-time employees, employees who already received a market adjustment)?",
+        "default_answer": null,
+        "when_to_skip": "Skip if no special populations noted in compensation-advisor source."
+      },
+      {
+        "question_id": "AHA-06",
+        "question_text": "Should the announcement mention the FR-CA glossary term for 'wage scale increase' — i.e., use 'augmentation salariale selon l'echelle' — or does the org have its own preferred FR-CA phrasing?",
+        "default_answer": "Use bundled FR-CA glossary default.",
+        "when_to_skip": "Skip if org-comms-profile has a validated FR-CA term for wage scale increase already."
+      }
+    ],
+    "manager-faq": [
+      {
+        "question_id": "MFAQ-01",
+        "question_text": "Who is the speaker for this FAQ — CHRO or VP Ops?",
+        "default_answer": "chro",
+        "when_to_skip": "Skip if engagement-comms-config.yaml artifact[].speaker is already set."
+      },
+      {
+        "question_id": "MFAQ-02",
+        "question_text": "What are the top 3 questions managers have already asked HR in informal channels about this cycle's changes? These will anchor the FAQ's first section.",
+        "default_answer": null,
+        "when_to_skip": "Never skip — this question always improves the FAQ quality. Proceed with compensation-advisor source only if operator says 'skip'."
+      },
+      {
+        "question_id": "MFAQ-03",
+        "question_text": "Are there any questions managers should NOT answer themselves and should escalate to HRBP? (These go in the escalation-triggers section.)",
+        "default_answer": "CBA interpretation, retroactive pay for employees on leave, individual reclassification requests.",
+        "when_to_skip": "Skip if org-comms-profile.yaml hrbp-manager.escalation_scope is already populated."
+      },
+      {
+        "question_id": "MFAQ-04",
+        "question_text": "Should the FAQ include talking points for the team meeting conversation — i.e., scripted opening lines for managers to use when they present the change to their team?",
+        "default_answer": "yes",
+        "when_to_skip": "Skip if operator confirms FAQ is informational only (no scripted delivery expected)."
+      },
+      {
+        "question_id": "MFAQ-05",
+        "question_text": "How many Q&A pairs should the FAQ target — the 10-question minimum, or up to 15-20 if the cycle is complex?",
+        "default_answer": "10",
+        "when_to_skip": "Skip if operator has provided a specific count."
+      }
+    ],
+    "hrbp-enablement-memo": [
+      {
+        "question_id": "HEM-01",
+        "question_text": "What are the 3-5 most likely edge cases HRBPs will encounter for this cycle? (E.g., employees on parental leave, employees mid-reclassification, employees whose grade was restructured.)",
+        "default_answer": null,
+        "when_to_skip": "Never skip — the edge-case appendix requires this. Proceed with generic placeholders if operator says 'skip'."
+      },
+      {
+        "question_id": "HEM-02",
+        "question_text": "Is there a worked payroll calculation example to include — specific numbers the HRBP can show employees to explain the math?",
+        "default_answer": null,
+        "when_to_skip": "Skip if the cycle has no arithmetic component (e.g., flat-rate change where no calculation is required)."
+      },
+      {
+        "question_id": "HEM-03",
+        "question_text": "What is the escalation path above HRBP — i.e., if the HRBP cannot resolve, who do they call? (Name the role, not the person.)",
+        "default_answer": "Director, Total Rewards",
+        "when_to_skip": "Skip if org-comms-profile already names the escalation chain."
+      },
+      {
+        "question_id": "HEM-04",
+        "question_text": "Should the memo include a consultation script — specific language HRBPs can use when an employee escalates a concern directly?",
+        "default_answer": "yes",
+        "when_to_skip": "Skip only if operator confirms HRBPs are experienced and do not need a script."
+      },
+      {
+        "question_id": "HEM-05",
+        "question_text": "Are there union-specific provisions HRBPs need to cite precisely — CBA article numbers, MOA references, ratification dates?",
+        "default_answer": null,
+        "when_to_skip": "Skip if the engagement covers non-union populations only."
+      },
+      {
+        "question_id": "HEM-06",
+        "question_text": "Should the memo include a confidentiality instruction — reminding HRBPs of what they can and cannot share with employees about the compensation review process?",
+        "default_answer": "yes",
+        "when_to_skip": "Skip if the engagement is fully transparent (e.g., public-sector employer where process is public)."
+      }
+    ],
+    "exec-one-pager": [
+      {
+        "question_id": "EOP-01",
+        "question_text": "What is the primary ask of the board or exec committee for this artifact — approve the cost envelope, note for information, or ratify a prior decision?",
+        "default_answer": "note for information",
+        "when_to_skip": "Skip if the recommendation-source specifies the governance action explicitly."
+      },
+      {
+        "question_id": "EOP-02",
+        "question_text": "Should slide 1 lead with the decision (e.g., '3% wage scale increase for all hourly grades effective May 1') or with the context (e.g., 'Market wage pressure in Quebec retail has reached...')?",
+        "default_answer": "decision",
+        "when_to_skip": "Skip if org has a standing board deck convention on structure (surfaced during /brand init)."
+      },
+      {
+        "question_id": "EOP-03",
+        "question_text": "What is the annualized cost impact of this cycle's decision? (If multiple scenarios, use the chosen scenario's envelope.)",
+        "default_answer": null,
+        "when_to_skip": "Skip if cost envelope is in compensation-advisor source (checkpoint.yaml or engagement-state.yaml)."
+      },
+      {
+        "question_id": "EOP-04",
+        "question_text": "Should slide 2 include a prior-year comparison table (last cycle's envelope vs. this cycle's envelope)? Is the prior-cycle number confirmed?",
+        "default_answer": "yes if prior_engagement_refs[] is present in source",
+        "when_to_skip": "Skip if this is the first cycle with this org (no prior-year data)."
+      },
+      {
+        "question_id": "EOP-05",
+        "question_text": "Are there any compliance drivers to call out on slide 2 — e.g., Bill 96 obligations, pay equity audit findings, CBA ratification requirements?",
+        "default_answer": null,
+        "when_to_skip": "Skip if the cycle is a voluntary market adjustment with no regulatory trigger."
+      }
+    ]
+  }
+}

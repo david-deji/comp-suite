@@ -1,0 +1,197 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/david-deji/comp-comms-builder/master-schema/master-shared-header.schema.json",
+  "title": "Master YAML Shared Header",
+  "description": "Validates the top-level wrapper of master.yaml including schema_version, header, cycles[], and decision_log[]. Per spec § 4.1, § 12.2, § 12.4. Header fields are advisory; last-writer-wins on last_touched_* is acceptable per § 6.3 C1.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver string for the shared header contract. All 4 skills must update in lock-step on a header bump per § 12.4."
+    },
+    "header": {
+      "type": "object",
+      "description": "Shared org-level metadata. Any skill may write; last-writer-wins on advisory fields.",
+      "properties": {
+        "org_slug": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,40}$",
+          "description": "Canonical org slug. Must match _orgs/index.yaml entry per § 3."
+        },
+        "created_date": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date when master.yaml was first created for this org."
+        },
+        "created_by_skill": {
+          "type": "string",
+          "enum": ["comp"],
+          "description": "The skill that created this master.yaml. v2 uses the unified `comp` orchestrator (which dispatches to internal modes — see § 5)."
+        },
+        "last_touched_date": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO 8601 date. Updated on every /init. Advisory — last-writer-wins."
+        },
+        "last_touched_by_skill": {
+          "type": "string",
+          "enum": ["comp"],
+          "description": "Skill that last touched this master.yaml. v2 uses `comp`. Advisory — last-writer-wins."
+        },
+        "primary_language": {
+          "type": "string",
+          "enum": ["fr-ca", "fr-fr", "en-ca", "en-us"],
+          "description": "Default language for artifacts produced for this org. Defaults to fr-ca per Bill 96 / Quebec posture."
+        },
+        "display_name": {
+          "type": "string",
+          "description": "Optional. Human-readable org name for tree view rendering."
+        },
+        "industry": {
+          "type": ["string", "null"],
+          "description": "Optional. e.g., 'retail-pharmacy', 'financial-services', 'manufacturing'."
+        },
+        "region": {
+          "type": ["string", "null"],
+          "description": "Optional. e.g., 'qc', 'canada', 'intl'."
+        },
+        "employee_count_band": {
+          "type": ["string", "null"],
+          "description": "Optional. e.g., '100-500', '500-2000', '>5000'."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional. Operator free-text notes about this org."
+        },
+        "active_skills": {
+          "type": "array",
+          "description": "Registry of skills that have ever run /init for this org. Auto-maintained per § 8.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "skill": {
+                "type": "string",
+                "enum": ["comp"]
+              },
+              "first_init_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "last_active_date": {
+                "type": "string",
+                "format": "date"
+              },
+              "asset_pointers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Paths into the existing v1 Drive layout that this skill owns for this org."
+              }
+            },
+            "required": ["skill", "first_init_date", "last_active_date", "asset_pointers"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["org_slug", "created_date", "created_by_skill", "last_touched_date", "last_touched_by_skill", "primary_language", "active_skills"],
+      "additionalProperties": false,
+      "propertyNames": {
+        "not": {
+          "enum": ["name", "full_name", "legal_name", "personal_name"]
+        }
+      }
+    },
+    "cycles": {
+      "type": "array",
+      "description": "Cycle index. Auto-maintained on /init and /close-cycle per § 4.1.",
+      "items": {
+        "$ref": "cycle-entry.schema.json"
+      }
+    },
+    "decision_log": {
+      "type": "array",
+      "description": "Append-only audit trail. Any skill appends; no skill mutates prior entries per § 6.3.",
+      "items": {
+        "$ref": "decision-log-entry.schema.json"
+      }
+    },
+    "advisor": {
+      "type": "object",
+      "description": "Federated section owned exclusively by compensation-advisor. See master-advisor-section.schema.json."
+    },
+    "comms": {
+      "type": "object",
+      "description": "Federated section owned exclusively by comp-comms-builder. See master-comms-section.schema.json."
+    },
+    "training": {
+      "type": "object",
+      "description": "Federated section owned exclusively by comp-training-designer. See master-training-section.schema.json."
+    },
+    "transformer": {
+      "type": "object",
+      "description": "Federated section owned exclusively by comp-team-transformer. See master-transformer-section.schema.json."
+    }
+  },
+  "required": ["schema_version", "header", "cycles", "decision_log"],
+  "additionalProperties": true,
+  "examples": [
+    {
+      "schema_version": "1.0.0",
+      "header": {
+        "org_slug": "acme",
+        "created_date": "2026-01-15",
+        "created_by_skill": "compensation-advisor",
+        "last_touched_date": "2026-05-03",
+        "last_touched_by_skill": "comp-comms-builder",
+        "primary_language": "fr-ca",
+        "display_name": "Acme Corp",
+        "industry": "retail-pharmacy",
+        "region": "qc",
+        "employee_count_band": "100-500",
+        "notes": "",
+        "active_skills": [
+          {
+            "skill": "compensation-advisor",
+            "first_init_date": "2026-01-15",
+            "last_active_date": "2026-04-10",
+            "asset_pointers": ["branding/acme/brand-kit.json", "personas/acme-personas.yaml"]
+          },
+          {
+            "skill": "comp-comms-builder",
+            "first_init_date": "2026-02-20",
+            "last_active_date": "2026-05-03",
+            "asset_pointers": ["org-comms-profiles/acme.yaml"]
+          }
+        ]
+      },
+      "cycles": [
+        {
+          "cycle_slug": "pharmacy-qc-fy26",
+          "status": "shipped",
+          "line": "pharmacy",
+          "region": "qc",
+          "fiscal": "fy26",
+          "opened_date": "2026-02-20",
+          "opened_by_skill": "comp-comms-builder",
+          "closed_date": "2026-04-10",
+          "primary": false,
+          "cycle_dir": "_orgs/acme/cycles/pharmacy-qc-fy26/",
+          "skills_touched": ["compensation-advisor", "comp-comms-builder"]
+        }
+      ],
+      "decision_log": [
+        {
+          "id": "dl-001",
+          "timestamp": "2026-01-15T10:00:00Z",
+          "skill": "compensation-advisor",
+          "cycle_slug": null,
+          "decision_type": "master_init",
+          "tags": ["first-init"],
+          "summary": "master.yaml created for acme by compensation-advisor. Operator confirmed slug; no fuzzy-match conflicts found."
+        }
+      ]
+    }
+  ]
+}

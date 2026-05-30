@@ -1,0 +1,21 @@
+{
+  "_meta": {
+    "name": "Default brand palette (neutral placeholder)",
+    "version": 2,
+    "notes": "Neutral starter palette shipped with the plugin. Hex strings without '#'. Consumed by build_template.js as the C lookup table. Override per-org by writing branding/<org>/theme/palette.json (or editing _orgs/<slug>/brand/theme/palette.json) with any subset of these keys; missing keys inherit from _default."
+  },
+  "green":         "4AA447",
+  "offwhite":      "FAF8F7",
+  "white":         "FFFFFF",
+  "vibrantPurple": "793CD6",
+  "red":           "B53A3A",
+  "primaryDark":   "4B2E83",
+  "accentTeal":    "2A8C82",
+  "greenTint":     "E8F2E8",
+  "purpleTint":    "EDE6F2",
+  "tealTint":      "E0F1F0",
+  "redTint":       "F4E0E0",
+  "borderGray":    "D9D9D9",
+  "textGray":      "555555",
+  "textMuted":     "888888"
+}

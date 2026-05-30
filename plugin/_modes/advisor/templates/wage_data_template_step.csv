@@ -1,0 +1,11 @@
+job_code,job_title,location_code,classification,current_step,hourly_rate,weekly_hours,experience_hours
+65201,Deli Associate,QC-MTL-001,UFCW-501-Retail,1,17.20,32,520
+65201,Deli Associate,QC-MTL-001,UFCW-501-Retail,2,18.10,32,1560
+65201,Deli Associate,QC-MTL-001,UFCW-501-Retail,3,19.05,32,2600
+65201,Deli Associate,QC-MTL-001,UFCW-501-Retail,4,20.00,32,3640
+63201,Meat Cutter,QC-MTL-001,UFCW-501-Retail,1,21.50,40,520
+63201,Meat Cutter,QC-MTL-001,UFCW-501-Retail,2,22.75,40,1560
+63201,Meat Cutter,QC-MTL-001,UFCW-501-Retail,3,24.00,40,2600
+63201,Meat Cutter,QC-MTL-001,UFCW-501-Retail,4,25.25,40,3640
+65202,Pharmacy Assistant,QC-MTL-001,Non-union-Pharm,1,18.50,32,1040
+65202,Pharmacy Assistant,QC-MTL-001,Non-union-Pharm,2,19.75,32,3120

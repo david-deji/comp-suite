@@ -1,0 +1,94 @@
+{
+  "template_id": "manufacturing-4factor",
+  "template_name": "Grille manufacturière — 4 facteurs",
+  "description": "Grille adaptée aux entreprises manufacturières et industrielles. Pondération équilibrée entre qualifications techniques, responsabilités opérationnelles, efforts et conditions difficiles. Effort mental >= effort physique (règle R6 #3); conditions de travail bien dotées.",
+  "total_max_points": 1000,
+  "dimension_weights": {
+    "qualifications": 25.0,
+    "responsibilities": 25.0,
+    "effort": 25.0,
+    "conditions": 25.0
+  },
+  "sub_factors": [
+    {
+      "id": "Q1",
+      "name": "Formation technique",
+      "dimension": "qualifications",
+      "description": "DEP, certifications techniques, formation continue spécialisée.",
+      "levels": ["Élémentaire", "DEP partiel", "DEP complet", "AEC ou DEC", "Spécialisée avancée"],
+      "points_per_level": [30, 60, 90, 120, 150],
+      "max_points": 150,
+      "factor_weight_pct": 15.0
+    },
+    {
+      "id": "Q2",
+      "name": "Expérience requise",
+      "dimension": "qualifications",
+      "description": "Années d'expérience pratique requises.",
+      "levels": ["< 1 an", "1-2 ans", "3-5 ans", "6-10 ans", "> 10 ans"],
+      "points_per_level": [20, 40, 60, 80, 100],
+      "max_points": 100,
+      "factor_weight_pct": 10.0
+    },
+    {
+      "id": "R1",
+      "name": "Responsabilité équipement / matériel",
+      "dimension": "responsibilities",
+      "description": "Valeur de l'équipement utilisé et impact d'une erreur.",
+      "levels": ["< 5k$", "5k-25k$", "25k-100k$", "100k-500k$", "> 500k$"],
+      "points_per_level": [30, 60, 90, 120, 150],
+      "max_points": 150,
+      "factor_weight_pct": 15.0
+    },
+    {
+      "id": "R2",
+      "name": "Responsabilité supervision",
+      "dimension": "responsibilities",
+      "description": "Supervision exercée sur d'autres personnes salariées.",
+      "levels": ["Aucune", "1-3 personnes", "4-10 personnes", "11-25 personnes", "> 25 personnes"],
+      "points_per_level": [20, 40, 60, 80, 100],
+      "max_points": 100,
+      "factor_weight_pct": 10.0
+    },
+    {
+      "id": "E1",
+      "name": "Effort intellectuel et mental",
+      "dimension": "effort",
+      "description": "Lecture de plans, calcul, contrôle qualité, résolution de problèmes techniques.",
+      "levels": ["Faible", "Modéré", "Élevé", "Très élevé", "Extrême"],
+      "points_per_level": [30, 60, 90, 120, 150],
+      "max_points": 150,
+      "factor_weight_pct": 15.0
+    },
+    {
+      "id": "E2",
+      "name": "Effort physique",
+      "dimension": "effort",
+      "description": "Manutention, postures contraignantes, mouvements répétitifs, charge musculaire.",
+      "levels": ["Léger", "Modéré", "Soutenu", "Intense", "Très intense"],
+      "points_per_level": [20, 40, 60, 80, 100],
+      "max_points": 100,
+      "factor_weight_pct": 10.0
+    },
+    {
+      "id": "C1",
+      "name": "Environnement physique",
+      "dimension": "conditions",
+      "description": "Bruit, chaleur, froid, poussières, vibrations, espaces confinés.",
+      "levels": ["Confortable", "Variable", "Inconfortable", "Difficile", "Pénible"],
+      "points_per_level": [30, 60, 90, 120, 150],
+      "max_points": 150,
+      "factor_weight_pct": 15.0
+    },
+    {
+      "id": "C2",
+      "name": "Risques de santé et sécurité",
+      "dimension": "conditions",
+      "description": "Exposition à matières dangereuses, hauteurs, machinerie lourde, électricité.",
+      "levels": ["Faible", "Modéré", "Significatif", "Élevé", "Très élevé"],
+      "points_per_level": [20, 40, 60, 80, 100],
+      "max_points": 100,
+      "factor_weight_pct": 10.0
+    }
+  ]
+}

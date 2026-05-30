@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "completeness-finding.schema.json",
+  "title": "Completeness-critic finding",
+  "description": "Validates the return of a completeness-critic dispatch (SPEC-workflow-phases-2-5 § 4a). FLAG-only: the critic reports gaps; it never authors replacement text and never self-reports blocking status. Blocking is computed deterministically by the orchestrator (affichage + unresolved placeholder OR missing/misplaced disclaimer), never by the agent — so there is no 'blocking' property here (§ 0c invariants #2, #6 and § 4a). additionalProperties:false closes the contract against any field a permissive agent might add.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["missing", "coverage_pct"],
+  "properties": {
+    "missing": {
+      "type": "array",
+      "description": "Gaps the critic found in the artifact. Empty when nothing is missing — report an empty array, never omit the property.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["category", "field", "issue"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "unresolved_placeholder",
+              "missing_disclaimer",
+              "misplaced_disclaimer",
+              "unaddressed_brief_item",
+              "underspecified_section"
+            ],
+            "description": "The gap class, as a closed enum so the orchestrator's is_blocking() check is a deterministic membership test (§ 4a). Blocking fires only on affichage + (unresolved_placeholder | missing_disclaimer | misplaced_disclaimer); unaddressed_brief_item and underspecified_section are always advisory. The enum is the single decision input — a free-text category would make blocking undecidable and re-open the silent failure."
+          },
+          "field": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The expected element that is absent or incomplete, e.g. an affichage placeholder token, a required disclaimer name, a narrative section heading."
+          },
+          "issue": {
+            "type": "string",
+            "minLength": 1,
+            "description": "One-line description of why the field is flagged — what is missing, unresolved, or misplaced. Describes the gap only; never proposes the text that would fill it."
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional locus of the gap in the artifact (e.g. 'section 3, line 41'). Omit when the gap belongs to no single position. Advisory only — the orchestrator does not gate on it."
+          }
+        }
+      }
+    },
+    "coverage_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Percent of expected elements present in the artifact, 0-100. Advisory signal for the orchestrator's surfacing decision, not a gate value the agent acts on."
+    }
+  }
+}

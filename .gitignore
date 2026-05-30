@@ -1,0 +1,49 @@
+# Private source tree + dev workspace — kept LOCAL, never published.
+# This is the plugin-only public repo; the plugin is built from /src/ off-repo.
+/src/
+/.claude
+
+# Build artifacts
+**/dist/
+**/.build-state/
+
+# Personal-judgment notes — fill on local machine, never commit.
+# Skill loader gracefully skips when not present.
+**/references/judgment-notes.md
+
+# Engagement state files — produced per session, not part of the skill bundle.
+**/engagements/
+**/engagement-state-*.yaml
+**/council-state-*.yaml
+
+# Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Claude Code session state — ephemeral per-session files the CC harness writes into a
+# .claude/ dir at the agent's cwd. Ignore by pattern at any depth; never wholesale **/.claude/
+# (that would hide tracked .claude/skills, .claude/agents, settings.json).
+**/.claude/context-state.json
+**/.claude/context-state.json.tmp
+**/.claude/context-state-*.json
+**/.claude/recovery.md
+**/.claude/recovery-*.md
+**/.claude/compact-pending
+**/.claude/compact-pending-*
+**/.claude/session-files-*.txt

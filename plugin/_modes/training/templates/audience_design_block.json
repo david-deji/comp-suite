@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "_description": "Question banks for /ingest and /generate audience-design interviews. Mirrors the comp-team-transformer/template_assets/discovery_interview_block.json shape, adapted to training-domain. Loaded by ingest-protocol.md and generate-protocol.md.",
+  "blocks": {
+    "scripted_opening_ingest": {
+      "applies_to_modes": ["directed-interview"],
+      "applies_to": "/ingest",
+      "duration_target_minutes": 3,
+      "verbatim": [
+        "Thanks for taking the time. Quick framing: I want to extract from <source> the messages that need to reach <audiences>. The goal is to find together which facts matter, who needs to hear them, and at what depth.",
+        "Three ground rules: I'll talk less than 40% of the time; we'll go source by source, no skipping; if I ask something basic, it's because the obvious stuff is where the cleanest message-map hides.",
+        "Sound good?"
+      ]
+    },
+    "source_identity": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "applies_to": "/ingest",
+      "questions": [
+        "Which sources are we ingesting? List them.",
+        "Which is canonical truth (the must-honor)? Which are supplementary?",
+        "Is anything still in flight that we should NOT extract from yet?",
+        "Are there sources outside the ones in engagement-training-config you want to add ad-hoc for this cycle?"
+      ]
+    },
+    "message_extraction": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "applies_to": "/ingest",
+      "questions": [
+        "Walk me through this source. For each section, what's THE message? (One-line claim.)",
+        "What's the evidence behind it? (Number, quote, policy clause, market datum.)",
+        "Which audiences need this message?",
+        "At what depth? (1=headline, 2=mechanics, 3=edge-cases, 4=tradeoffs/budget/governance)",
+        "Is this a fact, or is this a tone/positioning choice?"
+      ],
+      "pacing_prompts": [
+        "Want me to summarize the message-map so far?",
+        "Anything we should slow down on?",
+        "Are we still on the part you wanted to focus on?"
+      ]
+    },
+    "audience_depth_assignment": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "applies_to": "/ingest",
+      "questions": [
+        "For each captured message, who sees it at depth 1?",
+        "Who sees it at depth 2 (mechanics)?",
+        "Who sees it at depth 3 (edge cases / escalation)?",
+        "Who sees it at depth 4 (tradeoffs / budget / philosophy)?",
+        "Constraint: HRBP depth >= manager depth >= employee depth on the same fact when all three are non-null. Execs see different cuts — they may have null on facts everyone else sees, AND depth-4 framing on facts no one else sees."
+      ]
+    },
+    "objection_anticipation": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "applies_to": "/ingest",
+      "questions": [
+        "For audience <X>, what objections will this message provoke?",
+        "Which is the most likely 'gotcha' question?",
+        "Which is the question we DON'T have a good answer for?",
+        "What's an Anti-FAQ entry for this message — a question we will NOT answer in the training session?"
+      ]
+    },
+    "cascade_cue_marking": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "applies_to": "/ingest",
+      "questions": [
+        "For each message going to managers, which become cascade-prompts? (Manager: ask your team how they understood [X].)",
+        "Which messages MUST a manager personalize for their team? (Budget context, headcount specifics.)",
+        "Which messages must NOT be cascaded? (Confidential, exec-only, mid-cycle.)",
+        "Which cascade-prompts should the manager open the team meeting with? Which should be later in the walkthrough?"
+      ]
+    },
+    "scripted_close_ingest": {
+      "applies_to_modes": ["directed-interview"],
+      "applies_to": "/ingest",
+      "duration_target_minutes": 5,
+      "verbatim": [
+        "OK — let me reflect back the message-map. (Skill summarizes captured messages with audience+depth tags.)",
+        "Anything I missed or got wrong?",
+        "(Gap check — surface any audience that has thin coverage: 'Execs only have 2 depth-4 messages — is that intentional?' / 'Employees have no depth-1 messages yet — what's the headline they need to leave with?')",
+        "Next step: I synthesize this into message-map.yaml, run a redaction pass, and you can run /generate per audience whenever ready. Estimated post-ingest work: 30-45 min message-map review + /generate per audience (~10-15 min each, plus council auto-fire)."
+      ]
+    },
+    "audience_design_per_render": {
+      "applies_to_modes": ["self", "directed-interview"],
+      "applies_to": "/generate",
+      "duration_target_minutes": 10,
+      "questions_per_audience": {
+        "employees": [
+          "How many people in the room (or async-cohort)?",
+          "What's their existing comp literacy? (None / some / high)",
+          "What's the most likely misunderstanding we want to preempt?",
+          "Which existing manager-cascade messages should this deck reinforce?",
+          "Live training, recorded video, or async self-paced?"
+        ],
+        "managers": [
+          "How will managers receive the deck? (Live training / async / cascade-only / recorded)",
+          "How many managers? Range of seniority? (First-cycle managers vs. veterans)",
+          "Which messages most need objection-handling support?",
+          "Which messages MUST become cascade prompts?",
+          "What's the manager's biggest fear about delivering this to their team?"
+        ],
+        "hrbps": [
+          "How many HRBPs? Single-team or multi-team coverage?",
+          "Which edge cases will HRBPs need handle on the floor?",
+          "Which escalation paths need to be explicit in the deck?",
+          "What's the HRBP's role at the live training session — facilitate, support, or attend?",
+          "Are HRBPs running the manager training, or attending it?"
+        ],
+        "execs": [
+          "Who's in the room? (Comp committee / VP People / exec team / board)",
+          "What's the decision they need to walk out with?",
+          "Which tradeoff is most contested?",
+          "What's the budget framing they expect?",
+          "Is this an approval ask, a status update, or a strategic discussion?"
+        ]
+      }
+    },
+    "scripted_close_audience_design": {
+      "applies_to_modes": ["directed-interview"],
+      "applies_to": "/generate",
+      "duration_target_minutes": 1,
+      "verbatim": [
+        "Let me reflect back the audience-design choices: (Skill summarizes room context, friction calibrations, checkpoint placements, cascade-prompt confirmations, tradeoff framing.)",
+        "Anything I missed or got wrong?",
+        "(Gap check — surface uncovered objections: 'We don't have an objection-handling angle for [tension] — intentional?')",
+        "Locking the audience slice and firing the council now."
+      ]
+    }
+  }
+}

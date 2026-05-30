@@ -1,0 +1,483 @@
+{
+  "schema_version": 1,
+  "_description": "Question banks for /ingest interview sub-phases. Loaded by ingest-protocol.md. Covers all 7 sub-phases from source identity through workshop synthesis. Structure: array of question objects with phase, question_id, question_text, expected_answer_shape, follow_up_triggers.",
+  "_modes": ["self", "directed-interview"],
+  "questions": [
+
+    {
+      "phase": "source_identity",
+      "question_id": "SI-01",
+      "question_text": "Which sources are we ingesting today? List them — file name or paste label is fine.",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of source identifiers (file names, paste labels, or descriptions)",
+      "follow_up_triggers": [
+        {
+          "condition": "source count > 6",
+          "follow_up": "That is a large set. Which three are the most important to extract from — the ones where the org's voice and channel conventions are clearest?"
+        }
+      ]
+    },
+    {
+      "phase": "source_identity",
+      "question_id": "SI-02",
+      "question_text": "For each source, who was the intended speaker and which audience was it written for? (E.g., 'This email was from the CHRO to all employees' or 'This PPTX was the board deck.')",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "per-source: speaker slug + audience slug + cycle year",
+      "follow_up_triggers": [
+        {
+          "condition": "source has unknown speaker",
+          "follow_up": "If the speaker is unknown, what is your best guess from the tone or signature? We can mark it as 'inferred' in the profile."
+        }
+      ]
+    },
+    {
+      "phase": "source_identity",
+      "question_id": "SI-03",
+      "question_text": "Is anything in this source set still in draft or not final? Any source we should NOT extract from yet?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "yes/no + which sources to exclude",
+      "follow_up_triggers": []
+    },
+
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-01",
+      "question_text": "Looking at the {speaker} materials: how would you describe the tone in three words? (Not what you want the tone to be — what it actually is in these sources.)",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "3-5 tone descriptor words",
+      "follow_up_triggers": [
+        {
+          "condition": "answer includes 'professional' or 'formal'",
+          "follow_up": "Those are defaults. Let's get more specific: is it warm-formal or cold-formal? Does this speaker use 'we' a lot, or 'I'? Do they lead with emotion or facts?"
+        }
+      ]
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-02",
+      "question_text": "What words or phrases does {speaker} use repeatedly that are distinctly theirs — things you would NOT expect from another speaker?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of 3-8 distinctive phrases or words",
+      "follow_up_triggers": [
+        {
+          "condition": "fewer than 3 phrases identified",
+          "follow_up": "Look at the opening sentence of each {speaker} email or memo. What pattern do you see? Do they start with 'I want to share', 'As we discussed', 'Today marks'?"
+        }
+      ]
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-03",
+      "question_text": "What phrases or words has {speaker} explicitly rejected or been asked to remove in past review rounds?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of flagged phrases + reason for rejection",
+      "follow_up_triggers": [
+        {
+          "condition": "no rejections recalled",
+          "follow_up": "Think about the last time a draft came back with edits. What was the first thing that changed? That is usually the clearest signal about what the speaker dislikes."
+        }
+      ]
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-04",
+      "question_text": "How does {speaker} typically sign off? Do they use a formal sign-off phrase, or do they end with a CTA?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "sign-off phrase or pattern",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-05",
+      "question_text": "What does the signature block look like — name, title, contact? Is there a convention (e.g., phone number included or excluded)?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "signature block format with placeholders",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-06",
+      "question_text": "Can you paste or quote one paragraph from {speaker}'s best prior communication — the one where you said 'yes, this sounds like them'?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "verbatim paragraph (will become sample_paragraph in the register)",
+      "follow_up_triggers": [
+        {
+          "condition": "no single paragraph identified",
+          "follow_up": "Take the first paragraph of the all-hands email we reviewed. Read it out loud. Does it sound like {speaker}? If not, what word would they change first?"
+        }
+      ]
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-07",
+      "question_text": "How long does {speaker} typically write? Does the CHRO (or whoever drafts for them) impose a length limit?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "word count or page count norm",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-08",
+      "question_text": "Is there a 'reviewer' who reads {speaker}'s drafts before they go out — a chief of staff, executive assistant, or comms lead? If so, what does that reviewer typically push back on?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["directed-interview"],
+      "expected_answer_shape": "reviewer role + recurring pushback pattern",
+      "follow_up_triggers": [
+        {
+          "condition": "reviewer identified",
+          "follow_up": "So the real voice authority is that reviewer, not {speaker} themselves? Let's adjust the register to reflect what passes review, not what {speaker} drafts."
+        }
+      ]
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-09",
+      "question_text": "On a scale from 1-5: how much does {speaker}'s written voice differ from their spoken voice? (1 = identical; 5 = completely different — the emails sound like a lawyer wrote them.)",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["directed-interview"],
+      "expected_answer_shape": "1-5 rating + one-line explanation",
+      "follow_up_triggers": [
+        {
+          "condition": "rating >= 4",
+          "follow_up": "High gap. That means the drafts are coming from someone else. Should we try to close that gap in v1 comms, or maintain the formal register because that is what the org expects from this role?"
+        }
+      ]
+    },
+    {
+      "phase": "voice_extraction_per_speaker",
+      "question_id": "VE-10",
+      "question_text": "Is there a specific phrase or structure {speaker} always uses to introduce hard news (e.g., wage freezes, structural changes)? And one they use to introduce good news?",
+      "parameterized_by": "speaker",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "hard-news phrase + good-news phrase",
+      "follow_up_triggers": []
+    },
+
+    {
+      "phase": "audience_profile_inference",
+      "question_id": "AP-01",
+      "question_text": "For the {audience} audience: what were the top 3 questions or complaints you received after the last compensation communication?",
+      "parameterized_by": "audience",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of 3-5 concerns or complaints",
+      "follow_up_triggers": [
+        {
+          "condition": "concern is about pay calculation",
+          "follow_up": "Was that a confusion about the formula, or did they not trust the number they received? The fix is different depending on which it is."
+        }
+      ]
+    },
+    {
+      "phase": "audience_profile_inference",
+      "question_id": "AP-02",
+      "question_text": "How does the {audience} audience typically receive compensation comms — email, intranet post, physical posting, team meeting, or some combination?",
+      "parameterized_by": "audience",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "channel list + primary channel",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "audience_profile_inference",
+      "question_id": "AP-03",
+      "question_text": "What does the {audience} audience MOST want to know when they receive compensation news — the amount, the rationale, or what they need to do?",
+      "parameterized_by": "audience",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "priority ranking of: amount / rationale / action",
+      "follow_up_triggers": [
+        {
+          "condition": "rationale is top priority",
+          "follow_up": "What rationale resonates with this audience — market positioning, cost discipline, fairness, legal obligation? Knowing which argument lands changes how we frame the memo."
+        }
+      ]
+    },
+    {
+      "phase": "audience_profile_inference",
+      "question_id": "AP-04",
+      "question_text": "On the reading-level spectrum (grade 7 / grade 9 / grade 12 / college): where does the {audience} audience sit? Think about the emails they send to HR, not about their job description.",
+      "parameterized_by": "audience",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "grade-7 | grade-9 | grade-12 | college",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "audience_profile_inference",
+      "question_id": "AP-05",
+      "question_text": "For the {audience} audience: what topic is out of bounds in an all-hands comms? (E.g., individual salary amounts, union negotiations, specific grievances.)",
+      "parameterized_by": "audience",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of out-of-bounds topics + reason",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "audience_profile_inference",
+      "question_id": "AP-06",
+      "question_text": "Is there a segment of the {audience} audience that is particularly sensitive this cycle — recent hire cohort, employees on leave, employees nearing retirement, employees in a restructured department?",
+      "parameterized_by": "audience",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "segment description + reason for sensitivity",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "audience_profile_inference",
+      "question_id": "AP-07",
+      "question_text": "Has this audience segment ever pushed back publicly (town hall question, union grievance, social media post) on prior compensation communications? If yes, what triggered it?",
+      "parameterized_by": "audience",
+      "applies_to_modes": ["directed-interview"],
+      "expected_answer_shape": "yes/no + description of the trigger",
+      "follow_up_triggers": [
+        {
+          "condition": "yes",
+          "follow_up": "That trigger should become an anti-pattern entry. What was the exact phrase or claim that caused it?"
+        }
+      ]
+    },
+
+    {
+      "phase": "channel_rules_detection",
+      "question_id": "CR-01",
+      "question_text": "For the {channel} channel: what is the typical length of compensation communications you have sent through it? (Word count or page count — rough is fine.)",
+      "parameterized_by": "channel",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "word or page count",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "channel_rules_detection",
+      "question_id": "CR-02",
+      "question_text": "For the {channel} channel: are there formatting conventions the org always follows — specific headings, bullet structures, callout boxes, footer disclaimers?",
+      "parameterized_by": "channel",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of formatting conventions",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "channel_rules_detection",
+      "question_id": "CR-03",
+      "question_text": "For email: what does the sender display line look like — first name only, full name + title, or something else? Is there a shared alias used?",
+      "parameterized_by": null,
+      "applies_to_channels": ["email"],
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "sender display string pattern",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "channel_rules_detection",
+      "question_id": "CR-04",
+      "question_text": "For DOCX distribution: does the org use a cover page? Is there a confidentiality footer convention?",
+      "parameterized_by": null,
+      "applies_to_channels": ["docx_distributable"],
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "cover page yes/no + footer text",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "channel_rules_detection",
+      "question_id": "CR-05",
+      "question_text": "For the exec PPTX: how many slides do board-bound compensation decks typically run? Is there a hard cap from the board secretary?",
+      "parameterized_by": null,
+      "applies_to_channels": ["pptx_distributable"],
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "slide count + hard cap yes/no",
+      "follow_up_triggers": []
+    },
+
+    {
+      "phase": "anti_pattern_surfacing",
+      "question_id": "ANT-01",
+      "question_text": "Think about the last compensation comms cycle. Was there a phrase in the announcement that employees pushed back on — in team meetings, by email, or through the union?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "phrase + context of pushback",
+      "follow_up_triggers": [
+        {
+          "condition": "phrase identified",
+          "follow_up": "What should the phrase have said instead? I'll add both to the anti-patterns list."
+        }
+      ]
+    },
+    {
+      "phase": "anti_pattern_surfacing",
+      "question_id": "ANT-02",
+      "question_text": "Are there any phrases or terms you have been told NEVER to use by your legal, union relations, or comms team?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of banned phrases + reason for each",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "anti_pattern_surfacing",
+      "question_id": "ANT-03",
+      "question_text": "Are there FR-CA terms that have caused problems — either because they were incorrectly translated from English or because they carry a different connotation in Quebec?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of problematic FR-CA terms + correct alternative",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "anti_pattern_surfacing",
+      "question_id": "ANT-04",
+      "question_text": "Has there ever been a compensation communication where the announcement of good news still generated negative feedback? What do you think caused that?",
+      "applies_to_modes": ["directed-interview"],
+      "expected_answer_shape": "narrative description of the incident + hypothesized cause",
+      "follow_up_triggers": [
+        {
+          "condition": "hypothesized cause is a phrase or framing",
+          "follow_up": "That framing pattern is the anti-pattern. Can you name the specific phrase that landed wrong?"
+        }
+      ]
+    },
+    {
+      "phase": "anti_pattern_surfacing",
+      "question_id": "ANT-05",
+      "question_text": "Are there topics that should NEVER appear in an all-hands compensation email — even if they are technically related (e.g., budget cuts, headcount changes, performance ratings)?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of forbidden co-topics",
+      "follow_up_triggers": []
+    },
+
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-01",
+      "question_text": "Does the org have a defined primary brand color? What is the hex code, or can you point me to the brand guidelines document?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "hex code or brand guidelines reference",
+      "follow_up_triggers": [
+        {
+          "condition": "no hex code available",
+          "follow_up": "Paste the brand color name (e.g., 'Acme Red'). I can approximate from common brand references; we'll confirm before final render."
+        }
+      ]
+    },
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-02",
+      "question_text": "Is there a secondary brand color used for accents or callout boxes in internal documents?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "hex code or color name",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-03",
+      "question_text": "What font does the org use for internal documents — Word docs, employee emails, intranet posts? Is there a different font for headings vs. body text?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "font name for headings + font name for body",
+      "follow_up_triggers": [
+        {
+          "condition": "org uses a proprietary font",
+          "follow_up": "Is the font available as a system font on standard Windows installations? If not, we will need a fallback (Calibri or Arial) for portability."
+        }
+      ]
+    },
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-04",
+      "question_text": "Is there a standard email header banner (image) used in all-hands emails? Can you share the image file or a link to where it is stored?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "file path or URL to header banner image",
+      "follow_up_triggers": [
+        {
+          "condition": "no image available",
+          "follow_up": "We will use the bundled placeholder header. You can update it later via /brand init after we have the image."
+        }
+      ]
+    },
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-05",
+      "question_text": "For the CEO and CHRO email signatures: is there a standard format the org uses (text only, with logo, with title line, with contact phone)? Can you paste an example?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "signature block example with format description",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-06",
+      "question_text": "For board-bound PPTX decks: is there an existing PPTX master or template the compensation team uses? If yes, can you share it?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "yes/no + file path or Drive link if yes",
+      "follow_up_triggers": [
+        {
+          "condition": "existing master available",
+          "follow_up": "We will use that master as the base. The comp-comms-builder exec-one-pager will follow that master's layout rather than the bundled default."
+        }
+      ]
+    },
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-07",
+      "question_text": "Is there a logo file (PNG or SVG) available for the PDF header and PPTX title slide? Where is it stored?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "file path or Drive link",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "brand_discovery",
+      "question_id": "BD-08",
+      "question_text": "Are there any brand rules that restrict how the logo or colors are used — e.g., logo must not appear on a dark background, specific clearance around the logo, minimum size?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of brand restrictions",
+      "follow_up_triggers": []
+    },
+
+    {
+      "phase": "workshop_synthesis",
+      "question_id": "WS-01",
+      "question_text": "I have drafted the org-comms-profile based on what we covered. Let me walk you through the speaker register for each speaker — does each description match what you see in the actual communications?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "confirmation per speaker OR correction with specific detail",
+      "follow_up_triggers": [
+        {
+          "condition": "correction provided",
+          "follow_up": "Noted. I will update {speaker}'s register with that change. Anything else for this speaker before we move on?"
+        }
+      ]
+    },
+    {
+      "phase": "workshop_synthesis",
+      "question_id": "WS-02",
+      "question_text": "For the audience profiles: do the key concerns I have listed match what you actually hear from each audience when compensation news lands?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "confirmation per audience OR correction",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "workshop_synthesis",
+      "question_id": "WS-03",
+      "question_text": "For the anti-patterns list: are there any entries you want to remove (too org-specific to be reliable) or add before we lock the profile?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "add/remove list",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "workshop_synthesis",
+      "question_id": "WS-04",
+      "question_text": "Is there anything in this profile that should NOT be shared with external parties — e.g., an anti-pattern that references a specific incident you'd rather keep internal?",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "list of fields to mark sensitive OR 'nothing to flag'",
+      "follow_up_triggers": []
+    },
+    {
+      "phase": "workshop_synthesis",
+      "question_id": "WS-05",
+      "question_text": "Ready to write the org-comms-profile to Drive? This will create or update org-comms-profiles/<org-slug>.yaml. Confirm: yes / review-first / abort.",
+      "applies_to_modes": ["self", "directed-interview"],
+      "expected_answer_shape": "yes | review-first | abort",
+      "follow_up_triggers": [
+        {
+          "condition": "review-first",
+          "follow_up": "I will display the full profile in chat. Let me know which fields to change before we write."
+        },
+        {
+          "condition": "abort",
+          "follow_up": "Profile not written. All extracted data remains in this session. You can resume with /checkpoint to save the session state."
+        }
+      ]
+    }
+
+  ]
+}

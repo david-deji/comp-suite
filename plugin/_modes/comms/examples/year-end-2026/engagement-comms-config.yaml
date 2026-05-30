@@ -1,0 +1,85 @@
+# Example engagement-comms-config.yaml for a fictional Quebec-pharmacy FY26 cycle.
+# This file is illustrative only — not used at runtime by the skill.
+# Ships in the bundle as a worked example for operators getting started.
+
+schema_version: 1
+engagement_slug: pharmacy-fy26
+client_slug: acme
+cycle_name: "FY26 Annual Wage Review"
+created: 2026-05-03
+
+persistence:
+  enabled: true
+  drive_folder_id: "<replace-with-shared-comp-advisor-state-folder-id>"
+  visibility: private
+
+recommendation_source:
+  type: compensation-advisor
+  engagement_slug: pharmacy-fy26
+  scenario_locked: true
+  pasted_summary: null
+
+languages:
+  primary: fr-ca
+  secondary: en
+  glossary_source: vocabulary/fr-ca-glossary.yaml
+
+artifacts:
+  - artifact_type: all-hands-announcement
+    speaker: chro
+    audience: [all_employees]
+    channel: [email, intranet]
+    formats: [html, pdf]
+    languages: [fr-ca, en]
+    current_version: 1
+    approval_stage: drafted
+    last_drafted: null
+    last_drift_check_against_recommendation_revision: null
+
+  - artifact_type: manager-faq
+    speaker: chro
+    audience: [people_managers]
+    channel: [docx_distributable]
+    formats: [docx]
+    languages: [fr-ca]
+    current_version: 1
+    approval_stage: drafted
+    last_drafted: null
+    last_drift_check_against_recommendation_revision: null
+
+  - artifact_type: hrbp-enablement-memo
+    speaker: chro
+    audience: [hrbps]
+    channel: [docx_distributable]
+    formats: [docx]
+    languages: [fr-ca, en]
+    current_version: 1
+    approval_stage: drafted
+    last_drafted: null
+    last_drift_check_against_recommendation_revision: null
+
+  - artifact_type: exec-one-pager
+    speaker: chro
+    audience: [exec_board]
+    channel: [pptx_distributable]
+    formats: [pptx]
+    languages: [en]
+    current_version: 1
+    approval_stage: drafted
+    last_drafted: null
+    last_drift_check_against_recommendation_revision: null
+
+approval_stages:
+  - drafted
+  - chro_review
+  - legal_review
+  - ceo_approved
+  - shipped
+
+branding:
+  org_slug: acme
+  regenerate_at_draft: true
+
+training_handoff:
+  enabled: false
+  message_map_path: null

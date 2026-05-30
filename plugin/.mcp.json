@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "market": {
+      "type": "http",
+      "url": "https://mcp.dallaire-jette.com/mcp/rpc",
+      "headers": { "Authorization": "Bearer ${MARKET_INTEL_TOKEN}" }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+--
+<VP Name>
+Vice-President, Operations | Vice-president, Operations
+<Division or Banner Name>, <Company Name>
+<City>, <Province>
+
+Pour les questions operationnelles: contactez votre directeur de district.
+For operational questions: contact your district manager.
+
+Ce message est confidentiel. Si vous l'avez recu par erreur, veuillez le supprimer et en aviser l'expediteur.
+This message is confidential. If received in error, please delete it and notify the sender.

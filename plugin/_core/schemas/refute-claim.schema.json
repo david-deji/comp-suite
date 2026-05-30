@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "refute-claim.schema.json",
+  "title": "refute-claim verdict (Phase 1)",
+  "description": "One skeptic's verdict on one flagged claim, returned by the refuter agent and collected by _core/primitives/refute-claim.md (SPEC-workflow-phase1.md § 4). refute-claim is the pre-Write adversarial-verify gate: it fires before a branded-text deliverable is written, on the [PROXY]/[ESTIMATED] (market) and [statutory] claims scope-detected in the draft, and routes each paid evidence-fetch through budget-check per-call (invariant #1). FLAG / BLOCK only — there is no replacement_text field and additionalProperties:false makes adding one a hard validation failure; a wrong citation is resolved by the founder against a verified source, never by LLM synthesis (the FLAG-only boundary, structurally enforced). Statutory evidence is the shared {url, quote} statutory-evidence schema ($ref, F6) so 'what counts as statutory evidence' cannot drift across refute-claim (Phase 1), thinker-return (Phase 2), and close-validation (Phase 3). Market evidence is flat (retrieved_value + evidence_url + retrieved_at) — a market datum is a value, not a verbatim quote, so it does not use the statutory-evidence shape. Invariant #5: a statutory 'confirmed' requires a non-empty statutory_evidence.quote; a market 'confirmed' requires a non-null retrieved_value. A 'confirmed' carrying no evidence artifact is asserted-but-not-confirmed and the orchestrator re-maps it to 'unverifiable' ('skeptics failed to refute' is never verification) — an orchestrator post-check kept off the schema (A1: a draft-07 if/then would be brittle; the house pattern is orchestrator post-check, same as intent-classification mode-membership and close-validation's quote check). additionalProperties:false at this level and inside the $ref'd statutory_evidence so a smuggled field fails structurally at both levels.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["claim", "claim_class", "verdict", "lens"],
+  "properties": {
+    "claim": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The flagged claim under test — the tagged token plus its associated number/citation on the same line/sentence (scope detection, SPEC § 5). Verbatim from the draft; the orchestrator matches the verdict back to the claim by this text."
+    },
+    "claim_class": {
+      "type": "string",
+      "enum": ["market", "statutory"],
+      "description": "market = a [PROXY]/[ESTIMATED] pay/market figure verified against a fetched counter-source (market-data $0 / perplexity-ask $0.03). statutory = a [statutory] CNESST/equity citation verified against the fetched verbatim text of the cited article (WebFetch statute-fetch $0 / perplexity-ask $0.03 fallback). The class selects the evidence tool, the fan-out (statutory N=3, market N=2), the model tier (statutory→Opus, invariant #6b), and the enforcement row (SPEC § 6)."
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["confirmed", "disputed", "unverifiable", "fetch_failed"],
+      "description": "confirmed = fetched evidence agrees (statutory: verbatim quote matches the cited article; market: counter-source agrees within tolerance) — REQUIRES an evidence artifact (see invariant #5 below). disputed = fetched evidence contradicts the claim. unverifiable = no evidence source found (statutory: no URL and ask fallback empty; market: no counter-source) → BLOCK for statutory, downgrade-to-[UNVERIFIED] for market (never PASS — absence of refutation is not verification). fetch_failed = a URL was present but the fetch errored/timed out — distinct from disputed; a flaky network must not demote a correct citation (SPEC § 6)."
+    },
+    "lens": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Which perspective-diverse lens produced this verdict. statutory lenses: jurisdiction, recency, verbatim-match. market lenses: pricing-source, recency (SPEC § 8). Distinct lenses on the same claim catch failure modes redundancy cannot; the orchestrator aggregates the per-lens verdicts per claim (SPEC § 6)."
+    },
+    "statutory_evidence": {
+      "$ref": "statutory-evidence.schema.json",
+      "description": "Statutory claims only: the {url, quote} artifact backing the verdict (shared statutory-evidence schema, F6). A non-empty quote (verbatim text fetched from url) licenses a 'confirmed' reading; an EMPTY quote is asserted-but-not-confirmed (invariant #5) and the orchestrator re-maps a 'confirmed' carrying no non-empty quote to 'unverifiable'. Omitted for market claims (which use retrieved_value) and legitimately absent on a statutory 'unverifiable'/'fetch_failed'."
+    },
+    "retrieved_value": {
+      "type": ["string", "number", "null"],
+      "description": "Market claims only: the counter/confirming datum fetched from the counter-source (e.g. a P50 figure). Non-null is the market analogue of a non-empty statutory quote — a market 'confirmed' with retrieved_value null is re-mapped to 'unverifiable' (invariant #5). null for statutory claims and for a market 'unverifiable'."
+    },
+    "evidence_url": {
+      "type": ["string", "null"],
+      "description": "Market claims only: the counter-source URL retrieved_value was fetched from. (For statutory claims the URL lives in statutory_evidence.url — the shared contract — not here.) null when no counter-source was found."
+    },
+    "retrieved_at": {
+      "type": ["string", "null"],
+      "description": "Market claims only: ISO-8601 timestamp the counter-source datum was fetched, so the recency lens and the [WEB-VERIFIED <date>] tag carry a real retrieval date. null when nothing was fetched."
+    },
+    "recommended_tag": {
+      "type": "string",
+      "enum": ["[statutory]", "[WEB-VERIFIED]", "[UNVERIFIED]", "[professional-judgment]", "[DISPUTED]"],
+      "description": "Advisory only — the tag the skeptic suggests the claim should carry after verification (the founder, not the gate, applies it; tag propagation is orchestrator-owned per SPEC § 6). A recommendation, never an auto-applied edit; the FLAG-only boundary means the gate never rewrites the deliverable."
+    }
+  }
+}

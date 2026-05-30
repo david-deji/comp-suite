@@ -1,0 +1,71 @@
+schema_version: 1
+# PDF page metadata for comp-comms-builder artifacts rendered to PDF.
+# Used by /draft and /cascade when generating PDF-format artifacts.
+# Org-specific overrides: copy to branding/<org-slug>/comms-templates/pdf-master.yaml
+# and update the placeholder fields.
+
+page:
+  size: letter
+  # letter = 8.5 x 11 in (standard Canadian office; ISO A4 accepted if org is EU-aligned)
+  orientation: portrait
+  margins:
+    top_in: 1.0
+    bottom_in: 1.0
+    left_in: 1.0
+    right_in: 1.0
+
+typography:
+  font_family: "Calibri"
+  # Replace with org font family after /brand init (e.g., "Arial", "Source Sans Pro")
+  base_font_size_pt: 11
+  heading_1_pt: 18
+  heading_2_pt: 14
+  heading_3_pt: 12
+  line_spacing: 1.15
+  paragraph_spacing_after_pt: 6
+
+header:
+  enabled: true
+  text_left: "<Artifact Type> — <Cycle Name>"
+  text_center: ""
+  text_right: "<Org Name>"
+  font_size_pt: 9
+  border_bottom: true
+  logo:
+    enabled: false
+    # Set true after /brand init populates branding/<org-slug>/logo.png
+    path: "branding/<org-slug>/logo.png"
+    height_in: 0.4
+    position: right
+
+footer:
+  enabled: true
+  text_left: "CONFIDENTIEL — CONFIDENTIAL"
+  text_center: "Page {page} / {total}"
+  text_right: "En vigueur / Effective: <effective-date>"
+  font_size_pt: 9
+  border_top: true
+
+branding:
+  primary_color_hex: "#003087"
+  # Replace with org primary brand color after /brand init.
+  # Used for H1 heading color and header border.
+  secondary_color_hex: "#F2A900"
+  # Replace with org secondary brand color.
+  # Used for callout-box background (if any).
+  accent_color_hex: "#FFFFFF"
+  use_color_headings: true
+  use_color_header_border: true
+
+watermark:
+  enabled: false
+  # Set to true for DRAFT artifacts not yet in ceo_approved stage.
+  # Operator may enable via engagement-comms-config.yaml at engagement level.
+  text: "BROUILLON / DRAFT"
+  opacity: 0.15
+  diagonal: true
+
+output_notes:
+  - "PDF is generated from DOCX source via the bundled docx-to-pdf skill (see SPEC.md § 11)."
+  - "If PDF generation path is unavailable, DOCX-only distribution is the fallback."
+  - "For all-hands-announcement PDF: same content as HTML email; only wrapper changes."

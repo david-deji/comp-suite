@@ -1,0 +1,45 @@
+schema_version: 1
+audience_slug: hourly-union
+display_name: "Hourly Employees — Unionized"
+inheritance_layer: bundled
+# Layer 1: bundled default. Override per org in org-comms-profile.yaml audience_profiles.
+# Quebec retail / pharmacy context (generic; no org-specific detail).
+
+reading_level: grade-9
+# Target grade 9 (SMOG or Flesch-Kincaid equivalent). Short sentences. Active voice.
+# Avoid subordinate clauses. Spell out acronyms on first use.
+
+vocabulary: concrete
+# Prefer: paycheque, shift, store, your manager, effective date, hourly rate
+# Avoid: compensation philosophy, market positioning, grade band, merit matrix
+
+key_concerns:
+  - "What is my new hourly rate?"
+  - "When does the change appear in my paycheque?"
+  - "Does this affect my overtime rate?"
+  - "What if my rate is wrong?"
+  - "Who do I ask?"
+  - "Does this conflict with my collective agreement?"
+
+channel_preference:
+  - email
+  - intranet
+# Physical posting (bulletin board) is common for non-email-access employees;
+# not modeled in v1 (no artifact format for paper). Flag to operator if physical posting needed.
+
+key_message_framing:
+  lead_with: "Your rate and your date. State both in the first two sentences."
+  avoid: "Corporate-narrative framing before the concrete fact. Employees on the floor read the number first."
+  effective_date_prominence: high
+  cta_style: "Single: 'If you have questions, ask your department manager or HRBP.'"
+
+union_specific_notes:
+  - "Do not use the phrase 'merit increase' — union members interpret as discretionary; use 'wage scale increase'."
+  - "Do not imply the increase is a reward for individual performance — CBA increases are contractual."
+  - "Grievance language: never mention the grievance process in an all-hands announcement. Reserve for HRBP memo."
+  - "Ratification: if increase was ratified via CBA, acknowledge it ('as ratified in your collective agreement')."
+
+accessibility_notes:
+  - "For bilingual workplaces: FR-CA leads; EN follows in the same artifact or as a parallel document."
+  - "Plain-language FR-CA preferred over formal register."
+  - "Avoid idioms that do not translate cleanly (e.g., 'move the needle')."

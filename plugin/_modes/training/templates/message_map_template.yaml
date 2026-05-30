@@ -1,0 +1,116 @@
+# message_map_template.yaml — canonical scaffold for cycles/<engagement>/<cycle-slug>/message-map.yaml
+# Loaded by /ingest Workshop synthesis. Validated against the constraint: HRBP depth >= manager depth >= employee depth
+# on the same fact when all three are non-null. Execs see different cuts (depth-4 framing, not nested-deeper).
+#
+# Schema version: 1.
+
+schema_version: 1
+engagement_slug: <engagement-slug>     # required, matches engagement-training-config
+cycle_slug: <cycle-slug>               # required, e.g., "year-end-2026"
+ingested_at: <ISO timestamp>           # auto-populated
+
+# Sources actually consumed during /ingest. Each source had at least 1 message extracted.
+sources:
+  - id: <source-id>                    # operator-supplied identifier (typically the filename or a short slug)
+    type: transformation_brief | process_doc | policy_pdf | prior_pptx
+    path_or_drive_id: <path or Drive ID>
+    extracted_messages: <N>            # count of messages this source contributed
+
+# Messages — the canonical fact-set. Each entry is one message; per-audience framing nested.
+# Validation: every message has at least one audience with non-null depth.
+# Validation: HRBP depth >= manager depth >= employee depth on same fact, when all three are non-null.
+# Validation: every message has at least one evidence entry.
+# Validation: every message has redaction_status: clean (any flagged blocks the cycle from advancing to /generate).
+messages:
+  - id: msg-001                        # required, sequential or thematic
+    claim: <one-line fact>             # required, the headline-level factual statement
+    evidence:                          # required, ≥1 entry
+      - type: number | quote | policy_clause | market_datum
+        value: <inline value>
+        source_ref: <source-id from sources[]>
+    audiences:                         # at least one non-null depth required
+      employees:
+        depth: 1                       # null if not in scope for this audience
+        framing: <plain-language version>
+        anticipated_objections: []     # empty list valid; cascade prompts only relevant for managers
+        cascade_prompt: null           # always null for employees
+      managers:
+        depth: 2
+        framing: <manager-language version>
+        anticipated_objections:
+          - "Why this market and not [other]?"
+          - "How do I explain this to my team without committing to next cycle?"
+        cascade_prompt: "Ask your team: how do you understand the merit vs market split this cycle?"
+      hrbps:
+        depth: 3
+        framing: <HRBP-technical version>
+        edge_cases:
+          - <e.g., "When the employee is at top of band">
+          - <e.g., "When the team has mixed pay structures">
+        escalation_paths:
+          - <e.g., "Comp manager → VP People for cross-band exception">
+      execs:
+        depth: 4
+        framing: <exec-strategic version>
+        tradeoffs:
+          - <e.g., "Closing the gap to P50 vs preserving variable-pay envelope">
+        budget_framing: <e.g., "Adds X% to total payroll, offset by Y in variable-pay reduction">
+        governance: <e.g., "Approved by Comp Committee on YYYY-MM-DD">
+    redaction_status: clean             # clean | flagged
+    council_review: null                # populated post-/council per audience auto-fire (cycle-slug-audience-generate.yaml)
+
+  - id: msg-002
+    claim: <one-line fact>
+    evidence:
+      - { type: ..., value: ..., source_ref: ... }
+    audiences:
+      employees: { depth: null }       # employees do not see this fact
+      managers: { depth: 2, framing: ..., anticipated_objections: [...], cascade_prompt: ... }
+      hrbps: { depth: 3, framing: ..., edge_cases: [...], escalation_paths: [...] }
+      execs: { depth: null }           # execs do not see this fact either
+    redaction_status: clean
+    council_review: null
+
+  # Example: exec-only fact (tradeoffs / budget / governance)
+  - id: msg-003
+    claim: <budget-tradeoff statement>
+    evidence: [...]
+    audiences:
+      employees: { depth: null }
+      managers: { depth: null }
+      hrbps: { depth: null }
+      execs: { depth: 4, framing: ..., tradeoffs: [...], budget_framing: ..., governance: ... }
+    redaction_status: clean
+    council_review: null
+
+# Coverage gaps surfaced during /ingest scripted_close. Captured for awareness; not blocking.
+coverage_gaps:
+  - audience: <e.g., "execs">
+    gap: <e.g., "Only 2 depth-4 messages captured. Strategic framing may be thin.">
+    flagged_at: <YYYY-MM-DD>
+    resolved: false                    # operator may resolve later via /ingest --update or manual edit
+
+# Updated by /generate after each per-audience render
+audiences_rendered_for_this_message_map:
+  employees:
+    rendered_at: null
+    deck_path: null
+  managers:
+    rendered_at: null
+    deck_path: null
+  hrbps:
+    rendered_at: null
+    deck_path: null
+  execs:
+    rendered_at: null
+    deck_path: null
+  managers_cascade:
+    rendered_at: null
+    deck_path: null
+
+# Provenance — last update history
+last_updated:
+  by: /ingest
+  at: <ISO timestamp>
+  mode: self | directed-interview
+  raw_capture: discovery/<engagement>/<cycle-slug>/YYYY-MM-DD-ingest-<mode>.md
