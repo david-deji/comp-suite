@@ -128,20 +128,27 @@ mode.
 
 ---
 
-## Step 4 — Resolve org context
+## Step 4 — Resolve org context (MCP-primary, P4b)
+
+Under P4b the org is resolved from the caller's OAuth identity → `colleague_org_membership` →
+`org_id` by the `market` MCP server. There is no local `index.yaml` lookup on the primary path.
 
 Parse `--org <slug>` from invocation args if present.
 
-If not given:
-```bash
-INDEX="$STATE_ROOT/_orgs/index.yaml"
-```
+- `--org <slug>` given → confirm it with `engagement_get_master {org_slug}`. Success → use it. The
+  tool resolving no such org for the caller → "you are not a member of org '<slug>'" (membership is
+  an admin grant, P4b D4); stop.
+- Not given → call `engagement_get_master` with no `org_slug` → the caller's **default org**.
+  - Resolves an org → use it.
+  - No default / no membership → "No org is provisioned for your identity. New-org creation is an
+    admin step (private.orgs + colleague_org_membership bridge), not a comp-suite operation."; stop.
+  - Multiple memberships with no default → surface the membership slugs and ask which (there is no
+    over-the-wire org-list tool; the operator names the slug, then re-resolve via `--org`).
+- **Transport failure** (MCP unreachable) → FALLBACK to the local `index.yaml` cache to name the org
+  for a read-only session, and warn that schema writes are blocked until the server is reachable.
 
-- Index missing / empty → cold-start: "No orgs found. Enter a new org slug
-  (e.g. `acme-corp`):" — on input, call `master-yaml-ops.find_or_create_org`.
-- Index exists → list active orgs as numbered options + "N+1. Create new org".
-
-Read `$ASSET_ROOT/_core/primitives/master-yaml-ops.md` for `find_or_create_org` details.
+Read `$ASSET_ROOT/_core/primitives/master-yaml-ops.md` for `find_or_create_org` (read-via-MCP;
+create is admin-path, P4b D4).
 
 ---
 
@@ -150,31 +157,23 @@ Read `$ASSET_ROOT/_core/primitives/master-yaml-ops.md` for `find_or_create_org` 
 Parse `--engagement <id>` if present.
 ID format: `YYYY-Q[1-4]-<slug>` (e.g. `2026-Q2-comp-review`).
 
-If not given, list subdirectories of
-`$STATE_ROOT/_orgs/<slug>/engagements/` whose `engagement-state.yaml` has
-`status != closed`. Present as numbered list with phase + last_active. Offer
-"N+1. Create new engagement".
+If not given, list the org's engagements from the backend: `engagement_get_master {org_slug}`
+returns `cycles[]`, each carrying `cycle_slug`, `cycle_dir`, and `status`. Present the non-`closed`
+cycles as a numbered list (with status + the engagement id parsed from `cycle_dir`). Offer
+"N+1. Create new engagement". (There is no separate engagement-list tool; the master's cycles index
+is the authoritative list. On MCP transport failure, fall back to globbing local engagement dirs
+for a read-only picker.)
 
-On create new:
-1. Prompt for ID (suggest `YYYY-Q<N>-<short-slug>`)
-2. Create `$STATE_ROOT/_orgs/<slug>/engagements/<id>/`
-3. Write `engagement-state.yaml`:
-   - schema_version: "2.1.0"
-   - engagement_id: `<id>`
-   - org_slug: `<slug>`
-   - mode: `<current mode>`
-   - phase: start
-   - started_at: `<iso8601 now>`
-   - last_active: `<iso8601 now>`
-   - budget_usd: 5.00
-   - working_artifacts: []
-   - checkpoints: []
-   - council_topics: []
-   - pending_decisions: []
-   - industry_outsider: `<prompted below>`
-4. Prompt for `industry_outsider` from `$ASSET_ROOT/_core/council/perspectives.yaml`
-   `industry_outsider.options[]` using the selection_rule as guidance:
-   "pick the option closest-but-not-equal to the engagement's primary industry"
+On create new — **delegate to the `engagement-create` primitive** (do NOT inline-write
+`engagement-state.yaml`; that primitive writes the body to the backend via `engagement_put`):
+1. Prompt for ID (suggest `YYYY-Q<N>-<short-slug>`).
+2. Prompt for `industry_outsider` from `$ASSET_ROOT/_core/council/perspectives.yaml`
+   `industry_outsider.options[]` (selection rule: "closest-but-not-equal to the primary industry").
+3. Read `$ASSET_ROOT/_core/primitives/engagement-create.md` and apply it with
+   `{org_slug, engagement_id, mode: <current mode>, industry_outsider, budget_usd: "5.00"}`. It
+   writes the engagement body via `engagement_put` (backend), then scaffolds the LOCAL artifact tree
+   (inputs/deliverables/mode dirs) + empty `cost-log.jsonl`. No engagement schema state is written to
+   `$STATE_ROOT` here (P4b D2).
 
 ---
 

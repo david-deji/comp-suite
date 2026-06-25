@@ -1,186 +1,162 @@
 # Brand Kit Protocol
 
-Governs how brand kits are structured, resolved, scaffolded, and regenerated. Loaded by SKILL.md at Phase 6a entry (deck production) and on `/brand-kit init`.
-
-For the cross-asset resolution principle (repo-first / bundled-fallback), see `library-resolution.md`. This file covers brand-kit-specific structure and lifecycle.
+Governs how brand kits are structured, resolved, written, and regenerated. Under P4b the brand kit is
+**backend state served by the `market` MCP server** (MIM-0041): theme (palette/typography/footnotes),
+render files (`build_template.js`, `masters/*.js`), and logos all live in the backend and are read via
+`brand_get_kit` / `brand_list_files` / `brand_get_file` and written via `brand_put_kit` / `brand_put_file`
+/ `brand_put_logo`. Local disk is used ONLY as a scratch materialization for `node` rendering — the server
+stores render templates as opaque text and never executes them (AG-B2). Loaded by SKILL.md at Phase 6a
+(deck production) and on `/brand-kit init`.
 
 ---
 
 ## Structure
 
-A brand kit is a directory under `branding/` in the persistence folder:
+A brand kit is a set of backend records for an org:
 
 ```
-branding/
-├── _default/                            # the seed kit, always present
-│   ├── build_template.js                # entry point — loads theme + masters, writes pptx
-│   ├── theme/
-│   │   ├── palette.json                 # color tokens (C lookup)
-│   │   ├── typography.json              # font tokens (F lookup) + size scales
-│   │   ├── logo.svg                     # vector logo
-│   │   ├── logo-large.png               # raster, on-light large
-│   │   ├── logo-small.png               # raster, on-light small (corner mark)
-│   │   ├── logo-white-large.png         # raster, on-dark large
-│   │   └── logo-white-small.png         # raster, on-dark small (corner mark)
-│   ├── masters/
-│   │   ├── _helpers.js                  # shared layout-tag, footer, corner-logo factories
-│   │   ├── 01-title.js                  # one file per slide master + demo
-│   │   ├── 02-toc.js
-│   │   └── ... (18 files total)
-│   └── footnotes.yaml                   # per-jurisdiction disclaimers, methodology language
-└── <org-slug>/                          # per-org override, only diverging files
-    └── (any subset of _default's structure)
+brand kit (org = <slug>, served by `market` MCP)
+├── theme            (brand_get_kit / brand_put_kit)
+│   ├── palette       — color tokens (C lookup), jsonb
+│   ├── typography    — font tokens (F lookup) + size scales, jsonb
+│   └── footnotes     — per-jurisdiction disclaimers / methodology, raw text
+├── render files     (brand_list_files / brand_get_file / brand_put_file) — opaque text, never executed server-side
+│   ├── build_template.js   — entry point: loads theme + masters, writes pptx (run LOCALLY)
+│   ├── masters/_helpers.js — shared layout/footer/corner-logo factories
+│   └── masters/NN-*.js      — one file per slide master (+ demo)
+└── logos            (brand_put_logo; metadata in brand_get_kit) — 5 variants in Supabase Storage
+    ├── logo.svg, logo-large.png, logo-small.png, logo-white-large.png, logo-white-small.png
 ```
 
-The bundle ships a complete `_default` at `template_assets/branding/_default/`. The repo's `branding/_default/` is created on first `/brand-kit init` and seeded from the bundle. Per-org kits are created via `/brand-kit init <org-slug>` and contain ONLY the files that diverge from `_default`.
+The `_default` seed kit ships bundled at `$ASSET_ROOT/_modes/advisor/templates/branding/_default/`. A new
+org's kit is seeded into the backend from that bundle on first provisioning (admin/import path); per-org
+edits are written back via `brand_put_*`.
+
+---
+
+## Storage posture (P4b)
+
+- **Canonical store = the `market` backend.** Reads: `brand_get_kit` (theme + file index + logo metadata),
+  `brand_list_files` (render-file paths + versions), `brand_get_file {file_path}` (one file's content).
+  Writes: `brand_put_kit` (theme, optimistic `expected_version`), `brand_put_file {file_path, content,
+  expected_version}` (one render file), `brand_put_logo` (a logo variant → Storage).
+- **Local disk = render scratch only.** Regeneration materializes the kit's files to a temp dir to run
+  `node build_template.js`; that scratch is disposable, never the source of truth.
+- **MCP-primary, transport-only fallback** (P4b D1): a tool *not-found* is authoritative (the file/kit
+  doesn't exist in the backend); only a *transport* failure falls back to reading a local cached copy, and
+  brand WRITES are blocked while MCP is unreachable (P4b D2 — no local-and-reconcile).
 
 ---
 
 ## Override granularity
 
-Each file in a brand kit is independently overridable:
+Each record is independently overridable in the backend:
 
-- **Theme JSONs (`palette.json`, `typography.json`)**: deep-merge override. The org file may declare only the keys that diverge; missing keys inherit from `_default`. Example: `branding/acme/theme/palette.json` with just `{"green": "00A36C", "deepPurple": "1E3A8A"}` overrides those two colors and inherits the rest.
-- **Logo files**: full-file replacement. The org logo, when present, replaces the default entirely. All five logo variants should be provided as a set (or all five fall back to `_default`); mixing org logos with default logos creates visual inconsistency.
-- **Master JS files**: full-file replacement per master. Override `01-title.js` to change the cover slide; the other 17 masters continue to inherit from `_default`. The override file must export the same `register({pres, C, F, helpers, logoPaths})` contract as the default.
-- **`footnotes.yaml`**: full-file replacement. The org file, when present, replaces the default entirely; the user is responsible for including all required disclaimer keys.
-- **`build_template.js`**: NOT typically overridden. The entry point resolves theme + masters from the right paths automatically. Override only if the org needs a fundamentally different render flow (rare; most use cases are covered by overriding masters).
+- **Theme (`palette` / `typography`)**: deep-merge semantics are applied client-side before
+  `brand_put_kit`; store the merged result. Footnotes are raw text, full replacement.
+- **Render files (`masters/NN-*.js`, `build_template.js`)**: full-content replacement per file via
+  `brand_put_file`. An override master must export the same `register({pres, C, F, helpers, logoPaths})`
+  contract.
+- **Logos**: full replacement via `brand_put_logo`; provide all five variants as a set (or none — they
+  fall back to `_default`); mixing org + default logos creates visual inconsistency.
+- **`build_template.js`**: rarely overridden; the entry point resolves theme + masters by path.
 
 ---
 
 ## Master snippet contract
 
-Every file under `masters/` (except `_helpers.js`) must export a function `register({pres, C, F, helpers, logoPaths})` that:
+Every file under `masters/` (except `_helpers.js`) must export `register({pres, C, F, helpers, logoPaths})` that:
 
-1. Calls `pres.defineSlideMaster({...})` once with a `title` matching the file's layout (e.g., `"01_TITLE"` for `01-title.js`).
-2. Optionally adds a demo slide via `pres.addSlide({masterName: "01_TITLE"})`. Demo slides illustrate intended usage and ship in the generated template; they are deleted by the author when starting a real deck.
-3. Reads brand tokens from the `C` (palette) and `F` (typography) lookups passed in — does not hardcode colors or fonts.
-4. Reads logo paths from the `logoPaths` object — does not hardcode paths.
-5. Reads helper factories from the `helpers` object (`cornerLogo`, `cornerLogoWhite`, `makeLayoutTag`, `makeLayoutTagWhite`, `makeFooter`, `makeFooterWhite`, `masterObjects`, `addTitleSubtitle`).
+1. Calls `pres.defineSlideMaster({...})` once with a `title` matching the file's layout (e.g. `"01_TITLE"`).
+2. Optionally adds a demo slide via `pres.addSlide({masterName: "01_TITLE"})`.
+3. Reads brand tokens from the `C` (palette) and `F` (typography) lookups — never hardcodes colors/fonts.
+4. Reads logo paths from `logoPaths` — never hardcodes paths.
+5. Reads helper factories from `helpers` (`cornerLogo`, `cornerLogoWhite`, `makeLayoutTag`,
+   `makeLayoutTagWhite`, `makeFooter`, `makeFooterWhite`, `masterObjects`, `addTitleSubtitle`).
 
-The contract is deliberately narrow: a master file does not have access to the file system, environment variables, or other masters. This isolation makes per-file overrides safe.
+The contract is deliberately narrow: a master file has no access to the file system, env, or other
+masters. This isolation makes per-file overrides safe — and is why the backend can store them as opaque
+text and let comp-suite execute them locally.
 
 ---
 
 ## `/brand-kit init <org-slug>`
 
-Scaffolds a new brand kit under `branding/<org-slug>/` in the persistence folder.
+Scaffolds a new org brand kit in the backend.
 
-**Behavior:**
+1. Resolve the org via `engagement_get_master {org_slug}` (must be provisioned — admin path, P4b D4).
+2. Confirm the org has no brand kit yet: `brand_get_kit {org_slug}` returns an empty/`found:false` theme.
+   If a kit exists → "Org kit already exists. Edit via `brand_put_*`, or reset deliberately." Abort.
+3. Seed from the bundled `_default` (`$ASSET_ROOT/_modes/advisor/templates/branding/_default/`):
+   - `brand_put_kit {org_slug, palette, typography, footnotes, expected_version: 0}` from the default theme.
+   - For each default render file: `brand_put_file {org_slug, file_path, content, expected_version: 0}`.
+   - For each of the 5 logo variants: `brand_put_logo {org_slug, ...}`.
+4. Surface: "Brand kit for <org-slug> seeded in the backend. Override a master with `brand_put_file`
+   (path `masters/NN-*.js`); override theme with `brand_put_kit`. Engagements with
+   `engagement.config.brand.org_slug: <org-slug>` use this kit."
+5. Do NOT regenerate a deck — that happens on the next engagement that uses the kit.
 
-1. Verify persistence backend is `google-drive`. If `paste-mode` or `google-drive-misconfigured`, surface error and abort.
-2. Verify `branding/_default/` exists in the repo. If not, seed it from the bundled `template_assets/branding/_default/` first (one-time auto-seed) and commit as a separate `seed _default brand kit from bundle` commit.
-3. Verify `branding/<org-slug>/` does NOT already exist. If it does, surface "Org kit already exists at branding/<org-slug>/. Use direct file edit to modify, or `/brand-kit reset <org-slug>` to start over." Abort.
-4. Scaffold the divergence-points only:
-   - `branding/<org-slug>/theme/palette.json` with placeholder content: `{"_meta": {"name": "<org-slug> palette", "inherits_from": "_default"}, "green": "<HEX>", "deepPurple": "<HEX>"}` and a comment header explaining override semantics.
-   - `branding/<org-slug>/theme/logo-placeholder.txt` with instructions: "Drop logo.svg, logo-large.png, logo-small.png, logo-white-large.png, logo-white-small.png here. All five required as a set."
-   - `branding/<org-slug>/footnotes.yaml` with placeholder content showing the schema.
-   - `branding/<org-slug>/_README.md` explaining the override pattern, listing which files exist, and pointing to `branding/_default/` for the master JS files that haven't been overridden.
-5. Commit the scaffold via `Drive batch write` as a single write: `branding: init <org-slug> kit`.
-6. Surface to user: "Brand kit branding/<org-slug>/ scaffolded. Edit theme/palette.json + drop logo files to customize. To override a slide master, copy the file from `_default/masters/` to `<org-slug>/masters/` and edit. Engagements that set `engagement.config.brand.org_slug: <org-slug>` will use this kit."
-7. Do NOT regenerate any deck — that happens on the next engagement that uses the kit.
+Writes are MCP-only (P4b D2); on transport failure, escalate — never write a local kit.
 
 ---
 
 ## Regeneration discipline (Phase 6a)
 
-At Phase 6a entry, the skill regenerates the brand template fresh from `build_template.js` rather than using a cached PPTX. This is the load-bearing reason no bundled PPTX exists post-Batch E.
+At Phase 6a entry, regenerate the brand template fresh from the backend kit — no cached PPTX.
 
 **Sequence:**
 
 1. Resolve `brand.org_slug` from engagement config (default `_default`).
-2. Run the regeneration in the Claude.ai scratch space:
-   - `cd` to a temp working dir.
-   - Copy `branding/_default/` from the bundle (or fetch from repo via Google Drive (Claude.ai connector) `get_repository_content` recursively).
-   - If `org_slug != _default`, fetch `branding/<org_slug>/` overlay on top.
-   - Set `ORG=<org-slug>` env var.
-   - Run `node build_template.js`.
-   - Read the produced PPTX as the engagement's brand template.
-3. Surface to user the regenerated template: "Brand template regenerated from <org_slug> kit. <N> overrides applied: <list>."
-4. Proceed with Phase 6 deck assembly using the regenerated template as base.
+2. Materialize the kit to a local scratch dir:
+   - `brand_list_files {org_slug}` → the render-file paths.
+   - For each path: `brand_get_file {org_slug, file_path}` → write its content into `scratch/branding/<slug>/<path>`.
+   - `brand_get_kit {org_slug}` → write `theme/palette.json`, `theme/typography.json`, `footnotes.yaml`,
+     and fetch the 5 logo files (from the Storage URLs in the kit's logo metadata) into `theme/`.
+3. `cd scratch/branding/<slug>` ; set `ORG=<org-slug>` ; run `node build_template.js`. **Render runs
+   LOCALLY** — the server stores templates as opaque text and never executes them (AG-B2 / INV-02).
+4. Read the produced PPTX as the engagement's brand template; surface "Brand template regenerated from
+   <org_slug> kit (<N> files materialized)."
 
 **Failure handling:**
 
-- **`node` not available in scratch space**: surface "Cannot regenerate brand template — Node.js not available. Falling back to manual deck construction without master inheritance." This is a degraded mode; the deck will not have the brand kit's slide masters. User is told explicitly.
-- **`pptxgenjs` install fails**: same degraded mode as above.
-- **A master file throws on `register()`**: surface the offending filename + error message: "Master `<filename>` failed during regeneration: <error>. Fix the file in branding/<org_slug>/masters/ and retry." Do NOT fall back to a stale PPTX (none exists). Do NOT skip the master and continue (would produce a broken deck).
-- **Theme JSON parse error**: surface filename + JSON error position. Same fail-loud discipline.
-- **Missing logo file**: surface "Logo `<path>` not found in branding/<org_slug>/theme/. Falling back to `_default` logo for this variant." This IS a soft fallback because logos are non-critical to deck structural integrity.
+- **MCP unreachable**: if a local materialization from a prior run exists, warn and render from it
+  (read-cache, P4b D1); else escalate "cannot regenerate — backend unreachable and no local materialization."
+- **`node` / `pptxgenjs` unavailable in scratch**: degraded mode — "Cannot regenerate — Node.js not
+  available; falling back to manual deck construction without master inheritance." (told explicitly).
+- **A master throws on `register()`**: surface the filename + error; fix in the backend via `brand_put_file`
+  and retry. Do NOT skip the master (broken deck) or fall back to a stale PPTX (none exists).
+- **Theme JSON parse error**: surface filename + JSON position; same fail-loud discipline.
+- **Missing logo variant**: soft fallback to the `_default` logo for that variant (logos are non-critical to
+  structural integrity).
 
 ---
 
-## Drift between repo `_default` and bundled `_default`
+## Primitive contract
 
-Over time, the bundled `_default` may evolve (new master added, palette refresh, helpers refactor). The repo's `branding/_default/` was seeded from the bundle on first `/brand-kit init` and does not auto-update.
-
-**Drift surfacing:**
-
-At Phase 0 loaded-config summary, when `branding/_default/` exists in the repo, the skill compares its file list against the bundled `template_assets/branding/_default/` and surfaces:
-
-```
-Brand kit drift:
-  Repo _default: 18 masters, palette v2, typography v2
-  Bundle _default: 19 masters (NEW: 19-comparison-matrix.js), palette v2, typography v2
-  → Run `/brand-kit refresh _default` to merge bundle additions (preserves your overrides).
-```
-
-The user opts in to refresh; the skill never auto-merges. Refresh logic: bundle files NOT in repo are added; bundle files that ARE in repo are NOT touched (preserves user customization to `_default`).
-
----
-
-## Done criteria
-
-A brand kit implementation is complete when:
-
-- [ ] Phase 6a regenerates `<ORG>_Comp_Deck_Template.pptx` from the resolved brand kit before deck assembly
-- [ ] `/brand-kit init <org>` scaffolds `branding/<org>/` with placeholder palette + logo instructions + README
-- [ ] An override of `branding/<org>/masters/01-title.js` produces a deck with the new cover; other masters inherit from `_default`
-- [ ] An override of `branding/<org>/theme/palette.json` with partial keys deep-merges over `_default`'s palette
-- [ ] Drift between repo `_default` and bundled `_default` is surfaced at Phase 0 with a `refresh` recommendation
-- [ ] Master regen failure surfaces the filename + error; does NOT fall back to a stale PPTX
-- [ ] No bundled `Comp_Deck_Template.pptx` exists in the .skill bundle
+- **Inputs:** `(org_slug)`
+- **Outputs:** parsed `palette` dict + `typography` dict + `footnotes` + render-file index + logo metadata
+  (all from `brand_get_kit` / `brand_list_files`), plus a render block string for prompt injection.
+- **Reads:** `brand_get_kit` / `brand_list_files` / `brand_get_file` (MCP-primary; local scratch is a
+  transport-failure read cache only).
+- **Writes:** `brand_put_kit` / `brand_put_file` / `brand_put_logo` (MCP-only; escalate on transport failure).
+- **Asserts:** theme present (palette + typography); warns if logos missing; ERRORS if `masters/` index is
+  empty AND mode is advisor.
+- **Render block:** prompt-injectable summary of palette key colors + typography heading/body + active
+  footnote keys.
 
 ---
 
 ## Anti-patterns
 
-1. **Caching the regenerated PPTX between engagements.** Each engagement regenerates fresh; brand kits change, masters get edited, the cost of regen is small (~2 sec) compared to the cost of a stale brand deck.
-2. **Copying all 18 master files into a new org kit.** Override only what diverges; let `_default` carry the rest. Copying everything fragments maintenance — when `_default` adds a new master, the org kit doesn't get it automatically.
-3. **Mixing org-specific content into bundled `_default`.** The bundled `_default` ships with the skill and is read-only at runtime. Persist customizations to the repo (`branding/_default/` after a `/brand-kit init` seeds it) — never modify the bundle in place.
-4. **Hardcoded colors in master JS files.** Always read from the `C` lookup. A hardcoded `"#4AA447"` in `01-title.js` makes per-org palette overrides impossible.
-5. **Master file with side effects beyond `register()`.** A master file should not write files, fetch URLs, or read environment variables (other than what the entry point passes in). Side effects break the snippet contract and make per-file overrides unsafe.
-6. **`/brand-kit init` against an existing org-slug.** The command must abort, not overwrite. Overwriting silently loses customization the user spent time on.
-
----
-
-## v2 path adaptation (appended on port)
-
-This file is a verbatim port of v1 `_shared/references/brand-kit-protocol.md` (commit `47cfd1e`). The body above describes v1 paths; resolve them in v2 as:
-
-| v1 reference | v2 destination |
-|---|---|
-| `branding/_default/` (the bundled seed) | `$ASSET_ROOT/_modes/advisor/templates/branding/_default/` |
-| `branding/<org-slug>/` (per-org override) | `$STATE_ROOT/_orgs/<slug>/brand/` |
-| `template_assets/branding/_default/` | `$ASSET_ROOT/_modes/advisor/templates/branding/_default/` (same as seed) |
-| `library-resolution.md` (cross-ref) | `$ASSET_ROOT/_modes/advisor/references/library-resolution.md` |
-| The persistence folder root | `$STATE_ROOT/_orgs/<slug>/` |
-
-### Org-creation seeding flow
-
-When the orchestrator's `engagement-create` primitive runs `find_or_create_org(<slug>)` and the org doesn't exist:
-
-1. Create `$STATE_ROOT/_orgs/<slug>/`
-2. `cp -r $ASSET_ROOT/_modes/advisor/templates/branding/_default/* $STATE_ROOT/_orgs/<slug>/brand/`
-3. Update `$STATE_ROOT/_orgs/index.yaml` per `orgs-index.schema.json`
-4. Initialize `master.yaml` skeleton
-
-Per-org overrides happen by editing files inside `$STATE_ROOT/_orgs/<slug>/brand/` after creation. The `branding/<org-slug>/` overlay pattern from v1 is collapsed in v2: each org gets a complete brand directory (no `_default` fallback at runtime), seeded once from the advisor template.
-
-### Primitive contract
-
-- **Inputs:** `(org_slug)`
-- **Outputs:** brand directory path + parsed `palette.json` dict + parsed `typography.json` dict + parsed `footnotes.yaml` dict + render block string for prompt injection
-- **Resolves:** `$STATE_ROOT/_orgs/<slug>/brand/`
-- **Asserts:** `theme/palette.json`, `theme/typography.json`, `footnotes.yaml` exist; warns if logos missing; ERRORS if `masters/` is missing AND mode is advisor
-- **Render block:** prompt-injectable summary of palette key colors + typography heading/body + active footnote keys
-- **Schema:** validates per-org brand directory presence against `$ASSET_ROOT/_core/schemas/brand-kit.schema.json`
+1. **Caching the regenerated PPTX between engagements.** Each engagement regenerates fresh from the backend
+   kit; the cost is ~2 s vs. a stale brand deck.
+2. **Writing brand state to `$STATE_ROOT`.** Under P4b the backend owns the kit; local is render scratch
+   only. A local brand edit diverges from the backend (the failure P4a ended).
+3. **Falling back to local on a brand-tool *not-found*.** Not-found is authoritative (the file doesn't
+   exist in the backend); only a transport failure uses the local materialization.
+4. **Hardcoded colors in master JS.** Always read from `C`. A hardcoded hex makes per-org palette overrides
+   impossible.
+5. **A master file with side effects beyond `register()`** (file/env/network). Breaks the snippet contract
+   and the server's opaque-text storage model.
+6. **`/brand-kit init` against an org that already has a kit.** Abort, don't overwrite — overwriting loses
+   customization.

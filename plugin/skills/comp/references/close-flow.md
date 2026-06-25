@@ -5,18 +5,22 @@
 
 ## `/comp close <id>` — validate-then-write, idempotent
 
-### Step 1 — Read inputs (no writes yet)
+### Step 1 — Read inputs (MCP-primary, no writes yet)
 
-```bash
-ORG=$(yq '.org_slug' "$STATE_ROOT/_orgs/*/engagements/$id/engagement-state.yaml")
-ENG_DIR="$STATE_ROOT/_orgs/$ORG/engagements/$id"
+Read the schema state from the backend (P4b); the local `$ENG_DIR` is still needed for the LOCAL
+close steps (ledger, archive, friction) and for the proposed-master scratch file.
 
-# Read engagement-state, master, working artifacts, pending decisions
-state=$(yq '.' "$ENG_DIR/engagement-state.yaml")
-master=$(yq '.' "$STATE_ROOT/_orgs/$ORG/master.yaml")
+```
+ORG       = <--org slug, or the default org from engagement_get_master>
+state     = engagement_get {org_slug: ORG, engagement_id: id}        # body + its version
+master    = engagement_get_master {org_slug: ORG}                    # header + sections + cycles + decision_log
+ENG_DIR   = "$STATE_ROOT/_orgs/$ORG/engagements/$id"                 # local artifacts only
 ```
 
-If any input is missing, exit non-zero with a clear message. Do NOT touch state.
+- `engagement_get` `found:false` → exit non-zero "engagement '<id>' not found in backend". Do NOT touch state.
+- transport failure → exit non-zero "MCP unreachable — cannot close (schema writes require the backend, P4b D2)".
+
+Keep the section/decision/cycle **versions** from `master` for the optimistic writes in Step 5a.
 
 ### Step 2 — Build proposed master.yaml IN MEMORY
 
@@ -134,12 +138,28 @@ informs it; it never auto-corrects `master.yaml` and never auto-advances past th
 
 Each sub-step writes a checkpoint to `$ENG_DIR/close-progress.yaml` so re-run after crash picks up where it left off.
 
-5a. **Atomic master.yaml write**:
-```bash
-mv "$ENG_DIR/proposed-master.yaml.tmp" "$STATE_ROOT/_orgs/$ORG/master.yaml.new"
-mv "$STATE_ROOT/_orgs/$ORG/master.yaml.new" "$STATE_ROOT/_orgs/$ORG/master.yaml"
-```
-Checkpoint: `status: master_written, last_step: 5a`.
+5a. **Commit the proposed master to the backend** (P4b — MCP-only, no local master.yaml write).
+Push the deltas computed in Step 2 to the `market` server via the deployed tools (optimistic
+concurrency: pass the version read in Step 1; on a stale-reject, re-read and retry once, never force):
+
+- For each NEW `decision_log[]` entry (not already present by `id`):
+  `engagement_append_decision {org_slug: ORG, timestamp, skill, decision_type, summary,
+  cycle_slug (or null), tags, id (optional), refs}` — append-only, idempotent on `id`.
+- For the active mode's section update:
+  `engagement_put_section {org_slug: ORG, section_name: <mode>, body: <proposed section>,
+  expected_version: <section version from Step 1>}`.
+- To close the cycle (status → `closed`):
+  `engagement_put_cycle {org_slug: ORG, cycle_slug, status: "closed", opened_date, opened_by_skill,
+  primary, cycle_dir, closed_date: <today>}` (upsert by `cycle_slug`).
+
+On any write transport failure → STOP and checkpoint `status: close_write_failed`; do NOT write a
+local `master.yaml` (P4b D2). Re-run `/comp close` when the server is reachable (idempotent: appended
+decisions are no-ops, section/cycle upserts converge). The `header.last_touched_*` advisory fields
+are not separately writable over the wire (no master-header tool, P4b D4); the server stamps activity
+on the section/decision writes.
+
+Checkpoint: `status: master_written, last_step: 5a`. (`proposed-master.yaml.tmp` is the inspection
+scratch the close-validation panel read in Step 4.5; it is not the source of truth — the backend is.)
 
 5b. **Append outcome to ledger** (idempotent — skip if engagement_id already present):
 ```bash
@@ -226,15 +246,18 @@ they log to stderr and continue.
 
 ## `/comp resume <id>`
 
-```bash
-ORG=$(yq '.org_slug' "$STATE_ROOT/_orgs/*/engagements/$id/engagement-state.yaml")
-ENG_DIR="$STATE_ROOT/_orgs/$ORG/engagements/$id"
+Read the engagement body from the backend (P4b); cost/spend stays on the local cost-log:
 
-# Surface state
-phase=$(yq '.phase' "$ENG_DIR/engagement-state.yaml")
-last=$(yq '.last_active' "$ENG_DIR/engagement-state.yaml")
-budget=$(yq '.budget_usd' "$ENG_DIR/engagement-state.yaml")
-spent=$(jq -s 'map(.est_cost) | add // 0' "$ENG_DIR/cost-log.jsonl" 2>/dev/null)
+```
+ORG    = <--org slug, or the default org from engagement_get_master>
+body   = engagement_get {org_slug: ORG, engagement_id: id}   # found:false → "not found in backend"; transport-fail → local-cache read
+phase  = body.phase
+last   = body.last_active
+budget = body.budget_usd            # decimal string
+```
+```bash
+ENG_DIR="$STATE_ROOT/_orgs/$ORG/engagements/$id"
+spent=$(jq -s 'map(.est_cost) | add // 0' "$ENG_DIR/cost-log.jsonl" 2>/dev/null)   # cost-log is LOCAL (P4b D3)
 spent=${spent:-0}
 pct=$(python3 -c "print(round(${spent}/${budget}*100, 1))")
 echo "Engagement: $ORG/$id"

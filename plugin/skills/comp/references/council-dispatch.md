@@ -16,11 +16,13 @@
 
 ## Procedure
 
-### 1. Read engagement-state for `industry_outsider`
+### 1. Read engagement-state for `industry_outsider` (MCP-primary, P4b)
 
-```bash
-io=$(yq '.industry_outsider' "$STATE_ROOT/_orgs/$ORG/engagements/$id/engagement-state.yaml")
 ```
+io = engagement_get {org_slug: ORG, engagement_id: id}.industry_outsider
+```
+(On MCP transport failure, fall back to the local cache:
+`yq '.industry_outsider' "$STATE_ROOT/_orgs/$ORG/engagements/$id/engagement-state.yaml"`.)
 
 If `industry_outsider` is null/missing — STOP. Per SPEC § 8, IO is mandatory for council. Surface to founder: "engagement-state.industry_outsider is unset. Council requires it. Pick: tech, pharma, nonprofit, public-sector, finance, manufacturing, retail, construction. Selection rule: closest-but-not-equal to engagement's primary industry."
 
@@ -118,9 +120,14 @@ Write the synthesis to:
 $STATE_ROOT/_orgs/<slug>/engagements/<id>/council/<topic-slug>/SYNTHESIS.md
 ```
 
-### 9. Update master.yaml decision_log
+### 9. Append the council decision to the backend decision log (P4b)
 
-If the council resulted in a decision, append a `decision-log-entry` per the schema. Use stable ID `dl-<engagement-id>-<seq>`. Reference the synthesis file in the entry.
+If the council resulted in a decision, append it via the MCP tool (not a local `master.yaml` write):
+`engagement_append_decision {org_slug: ORG, timestamp, skill, decision_type: "council_outcome",
+summary, cycle_slug (or null), tags, refs: {council_file: "<SYNTHESIS.md path>"}}`. Omit `id` to let
+the server assign the next monotonic `dl-NNN`, or pass an explicit `id` to re-drive idempotently.
+Append-only and idempotent on `id` (P4b D2). The per-thinker council files + SYNTHESIS.md remain LOCAL
+scratch under `$STATE_ROOT/.../council/` (non-schema artifacts, P4b D3).
 
 ## Cost shape
 
