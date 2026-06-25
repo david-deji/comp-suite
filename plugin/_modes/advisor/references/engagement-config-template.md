@@ -2,11 +2,11 @@
 
 The engagement config is a single YAML block users paste at session start (or build via Init mode). It captures durable inputs the skill reuses across phases — org context, audience archetypes, costing parameters, benchmark defaults, deck preferences, and council defaults.
 
-All nine sections (`persistence`, `engagement_scope`, `cycle`, `org`, `audience`, `costing`, `benchmark`, `deck`, `council`) are **optional**. Skill prompts for any section's data only when its phase needs that data and no config was provided. The `persistence` block is special — when absent and Google Drive (Claude.ai connector) is unavailable, the skill silently operates in paste mode; when absent but Google Drive (Claude.ai connector) is available with no `repo` specified, the skill prompts once for the repo to use.
+All eight sections (`engagement_scope`, `cycle`, `org`, `audience`, `costing`, `benchmark`, `deck`, `council`) are **optional**. Skill prompts for any section's data only when its phase needs that data and no config was provided. Persistence is **not** a config section in v2 — schema state persists automatically to the `market` backend (keyed to your authenticated login via org membership); there is no backend to select and no folder to name. See `references/persistence-and-ledger.md`.
 
 ### `engagement_mode` — Entry-time work-shape declaration
 
-The engagement config accepts an optional `engagement_mode` field at the top level (alongside the nine sections). Setting it at `/init` time declares the intended work shape upfront so partial-flow engagements do not have to retrofit their mode at Phase 5 or later.
+The engagement config accepts an optional `engagement_mode` field at the top level (alongside the eight sections). Setting it at `/init` time declares the intended work shape upfront so partial-flow engagements do not have to retrofit their mode at Phase 5 or later.
 
 ```yaml
 engagement_mode: full-engagement   # default when absent
@@ -28,17 +28,8 @@ Copy this block, fill the sections you want, paste at session start. Delete sect
 
 ```yaml
 # engagement-config — paste at session start
-
-# persistence selects the backend (google-drive vs paste) and points at the
-# private folder holding configs/, engagements/, ledger/, branding/, cba-library/,
-# survey-archive/, vocabulary/, personas/, quickbench-archive/.
-# Backend auto-detected at session start; this block forces a mode + names the repo.
-# Full contract: references/persistence-and-ledger.md.
-persistence:
-  last_verified: 2026-04-21
-  backend: google-drive                                  # google-drive | paste
-  folder: "comp-advisor-state"                   # private Google Drive folder (format: folder name or full Drive path)
-  folder_visibility: private                             # MUST be private — skill refuses to write to publicly shared folders
+# (persistence is automatic via the `market` backend in v2 — there is no persistence
+#  block to configure; see references/persistence-and-ledger.md)
 
 # engagement_scope defines the boundary of THIS engagement.
 # Rule of thumb: one engagement = one budget owner = one VP Ops (or equivalent).
@@ -449,38 +440,15 @@ Used by Track Council (strategic-decision deliberation mode). When absent, skill
 | `persona_voice_profiles` | map of persona-id → string | (none) | Framing overrides per persona |
 | `artifacts` | list of enum | `[council-state-yaml, council-memo-md]` | `council-state-yaml` always produced; `council-memo-md` only in memo mode |
 
-### `persistence` — Persistence backend
+### `persistence` — retired (v2)
 
-Used by every track (Init, /update, C, D, R, R-lite, Council, Quickbench) and every persistence-aware slash command (`/checkpoint`, `/resume`, `/ledger`, `/brand-kit`, `/persona`, `/glossary promote`, `/cba ingest`, `/survey ingest`) at session start. Drives backend selection (google-drive vs paste) and names the canonical persistence-repo location for `configs/`, `engagements/<slug>/`, `ledger/outcome-history.yaml`, `branding/`, `cba-library/`, `survey-archive/`, `vocabulary/`, `personas/`, `quickbench-archive/`. Full contract — repo layout, slug conventions, commit-message patterns, schema migration, atomic-commit discipline — lives in `references/persistence-and-ledger.md`.
-
-| Field | Type | Default | Notes |
-|-------|------|---------|-------|
-| `backend` | enum | `google-drive` | `google-drive` (full plan with auto-save via `google_drive_create_file` / `Drive batch write`) or `paste` (skill behavior unchanged from pre-Batch-B — paste config inline, accept artifacts via download). Skill auto-detects at session start by attempting a Google Drive `google_drive_search` call against `repo`; this field forces paste mode even when MCP is available (rare — useful for client demos or when the persistence folder is temporarily unreachable). |
-| `repo` | string | `comp-advisor-state` | Format: `owner/repo`. Holds `configs/`, `engagements/<slug>/`, `ledger/outcome-history.yaml`, `branding/`, `cba-library/`, `survey-archive/`, `vocabulary/`, `personas/`, `quickbench-archive/`. Layout per `references/persistence-and-ledger.md` § Repo layout. |
-| `folder_visibility` | enum | `private` | MUST be `private`. Skill calls Google Drive folder permissions check at session start and refuses to write if the repo is public — `council-state-*.yaml` may contain confidential persona reasoning, and Drive revision history retains anything committed even after deletion. Public repo at session start = stop with a clear error pointing the user to set the repo to private and re-run. |
-| `last_verified` | date | (none) | Per the standard `last_verified` convention. Skill warns when this section is >180 days stale — typical trigger is a repo rename or org migration that the config didn't reflect. |
-
-**Backend detection three-way outcome** (per `references/persistence-and-ledger.md` § Backend detection):
-
-| Outcome | Mode | Behavior |
-|---|---|---|
-| `google_drive_search` succeeds, repo accessible | **google-drive** | Full plan: read configs and ledger via MCP, commit at session end |
-| MCP available but repo not found / no access | **google-drive-misconfigured** | Surface error to user with setup pointer ("create `comp-advisor-state` and re-run, or paste config inline") |
-| Google Drive (Claude.ai connector) not installed / not authenticated | **paste mode** | Skill behavior unchanged — paste config at start, accept artifacts via download |
-
-Surface the active mode in the Phase 0 loaded-config summary as one line (e.g., "Persistence: google-drive at `comp-advisor-state`. 3 prior pharmacy cycles found in ledger.").
+There is no `persistence` config section in v2. Schema state — orgs, master sections, engagement bodies, cycles, the decision log, brand kits, costing — persists to the `market` MCP backend automatically, keyed to the authenticated login via org membership. There is no backend to select, no repo to name, no folder-visibility gate, and no paste-mode branch. Non-schema artifacts (deliverables, council scratch, `cost-log.jsonl`) stay under local `$STATE_ROOT`. On MCP transport failure, schema reads fall back to the local cache (degraded) and schema writes escalate/halt (P4b D1/D2). A legacy config carrying a `persistence:` block is ignored as a backend selector. Full contract: `references/persistence-and-ledger.md`.
 
 ---
 
 ## Worked example — Acme QC annual cycle
 
 ```yaml
-persistence:
-  last_verified: 2026-04-21
-  backend: google-drive
-  folder: "acme-comp-state"
-  folder_visibility: private
-
 org:
   last_verified: 2026-04-21
   name: "Acme Inc."
@@ -564,12 +532,6 @@ council:
 This block shows a council-focused engagement where the user wants strategic deliberation on an allocation question inside an approved envelope. Council mode is `integrated` — the output feeds Phase 4 scenario modeling and Phase 5 narrative.
 
 ```yaml
-persistence:
-  last_verified: 2026-04-21
-  backend: google-drive
-  folder: "acme-comp-state"
-  folder_visibility: private
-
 org:
   last_verified: 2026-04-21
   name: "Acme Inc."
@@ -632,12 +594,6 @@ Skill behavior with this config:
 ## Worked example — National multi-province engagement (Acme all-banner)
 
 ```yaml
-persistence:
-  last_verified: 2026-04-21
-  backend: google-drive
-  folder: "acme-comp-state"
-  folder_visibility: private
-
 org:
   last_verified: 2026-04-21
   name: "Acme Inc."
@@ -818,7 +774,7 @@ User should update the config OR the skill should web-search the current value a
 
 When parsing a pasted config:
 
-1. **Required keys per section**: `persistence` requires `repo` (skill auto-detects backend if `backend` unset; `folder_visibility` defaults to `private` and is enforced at session start via Drive folder permissions check). `engagement_scope` requires `budget_owner_role` and `scope_label`. `cycle` requires `cycle_name`, `effective_date`, and `current_stage`. `org` requires `name`. `costing` requires nothing (all defaults). `audience` requires at least one archetype with all 6 fields populated. `benchmark` requires nothing. `deck` requires nothing. `council` requires nothing — all defaults documented in `references/council-mode.md`. The `persistence` block itself is optional (skill defaults to paste mode); when absent and Google Drive (Claude.ai connector) is unavailable, the skill operates in paste mode without warning.
+1. **Required keys per section**: `engagement_scope` requires `budget_owner_role` and `scope_label`. `cycle` requires `cycle_name`, `effective_date`, and `current_stage`. `org` requires `name`. `costing` requires nothing (all defaults). `audience` requires at least one archetype with all 6 fields populated. `benchmark` requires nothing. `deck` requires nothing. `council` requires nothing — all defaults documented in `references/council-mode.md`. (Persistence is not a config section in v2 — see § `persistence` — retired.)
 2. **Stale check**: If `last_verified` is more than 180 days old, surface a warning before using that section. For `cycle`, a stale `last_verified` is more concerning than other sections — surface even at 60+ days.
 3. **Type check**: numeric fields must parse as float/int. Date fields (`cycle.effective_date`, `cycle.last_cycle.effective_date`) must parse as ISO dates. Enum fields (preferred_framing, brand, council.default_mode, council.synthesis_style) must match allowed values. Persona names in `council.default_perspectives` must be drawn from the 7-persona pool in `council-mode.md`. **`cycle.current_stage` must match either the `name` field (canonical: Discovery / Market Analysis / Scenario Modeling / Approval / Cascade / Implementation / Live) OR the `label` field (user-overridden display name) of one item in `cycle.stages`.** When a user has renamed stages via the `label:` override pattern (e.g., `name: "Discovery"`, `label: "Strategy Kickoff & Market Review"`), `current_stage` may use either form — the skill resolves both to the canonical key for behavior gating.
 4. **Cross-section coherence**:
@@ -833,7 +789,6 @@ Report parsed sections and gaps:
 
 ```
 Loaded engagement config:
-- persistence: ✓ google-drive at acme-comp-state (private verified)
 - engagement_scope: ✓ (Pharmacy FY26, owner: VP Ops Pharmacy)
 - cycle: ✓ (FY26 May cohort, currently at "Strategy Kickoff & Market Review", week -10)  # canonical stage: Discovery — labelled per cycle.stages override
 - org: ✓ (verified 2026-04-21, 0 days old)
