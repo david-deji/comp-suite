@@ -125,7 +125,7 @@ all other sections read-only. Appends to `master.decision_log[]` are
 append-only; no skill mutates prior entries authored by any skill (its own or
 sibling).
 
-Enforced: `master-yaml-utils.md` § Federation discipline. Verified at: every
+Enforced: `master-yaml-ops.md` § Federation discipline. Verified at: every
 master.yaml write.
 
 ## C13 — Visual QA before deliverable announce **(shared)**

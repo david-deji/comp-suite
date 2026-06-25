@@ -62,7 +62,7 @@ too_early_pre_engagement_mode_chosen`.
 If the user selects A, B, or E (anything that produces a pre-engagement
 artifact rather than a canonical engagement), set `pre_engagement_only: true`
 in engagement-state and route the artifact to
-`master.advisor.pre_engagement_artifacts[]` per `references/master-yaml-utils.md`,
+`master.advisor.pre_engagement_artifacts[]` per `references/master-yaml-ops.md`,
 NOT to `cycle_state_pointers[]`. Drift-trajectory queries on the closed-
 engagement ledger ignore `pre_engagement_artifacts[]` entries.
 

@@ -21,9 +21,9 @@ do not duplicate the grammar elsewhere.
 | `/cba save` | (none) | required `<agreement-id>` | "save this CBA" | `library-resolution.md` + `survey-house-protocol.md` |
 | `/glossary promote` | (none) | (none) | "promote glossary terms" | `fr-ca-glossary.md` § 8.5 |
 | `/help` | "/menu", "/commands" | optional `<command>` | "help", "what can you do" | `help-mode-protocol.md` |
-| `/close-cycle` | (none) | required `<cycle-slug>` | "close cycle" | `master-yaml-utils.md` |
-| `/reopen-cycle` | (none) | required `<cycle-slug>` | "reopen cycle" | `master-yaml-utils.md` |
-| `/switch-cycle` | (none) | required `<cycle-slug>` | "switch to cycle", "make primary" | `master-yaml-utils.md` |
+| `/close-cycle` | (none) | required `<cycle-slug>` | "close cycle" | `master-yaml-ops.md` |
+| `/reopen-cycle` | (none) | required `<cycle-slug>` | "reopen cycle" | `master-yaml-ops.md` |
+| `/switch-cycle` | (none) | required `<cycle-slug>` | "switch to cycle", "make primary" | `master-yaml-ops.md` |
 
 ## Invocation prefixes (no-op — strip and re-classify)
 

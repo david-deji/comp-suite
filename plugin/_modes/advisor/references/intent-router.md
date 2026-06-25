@@ -118,9 +118,9 @@ Every track produces a new deck built from scratch. No track edits the uploaded 
 
 When classified as Init, do not start a consulting engagement. Run the dedicated Init walkthrough that builds an engagement-config YAML block.
 
-**Master.yaml prelude (runs before all other /init steps):** Read `_orgs/<org-slug>/master.yaml` via `master-yaml-utils.md` → `read_master(org_slug)`. If no master.yaml exists for this slug, auto-create one plus an `_orgs/index.yaml` entry (no separate bootstrap command needed). Validate post-read per `master-yaml-utils.md` → `validate_against_schema`. Surface tree view of inheritable groups with freshness signals. Check pull-notifications (filter `decision_log` for cross-skill events since last compensation-advisor init). Then proceed to the 10-step /init flow in `init-mode-protocol.md`.
+**Master.yaml prelude (runs before all other /init steps):** Read `_orgs/<org-slug>/master.yaml` via `master-yaml-ops.md` → `read_master(org_slug)`. If no master.yaml exists for this slug, auto-create one plus an `_orgs/index.yaml` entry (no separate bootstrap command needed). Validate post-read per `master-yaml-ops.md` → `validate_against_schema`. Surface tree view of inheritable groups with freshness signals. Check pull-notifications (filter `decision_log` for cross-skill events since last compensation-advisor init). Then proceed to the 10-step /init flow in `init-mode-protocol.md`.
 
-Opening action: read `references/init-mode-protocol.md` and follow its master-aware 10-step protocol. The 8 original intake sections (Sections 0-7: engagement_scope, cycle, org, audience, costing, benchmark, deck, persistence) are now Step 10 of the master.yaml flow. Output includes an updated `_orgs/<slug>/master.yaml`, a per-cycle state file at `_orgs/<slug>/cycles/<cycle-slug>/advisor/engagement-state.yaml`, and an auto-save to `configs/<slug>.yaml` when persistence is google-drive. No deck, no consulting, no data pull.
+Opening action: read `references/init-mode-protocol.md` and follow its master-aware 10-step protocol. The 8 original intake sections (Sections 0-7: engagement_scope, cycle, org, audience, costing, benchmark, deck, persistence) are now Step 10 of the master flow. Output is persisted to the backend: the advisor master section via `engagement_put_section` and the per-cycle engagement body via `engagement_put` — plus a downloadable config artifact in chat for the operator's own copy. No deck, no consulting, no data pull.
 
 If the user pasted an existing config block AND used "/init update" or "update my config", run Update mode (see init-mode-protocol.md).
 
@@ -136,7 +136,7 @@ Opening action: read `references/council-mode.md` and follow its session flow.
 4. Run persona voice blocks sequentially in a single response.
 5. Synthesize (consensus / tensions / unresolved / recommended path).
 6. Produce mode-specific output: reasoning stops at synthesis; memo adds decision memo block; integrated adds Phase 4/5 handoff block.
-7. Generate `council-state-YYYY-MM-DD-{client-slug}.yaml`. With `persistence.backend: google-drive` it auto-saves to the persistence folder (per `references/council-mode.md` § Step 8); in paste mode it is offered to the user as a file artifact via the file primitive.
+7. Generate `council-state-YYYY-MM-DD-{client-slug}.yaml`. Council state is a non-schema artifact (council scratch, P4b D3) — it writes to the local `$STATE_ROOT` council dir and is also offered to the user as a file artifact via the file primitive. The resulting council *decision* is logged to the backend separately via `engagement_append_decision` (per `references/council-mode.md` § Step 8).
 
 No deck is produced by Council track. Council output is chat text + one YAML state artifact (+ optional memo markdown). If the user wants the council output turned into a deck, the user escalates to Track D or Track C after council completes — council-state is read as input.
 
@@ -262,97 +262,78 @@ The chosen track or command WILL produce an artifact at its own end (per SKILL.m
 
 Slash: `/close-cycle <cycle-slug>` (slash-only). NL triggers: "close cycle", "mark cycle done", "finalize cycle".
 
-Loaded references: `master-yaml-utils.md`. END artifact: `_orgs/<org-slug>/master.yaml` (write — cycle status + decision_log entry).
+Loaded references: `master-yaml-ops.md`. END artifact: backend cycle + decision log (`engagement_put_cycle` + `engagement_append_decision`) — no local `master.yaml` write (P4b D2).
 
-Verifies the cycle exists in `master.cycles[]` and status ≠ `closed`. Surfaces a confirmation tree showing all skills that touched the cycle and whether each has open work. On confirm: writes this skill's self-rollup entry to `decision_log[]` (`decision_type: cycle_closed`, `tags: [cycle-close, advisor-rollup]`, summary includes scenario shipped, council runs logged, glossary terms promoted, costing artifacts produced). Sets `master.cycles[].status: closed` + `closed_date: <today>`. Does NOT write roll-ups for sibling skills — those are lazy-written on their own next `/init`.
+Reads `engagement_get_master {org_slug}`; verifies the cycle exists in `master.cycles[]` and status ≠ `closed`. Surfaces a confirmation tree showing all skills that touched the cycle and whether each has open work. On confirm: append this skill's self-rollup via `engagement_append_decision {decision_type: cycle_closed, cycle_slug, tags: [cycle-close, advisor-rollup], summary}` (summary includes scenario shipped, council runs logged, glossary terms promoted, costing artifacts produced); then `engagement_put_cycle {cycle_slug, status: closed, closed_date: <today>}`. Does NOT write roll-ups for sibling skills — those are lazy-written on their own next `/init`.
 
 ### `/reopen-cycle` Behavior
 
 Slash: `/reopen-cycle <cycle-slug>` (slash-only). NL triggers: "reopen cycle", "re-open cycle".
 
-Loaded references: `master-yaml-utils.md`. END artifact: `_orgs/<org-slug>/master.yaml` (write — cycle status + decision_log entry).
+Loaded references: `master-yaml-ops.md`. END artifact: backend cycle + decision log (`engagement_put_cycle` + `engagement_append_decision`) — no local `master.yaml` write (P4b D2).
 
-Flips `master.cycles[].status` from `closed` back to `drafting`. Appends `decision_type: cycle_reopened` entry to `decision_log[]` with `refs.related_decision_ids` pointing to the original `cycle_closed` entry ID. Edits land in the existing `cycle_dir` (in-place amend — no cycle versioning).
+`engagement_put_cycle {cycle_slug, status: drafting}` flips the cycle from `closed` back to `drafting`. Then `engagement_append_decision {decision_type: cycle_reopened, cycle_slug, refs: {related_decision_ids: [<original cycle_closed id>]}}`. The cycle's local `cycle_dir` is amended in place (non-schema artifacts, no cycle versioning).
 
 ### `/switch-cycle` Behavior
 
 Slash: `/switch-cycle <cycle-slug>` (slash-only). NL triggers: "switch to cycle", "make primary", "set primary cycle".
 
-Loaded references: `master-yaml-utils.md`. END artifact: `_orgs/<org-slug>/master.yaml` (write — primary pointer + decision_log entry).
+Loaded references: `master-yaml-ops.md`. END artifact: backend cycle + decision log (`engagement_put_cycle` + `engagement_append_decision`) — no local `master.yaml` write (P4b D2).
 
-Flips `master.cycles[].primary: true` to the named cycle (exactly one cycle may hold `primary: true` at any time). Sets `primary: false` on the previously-primary cycle. Appends `decision_type: cycle_primary_switched` entry to `decision_log[]`.
+`engagement_put_cycle {cycle_slug, primary: true}` makes the named cycle primary; the server **atomically demotes the previously-primary cycle** to `primary: false` (exactly one cycle holds `primary: true` at any time — enforced server-side, not by a second client write). Then `engagement_append_decision {decision_type: cycle_primary_switched, cycle_slug}`.
 
 ---
 
-## Phase 0 — Persistence Backend Detection (autonomous, all engagement tracks)
+## Phase 0 — Context Load (autonomous, all engagement tracks)
 
-For tracks C, D, R, R-lite, and Council, run this detection step before track opening behavior begins. Skip for `/help`, `/init`, `/update`, `/intake`, `/quickbench` (these don't read prior state). `/resume` and `/ledger` go straight into the persistence-and-ledger.md flow.
+For tracks C, D, R, R-lite, and Council, run this context load before track opening behavior begins. Skip for `/help`, `/init`, `/update`, `/intake`, `/quickbench` (these don't read prior state). `/resume` and `/ledger` go straight into the `persistence-and-ledger.md` flow.
 
-### Step 1 — Test Google Drive (Claude.ai connector) availability
+Schema state lives in the `market` MCP backend (OAuth identity → org membership). The backend is always reachable once authenticated — there is no Drive probe and no paste-mode branch. On MCP **transport failure** (not not-found), fall back to the local `$STATE_ROOT` read cache and mark the load **degraded** (P4b D1). The retired Google-Drive backend is documented in `references/persistence-and-ledger.md`.
 
-Attempt a `google_drive_search` call against `persistence.folder` from the loaded config (or default `comp-advisor-state` when no config is present). Three outcomes:
+### Step 1 — Resolve org + master context
 
-| Outcome | Mode | Behavior |
-|---|---|---|
-| Call succeeds, repo accessible | **google-drive** | Continue Steps 2-4 |
-| MCP available but repo not found / no access | **google-drive-misconfigured** | Surface the error + setup pointer ("create `comp-advisor-state` and re-run, or paste config inline"). Fall through to paste mode for this session. |
-| Google Drive (Claude.ai connector) not installed / not authenticated | **paste mode** | Skip Steps 2-4. Existing paste-driven Phase 0 behavior applies. |
+`engagement_get_master {org_slug}` returns the org's master header, cycles, and decision log. `org_slug` resolves from the named scope (or the caller's default org via membership when omitted). A not-found master for a named slug means the org is not provisioned — provisioning is admin-path (P4b D4), surface "org `<slug>` is not set up in the backend" and stop, do not create locally.
 
-### Step 2 — Auto-load engagement config (google-drive mode only)
+### Step 2 — Load engagement body (when a scope/slug is named)
 
-If the user's first message names a scope or slug ("starting Pharmacy FY26 engagement", "open atlantic-retail-fy26"), and no inline YAML config was pasted, attempt `google_drive_fetch` for `configs/<slug>.yaml`. If found, load it as the engagement config.
+If the user's first message names a scope or slug ("starting Pharmacy FY26 engagement", "open atlantic-retail-fy26"), call `engagement_get {org_slug, engagement_id}` for the body. A returned body is authoritative; `found: false` means no such engagement (offer to open a new cycle, do not resurrect a local copy).
 
-If the user pasted a YAML config inline, the inline paste takes precedence — log it as the active config and skip the auto-load.
+### Step 3 — Detect resume opportunity
 
-### Step 3 — Detect resume opportunity (google-drive mode only)
+From `engagement_get_master.cycles[]`, surface any cycle with an open/in-progress status BEFORE track classification:
 
-Call `google_drive_search` for `engagements/<slug>-*/`. For any folder containing `checkpoint.yaml`:
+> "Cycle `pharmacy-fy26` is at Phase 4 (last touched 2 days ago). `/resume pharmacy-fy26` to continue, or `/restart` to open a fresh cycle on this scope."
 
-1. Surface a "resume available" line BEFORE proceeding to track classification:
+`/resume` hands off to the `persistence-and-ledger.md` `/resume` flow (`engagement_get` for the body). Any other input proceeds with the new request — the cycle is left untouched.
 
-> "Found checkpoint for `pharmacy-fy26` saved 2 days ago at Phase 4. `/resume pharmacy-fy26` to continue, or `/restart` to start a fresh engagement on this scope."
+### Step 4 — Prior-cycle ledger + drift
 
-2. If the user types `/resume`, hand off to the persistence-and-ledger.md `/resume` flow. If the user provides any other input, treat the checkpoint as stale-but-preserved and proceed with the new request (do NOT delete the checkpoint).
+Read prior cycles from `engagement_get_master.cycles[]` and the decision log; filter to the active `scope_slug`. Compute drift trajectory across cycles (gap-to-target percentile delta, envelope delta, council-followed pattern):
 
-### Step 4 — Query the ledger for prior cycles (google-drive mode only)
-
-Call `google_drive_fetch` for `ledger/outcome-history.yaml`. Filter entries where `scope_slug` matches the active engagement's `scope_slug`. Compute drift trajectory across cycles (gap-to-target percentile delta, envelope delta, council-followed pattern).
-
-Surface in the Phase 0 loaded-config summary:
-
-> "Persistence: google-drive at `comp-advisor-state`.
->
-> Prior engagement context (from ledger, scope = pharmacy):
+> "Prior engagement context (scope = pharmacy):
 > - pharmacy-fy25 (closed 2025-05-15): Deferred — committed to look at it FY26.
 >   90d outcome: turnover continued to climb 12% YoY.
 > - pharmacy-fy24 (closed 2024-05-15): 3% ATB + meat-cutter compression fix QC, $3.8M.
 >   Recommendation followed in full.
 > - Drift: gap to P50 went from 2% (FY24) → 4% (FY25) → projected 8% (FY26 Phase 2 pull)."
 
-Auto-populate `prior_engagement_refs` in the new in-memory engagement-state from the ledger query. Phase 1 Beat 1 references this when grounding "what's different this cycle."
+Auto-populate `prior_engagement_refs` in the new in-memory engagement-state. Phase 1 Beat 1 references this when grounding "what's different this cycle."
 
-**Read efficiency:** for repos with many engagements, prefer one `google_drive_search` call to enumerate, then targeted `google_drive_fetch` only for the active scope's files. Don't fetch every engagement-state.yaml at session start — the ledger summary alone is enough context. Full state is fetched only on `/resume` or explicit reference.
+### Step 5 — Resolve shared assets
 
-### Step 5 — Resolve repo-resident shared assets (google-drive mode only)
+Resolve the asset classes the active engagement may consume, by source:
 
-After ledger query, scan the repo for shared assets that the active engagement may consume. This is a single batched read, not five separate calls.
+- **Brand kit** — backend: `brand_get_kit {org_slug}` + `brand_list_files`. Falls back to bundled `_default` when the org has no kit.
+- **CBA / survey / vocabulary / personas** — local libraries under `$STATE_ROOT` (no backend entity in v1, P4b stays-local). Resolve per `references/library-resolution.md`; vendor-scoped survey archives load only for vendors named in the config.
 
-Call `google_drive_search` with `recursive=false` against these paths in parallel:
-
-- `branding/` (lists `_default/`, `<org-slug>/` subdirs)
-- `cba-library/` (lists `_index.yaml` + agreement files)
-- `survey-archive/<vendor>/` for any vendor named in the engagement config (otherwise just `survey-archive/`)
-- `vocabulary/` (checks for `fr-ca-glossary.yaml`)
-- `personas/` (lists `_index.yaml` + custom persona files)
-
-For each asset class, compute match-strength per `references/library-resolution.md` rules and surface in the Phase 0 loaded-config summary. Match-strength taxonomy: `exact`, `aged`, `geo-adjusted`, `default-fallback`, `bundled-fallback`, `none`.
+Compute match-strength per `references/library-resolution.md` (taxonomy: `exact`, `aged`, `geo-adjusted`, `default-fallback`, `bundled-fallback`, `none`) and surface in the loaded-config summary.
 
 ### Step 6 — Surface loaded-config summary
 
-After Steps 1-5 complete, surface a compact loaded-config block to the user before track classification proceeds:
+After Steps 1-5, surface a compact loaded-config block before track classification proceeds:
 
 > "Loaded config summary:
-> - Persistence: google-drive at `comp-advisor-state`
+> - Backend: `market` (org `<slug>` via membership)  [degraded: local cache — only if transport failed]
 > - Brand kit: `<org_slug or _default>` [3 master overrides: 01-title, 09-cost-analysis, 14-methodology]
 > - CBA auto-loaded: `tuac-501-acme-qc-retail-2024-2028` (meat-cutter@QC) [exact]
 > - Survey archive: Mercer 2026 QC retail [exact]; WTW 2024 ON [aged: 16 months]
@@ -362,11 +343,11 @@ After Steps 1-5 complete, surface a compact loaded-config block to the user befo
 
 Each line is OMITTED when the asset class has no content. The summary is non-blocking; track classification continues immediately after.
 
-### Paste-mode behavior
+### Degraded-load behavior
 
-When backend mode is `paste` or `google-drive-misconfigured`, Steps 2-5 are skipped. The ledger summary still appears if the user pasted `outcome-history.yaml` alongside their config. Brand kit defaults to bundled `_default`. CBA, survey, vocabulary, persona libraries are unavailable for this session — surface as `unavailable in paste mode` in the loaded-config summary so the user knows the gap.
+When Step 1's `engagement_get_master` fails on **transport** (not not-found), load schema context from the local `$STATE_ROOT` read cache and tag the summary `degraded: local cache`. Brand kit falls back to bundled `_default`. Local CBA/survey/vocabulary/persona libraries are unaffected (they were never backend-resident). Surface the degraded tag so the operator knows schema context may be stale until the backend is reachable.
 
-Full backend behavior, schema, and write paths in `references/persistence-and-ledger.md`. Full library-resolution rules in `references/library-resolution.md`. Brand-kit-specific structure and lifecycle in `references/brand-kit-protocol.md`.
+Full persistence contract and write paths in `references/persistence-and-ledger.md`. Full library-resolution rules in `references/library-resolution.md`. Brand-kit-specific structure and lifecycle in `references/brand-kit-protocol.md`.
 
 ---
 
