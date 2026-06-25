@@ -41,7 +41,7 @@ Compensation Advisor — what I can do
   /intake        Generate a strategic intake form PDF for VP HR/Ops
   /quickbench    Single-role market pull, no deck (~2 min)
   /council       Multi-perspective deliberation on a strategic trade-off
-  /checkpoint    Save engagement state to persistence folder
+  /checkpoint    Save engagement state to the market backend
   /resume        Resume an in-progress engagement from a checkpoint
   /ledger        Read prior-cycle outcomes; update outcome windows
   /brand-kit     init <org-slug> — scaffold a per-org brand kit from _default
@@ -255,9 +255,9 @@ weighing of a defined choice.
 ## Tier 2 Detail — /checkpoint
 
 ```
-**/checkpoint** — Save engagement state to the persistence folder
+**/checkpoint** — Save engagement state to the market backend
 
-**What it produces:** A `checkpoint.yaml` committed to the persistence folder
+**What it produces:** A `checkpoint.yaml` written via the market backend
 **Time:** Instant
 **Input needed:** None (operates on current in-flight engagement)
 
@@ -276,7 +276,7 @@ weighing of a defined choice.
 **What happens:**
   1. Captures current state (phase, section in progress, all confirmed
      outputs so far, accumulated selection_log) into checkpoint.yaml
-  2. Commits to engagements/<slug>/checkpoint.yaml via Google Drive (Claude.ai connector)
+  2. Writes to engagements/<slug>/checkpoint.yaml via `engagement_put` (market backend)
   3. Surfaces "Checkpoint saved at Phase X — Y. Resume with /resume <slug>."
 
 **When NOT to use it:** No reason to skip — auto-checkpoint runs at every
@@ -305,7 +305,7 @@ between automatic ones.
   /resume <slug>           # resume specific engagement
 
 **What happens:**
-  1. Reads engagements/<slug>/checkpoint.yaml from persistence folder
+  1. Reads engagements/<slug>/checkpoint.yaml via `engagement_get` (market backend; local cache on transport failure)
   2. Validates freshness — warns if checkpoint > 30 days old or if config
      has changed since checkpoint was saved
   3. Restores engagement brief, narrative frame, sections built so far,
@@ -341,11 +341,10 @@ surfaces the closed status and offers next-cycle, deliverables, or
                                 # accept free text, commit only the ledger file
 
 **What happens:**
-  1. Read modes: google_drive_fetch on ledger/outcome-history.yaml,
+  1. Read modes: `engagement_get_master` for cycles + decision log; local `cost-log.jsonl` for spend;
      filter and format
   2. Update mode: walks outcome windows in order, accepts user input,
-     writes back via google_drive_create_file (single-file write, message:
-     "ledger: <slug> outcome <window>d filled")
+     writes back via `engagement_put_cycle` + `engagement_append_decision` (per `references/persistence-and-ledger.md`)
 
 **When NOT to use it:** If you want to start a new cycle (not update an
 existing closed one), use the normal track entry — Phase 0 surfaces
@@ -367,7 +366,7 @@ prior-cycle ledger context automatically.
 ```
 **/brand-kit init <org-slug>** — Scaffold a per-org brand kit from _default
 
-**What it produces:** A new branding/<org-slug>/ folder in the persistence folder
+**What it produces:** A new branding/<org-slug>/ kit written to the market backend via `brand_put_*`
                       with placeholder palette + logo instructions + footnotes
 **Time:** ~30 seconds (scaffold + commit)
 **Input needed:** org-slug (kebab-case identifier for the org)
@@ -377,7 +376,7 @@ prior-cycle ledger context automatically.
   /brand-kit init <client-org-slug>
 
 **What happens:**
-  1. Verifies google-drive backend (aborts in paste-mode)
+  1. Verifies market backend is reachable (aborts on auth failure)
   2. Auto-seeds branding/_default/ in repo from bundle if not present
   3. Verifies branding/<org-slug>/ does NOT already exist (aborts if it does)
   4. Scaffolds divergence-points only:
@@ -409,7 +408,7 @@ will diverge from your repo _default).
 **/cba save <agreement-id>** — Manually save a user-CBA to the library
 
 **What it produces:** A cba-library/<agreement-id-slug>.yaml file + updated
-                      cba-library/_index.yaml mapping in the persistence folder
+                      cba-library/_index.yaml mapping in local `$STATE_ROOT`
 **Time:** ~15 seconds (slug derivation + commit)
 **Input needed:** Agreement-id, OR none (re-uses the current engagement's
                   active user-CBA if one is loaded)
@@ -449,7 +448,7 @@ engagement or to save a CBA loaded in a non-engagement context.
 **/glossary promote** — Review and merge engagement-level FR-CA additions
 
 **What it produces:** A canonical vocabulary/fr-ca-glossary.yaml in the
-                      persistence folder (created from bundled seed if first run)
+                      local `$STATE_ROOT` (created from bundled seed if first run)
                       + updated vocabulary/_rejected.yaml for declined terms
 **Time:** ~30 sec to 5 min depending on candidate count (interactive review)
 **Input needed:** None (walks all engagements/*/fr-ca-additions.yaml files)
@@ -458,8 +457,8 @@ engagement or to save a CBA loaded in a non-engagement context.
   /glossary promote
 
 **What happens:**
-  1. Verifies google-drive backend (aborts in paste-mode)
-  2. Discovers candidates: lists every fr-ca-additions.yaml across engagements
+  1. Verifies market backend is reachable (aborts on auth failure)
+  2. Discovers candidates: lists every fr-ca-additions.yaml across engagements in local `$STATE_ROOT`
   3. Aggregates by english term, surfaces conflicts (multiple FR-CA candidates)
   4. Walks each candidate one at a time:
        - Approve  → adds to vocabulary/fr-ca-glossary.yaml

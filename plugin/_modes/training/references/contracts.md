@@ -9,13 +9,16 @@ Contracts marked **(shared)** are byte-identical across the 4 sibling skills
 these from compensation-advisor canonical). Contracts not marked are
 comp-training-designer-specific.
 
-## C01 — Persistence: text-only Drive **(shared)**
+## C01 — Persistence: schema via backend, binaries as chat-download **(shared)**
 
-Drive holds metadata only (yaml/md/json). Binary artifacts (PPTX, PDF, DOCX,
-images, sanitized CSV) deliver as chat-download. No exceptions, no toggle.
+The `market` MCP backend holds schema state (yaml/json). Non-schema artifacts
+(decks, facilitator guides, council scratch) write to local `$STATE_ROOT`.
+Binary artifacts (PPTX, PDF, DOCX, images, sanitized CSV) deliver as
+chat-download only — never written to any backend or local path as schema state.
+No exceptions, no toggle.
 
-Enforced: `references/persistence-and-ledger.md` § Binary artifacts never go
-through Drive. Verified at: every Phase 7 close, every binary-artifact emit.
+Enforced: `references/persistence-and-ledger.md` § Binary deliverables.
+Verified at: every Phase 7 close, every binary-artifact emit.
 
 ## C02 — Differentiated depth
 
@@ -110,14 +113,14 @@ confirmation — all of them).
 Enforced: `production-and-qa.md` § Recommendation discipline. Verified at:
 every `ask_user_input` call.
 
-## C11 — Drive folder visibility (private only) **(shared)**
+## C11 — Artifact visibility (private only) **(shared)**
 
-Skill verifies the persistence folder is owned by the user and not publicly
-shared (no "Anyone with link") before any write. Public-link sharing → hard
-refuse with a setup pointer.
+Backend writes are scoped to the authenticated org via OAuth identity — no
+public-link surface exists. Local `$STATE_ROOT` artifacts must not be exposed
+via public share. Hard refuse if visibility cannot be confirmed.
 
-Enforced: `persistence-and-ledger.md` § Privacy & cleanup. Verified at: every
-session start (Phase 0 backend probe), every close-time write.
+Enforced: `persistence-and-ledger.md` § Privacy. Verified at: every
+session start (Phase 0 backend check), every close-time write.
 
 ## C12 — Federated section ownership (master.yaml) **(shared)**
 
@@ -155,6 +158,6 @@ master.yaml write.
 - [ ] C07 facilitator guide paired with PPTX
 
 ### Session close / write sequence
-- [ ] C01 no binary artifacts written to Drive
+- [ ] C01 no binary artifacts written to backend or local schema path
 - [ ] C09, C12 verified before write
 - [ ] C10 enforced for every ask_user_input in this session

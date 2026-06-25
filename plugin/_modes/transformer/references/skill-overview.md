@@ -30,13 +30,12 @@ Typical first-cycle workflow: `/init` → `/discover` → `/diagnose` → `/tran
 
 Runs at every track entry except `/help`, `/resume`, `/ledger` read paths. Five steps in order:
 
-### 1. Persistence backend test
+### 1. Backend authentication
 
-Run a Drive folder-list against `team-config.persistence.drive_folder_id`. Three outcomes:
+Authenticate with the `market` MCP backend (OAuth). Two outcomes:
 
-- **Success + visibility check passes** (folder is private, not "Anyone with link") → proceed.
-- **Success + visibility check fails** (folder shared with anyone, or public) → refuse all writes. Surface: "Persistence folder is `<visibility>`. Skill writes only to private folders. Restrict the folder to specific people or run paste-mode."
-- **Unreachable / permission denied** → fall back to paste-mode. Surface: "Drive backend unreachable. Operating in paste-mode for this session."
+- **Authenticated** → resolve the org via `engagement_get_master`; proceed.
+- **Unreachable / transport failure** → fall back to local `$STATE_ROOT` read cache for schema reads. Surface: "Backend unreachable. Reading from local cache — schema writes are suspended until reconnected." Per `persistence-and-ledger.md` D1.
 
 Runs once per session. Cache result for the session.
 
@@ -45,7 +44,7 @@ Runs once per session. Cache result for the session.
 Three paths:
 
 - User pasted YAML at session start → parse against `team-config-template.md` schema. Validate. If validation fails, surface specific rule violated and exit.
-- User referenced a `team.slug` (e.g., "/discover for `comp-team-acme`") → auto-load `team-configs/<slug>.yaml` from persistence.
+- User referenced a `team.slug` (e.g., "/discover for `comp-team-acme`") → auto-load via `engagement_get_master {org_slug: <slug>}` from the backend (fall back to `$STATE_ROOT` cache on transport failure per D1).
 - Neither → prompt: "No team config — run `/init` first?" and exit.
 
 After load: `team-config.cycle.current_stage` and `team-config.cycle.current_week_offset` are computed from `cycle.anchor_event` + today's date. Cached for session.
@@ -74,7 +73,7 @@ If `cycle.stages == []`:
 
 One-line summary:
 
-> "Loaded team `<name>` (`<slug>`). `<N>` processes tracked. Current cycle stage: `<stage>` (week `<offset>` from anchor). Persistence: `<enabled/paste-mode>`."
+> "Loaded team `<name>` (`<slug>`). `<N>` processes tracked. Current cycle stage: `<stage>` (week `<offset>` from anchor). Backend: `<connected/cache-fallback>`."
 
 Then proceed to track-specific protocol.
 
@@ -118,9 +117,9 @@ Every `/diagnose` produces ≥2 Quick Wins as the FIRST content section after fr
 
 `persistence-and-ledger.md`, `production-and-qa.md`, `template-master.md`, `brand-kit-protocol.md`, `tools-available.md` are manual copies of source files in [github.com/david-deji/compensation-advisor](https://github.com/david-deji/compensation-advisor). Each file has a mirror header at the top naming its canonical URL. This skill never edits them — coordinate with compensation-advisor for any change, then re-copy here.
 
-### Paste-mode fallback
+### Transport-failure fallback
 
-When persistence is disabled or unreachable, the skill renders every artifact body in chat with explicit save instructions. Paste-mode does NOT skip redaction — banned patterns still hard-refuse.
+When the `market` MCP backend is unreachable, the skill reads schema state from the local `$STATE_ROOT` cache (D1) and suspends schema writes until reconnected. Non-schema artifact writes to `$STATE_ROOT` are unaffected. Redaction still hard-refuses during fallback — banned patterns are never written regardless of backend state. See `persistence-and-ledger.md` for the full fallback contract.
 
 ---
 
@@ -148,7 +147,7 @@ When persistence is disabled or unreachable, the skill renders every artifact bo
 
 | Question | Answer |
 |----------|--------|
-| Where is the team config? | `team-configs/<slug>.yaml` in shared Drive folder |
+| Where is the team config? | `master.transformer.*` section in the `market` MCP backend (local cache at `$STATE_ROOT/_orgs/<slug>/`) |
 | Where is the current state of process X? | `processes/<slug>/<process-slug>/current-state.md` |
 | Where are diagnoses? | `processes/<slug>/<process-slug>/diagnosis.md` (optional PPTX in `pptx/`) |
 | Where are transformation briefs? | `processes/<slug>/<process-slug>/transformation-brief.md` + required PPTX in `pptx/` |
@@ -157,4 +156,4 @@ When persistence is disabled or unreachable, the skill renders every artifact bo
 | Where are checkpoints? | `checkpoints/comp-team-transformer/<slug>/<process-slug>/checkpoint.yaml` |
 | Where is the outcome ledger? | `process-ledger/<slug>/interventions-history.yaml` |
 | Where is the persistence contract? | `references/persistence-and-ledger.md` (mirrored from `david-deji/compensation-advisor`) |
-| Where is the brand kit? | `branding/<org_slug>/` in shared Drive folder (per `brand-kit-protocol.md`, mirrored from `david-deji/compensation-advisor`) |
+| Where is the brand kit? | `market` MCP backend via `brand_get_kit` / `brand_get_file` (per `brand-kit-protocol.md`, mirrored from `david-deji/compensation-advisor`) |

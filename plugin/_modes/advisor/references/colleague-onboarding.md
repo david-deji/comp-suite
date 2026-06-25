@@ -31,11 +31,11 @@ In a new Claude conversation, type `/init`. The skill walks you through 8 sectio
 | 4 — Costing | Roll-up factors, payroll burdens, replacement multipliers per province | 3 min |
 | 5 — Benchmark | Default percentiles, peer companies, role aliases, provincial minimum wages | 3 min |
 | 6 — Deck | Slide counts by audience, voice, decision-ask pattern | 2 min |
-| 7 — Persistence | Backend (google-drive vs paste), private repo path | 1 min |
+| 7 — State root | Local `$STATE_ROOT` path for deliverables, council scratch, and local libraries | 1 min |
 
-Sections 0 and 1 are pushed hard — they're what makes the skill useful across multiple sessions. Sections 2-7 are skippable. Skipping Section 7 puts the skill in paste mode (you save state files manually); configuring it auto-saves configs/state/ledger to your private Google Drive folder for year-over-year continuity.
+Sections 0 and 1 are pushed hard — they're what makes the skill useful across multiple sessions. Sections 2-7 are skippable. Schema state (engagements, cycles, brand kits, costing configs) is always persisted to the `market` MCP backend — authenticated automatically via OAuth. Local `$STATE_ROOT` holds deliverables, council scratch, and local libraries (vocabulary, CBA library, personas) between sessions.
 
-At the end you get a YAML block. Save it personally — note app, password manager, wherever you keep reference material. With persistence wired (see `references/persistence-and-ledger.md`), the skill can read your config from a private Google Drive folder at session start instead of asking for a paste.
+At the end you get a YAML block. Save it personally — note app, password manager, wherever you keep reference material. The skill reads your schema config from the `market` backend at session start (see `references/persistence-and-ledger.md`).
 
 ### Step 3: Use the skill
 
@@ -103,11 +103,11 @@ Upload the prior `.pptx` and say "just update the numbers." Skill detects R-lite
 
 ### "I need a quick market check on bakery managers in BC"
 
-`/quickbench bakery managers BC`. ~2 min, single-role market pull, mini-report. No engagement. **Artifacts:** `quickbench-{role-slug}-{province}-{YYYY-MM-DD}.md` (markdown body with YAML frontmatter capturing `tool_calls[]`); when persistence backend is active, mirrored to `quickbench-archive/`.
+`/quickbench bakery managers BC`. ~2 min, single-role market pull, mini-report. No engagement. **Artifacts:** `quickbench-{role-slug}-{province}-{YYYY-MM-DD}.md` (markdown body with YAML frontmatter capturing `tool_calls[]`); mirrored to local `$STATE_ROOT/.../quickbench-archive/` (see `references/persistence-and-ledger.md`).
 
 ### "Should we move from P50 to P60 on hard-to-fill roles?"
 
-`/council on whether to move from P50 to P60 for hard-to-fill grocery roles`. Skill runs a multi-persona deliberation drawn from the bundled 7-persona pool (`employment-lawyer`, `total-rewards-strategist`, `cfo-finance`, `hr-business-partner`, `dei-pay-equity`, `employee-union`, `ceo-board`) — defaults to 4-6 personas, configurable per engagement. Custom personas registered in your persistence folder's `personas/` folder are additive (see `references/persona-library.md`). **Artifacts:** `council-state-{date}-{slug}.yaml` (always) + `council-memo-{date}-{slug}.md` (when in `memo` mode).
+`/council on whether to move from P50 to P60 for hard-to-fill grocery roles`. Skill runs a multi-persona deliberation drawn from the bundled 7-persona pool (`employment-lawyer`, `total-rewards-strategist`, `cfo-finance`, `hr-business-partner`, `dei-pay-equity`, `employee-union`, `ceo-board`) — defaults to 4-6 personas, configurable per engagement. Custom personas registered in local `$STATE_ROOT/.../personas/` are additive (see `references/persona-library.md`). **Artifacts:** `council-state-{date}-{slug}.yaml` (always) + `council-memo-{date}-{slug}.md` (when in `memo` mode).
 
 ---
 

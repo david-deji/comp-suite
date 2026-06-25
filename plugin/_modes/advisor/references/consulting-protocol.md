@@ -112,7 +112,7 @@ Synthesize beats 1-4 into a 3-5 sentence engagement brief. Pattern: "So the enga
 
 **Checkpoint A**: "Here's my understanding of the engagement. Correct?" Block Phase 2 until confirmed.
 
-**Auto-checkpoint on confirmation**: when the user confirms the engagement brief, write `engagements/<slug>/checkpoint.yaml` via Google Drive (Claude.ai connector) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 1`, capture the confirmed `engagement_brief`, all populated `prior_engagement_refs` from Phase 0, and any `selection_log` entries (typically empty at this point). Silent unless write fails.
+**Auto-checkpoint on confirmation**: when the user confirms the engagement brief, call `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 1`, capture the confirmed `engagement_brief`, all populated `prior_engagement_refs` from Phase 0, and any `selection_log` entries (typically empty at this point). Silent unless write fails.
 
 ### Track R Adaptation (Prior Deck Uploaded)
 
@@ -357,7 +357,7 @@ Parse the uploaded PPTX via `markitdown`. Extract:
 - When individual data unavailable for merit roles: assume normal distribution centered at CR=1.0, sigma=0.09. Flag as modeled assumption.
 - Missing geography: ask (this blocks meaningful market comparison).
 
-**Phase 2 output**: Structured data set held in conversation context. Includes matched roles with market data and pay_structure tags, unmatched roles, computed metrics, economic context, prior-year comparisons (Track R). Every Market MCP / Indeed MCP / `web_fetch` call made during Phase 2 also appends a `tool_calls[]` entry to the engagement-state per `references/tools-available.md` § Container for tool_calls[] — this is the audit trail for verified-source tags in the deck. Auto-checkpoint at the end of Phase 2 (transition to Checkpoint B) commits the running `tool_calls[]` to `engagements/<slug>/checkpoint.yaml` when `persistence.backend: google-drive`.
+**Phase 2 output**: Structured data set held in conversation context. Includes matched roles with market data and pay_structure tags, unmatched roles, computed metrics, economic context, prior-year comparisons (Track R). Every Market MCP / Indeed MCP / `web_fetch` call made during Phase 2 also appends a `tool_calls[]` entry to the engagement-state per `references/tools-available.md` § Container for tool_calls[] — this is the audit trail for verified-source tags in the deck. Auto-checkpoint at the end of Phase 2 (transition to Checkpoint B) commits the running `tool_calls[]` via `engagement_put` per `references/persistence-and-ledger.md` § /checkpoint command.
 
 ---
 
@@ -416,7 +416,7 @@ Synthesize: "So the picture is: [2-3 sentence summary of what the data means for
 
 **Checkpoint B**: "Before I model scenarios — anything else I should factor in?" Block Phase 4 until confirmed.
 
-**Auto-checkpoint on confirmation**: write/update `engagements/<slug>/checkpoint.yaml` via Google Drive (Claude.ai connector). Set `saved_at_phase: 3`, capture `parsed_data_summary`, `interpretation_findings`, and the running `tool_calls[]` array from Phase 2g (canonical container per `references/tools-available.md` § Container for tool_calls[]). Silent unless write fails.
+**Auto-checkpoint on confirmation**: call `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 3`, capture `parsed_data_summary`, `interpretation_findings`, and the running `tool_calls[]` array from Phase 2g (canonical container per `references/tools-available.md` § Container for tool_calls[]). Silent unless write fails.
 
 ### Push-Back Mechanics
 
@@ -485,6 +485,6 @@ Every field must be populated. If a field has no relevant content (e.g., no prio
 
 **Checkpoint D**: "Here's the argument arc. Build the deck on this frame?" Block Phase 6 until confirmed.
 
-**Auto-checkpoint on confirmation**: write/update `engagements/<slug>/checkpoint.yaml` via Google Drive (Claude.ai connector). Set `saved_at_phase: 5`, capture the confirmed `narrative_frame` block verbatim, the `scenario_chosen` from Phase 4, and the full accumulated `selection_log` (Phase 4 scenario pick at minimum). Silent unless write fails.
+**Auto-checkpoint on confirmation**: call `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 5`, capture the confirmed `narrative_frame` block verbatim, the `scenario_chosen` from Phase 4, and the full accumulated `selection_log` (Phase 4 scenario pick at minimum). Silent unless write fails.
 
 **Phase 5 output**: Confirmed narrative frame document. This is the handoff contract between consulting and production.

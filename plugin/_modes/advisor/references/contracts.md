@@ -9,13 +9,15 @@ Contracts marked **(shared)** are byte-identical across the 4 sibling skills
 these from compensation-advisor canonical). Contracts not marked are
 compensation-advisor-specific.
 
-## C01 — Persistence: text-only Drive **(shared)**
+## C01 — Persistence: backend text-only **(shared)**
 
-Drive holds metadata only (yaml/md/json). Binary artifacts (PPTX, PDF, DOCX,
-images, sanitized CSV) deliver as chat-download. No exceptions, no toggle.
+The `market` MCP backend holds schema state only (yaml/json). Binary artifacts
+(PPTX, PDF, DOCX, images, sanitized CSV) deliver as chat-download and are
+written to local `$STATE_ROOT` only. No binary ever round-trips through any
+backend. No exceptions, no toggle.
 
-Enforced: `references/persistence-and-ledger.md` § Binary artifacts never go
-through Drive. Verified at: every Phase 7 close, every binary-artifact emit.
+Enforced: `references/persistence-and-ledger.md` § Binary deliverables.
+Verified at: every Phase 7 close, every binary-artifact emit.
 
 ## C02 — Selection-log integrity
 
@@ -107,14 +109,14 @@ slide-count, audience selection, mode selection — all of them).
 Enforced: `production-and-qa.md` § Recommendation discipline. Verified at:
 every `ask_user_input` call.
 
-## C11 — Drive folder visibility (private only) **(shared)**
+## C11 — Backend identity check **(shared)**
 
-Skill verifies the persistence folder is owned by the user and not publicly
-shared (no "Anyone with link") before any write. Public-link sharing → hard
-refuse with a setup pointer.
+Skill verifies that an authenticated OAuth identity is available before any
+schema-state write. If the identity cannot be resolved (unauthenticated
+session), halt with a setup pointer — never write unauthenticated.
 
-Enforced: `persistence-and-ledger.md` § Privacy & cleanup. Verified at: every
-session start (Phase 0 backend probe), every close-time write.
+Enforced: `persistence-and-ledger.md` § The v2 model. Verified at: session
+start, every schema-state write.
 
 ## C12 — Federated section ownership (master.yaml) **(shared)**
 

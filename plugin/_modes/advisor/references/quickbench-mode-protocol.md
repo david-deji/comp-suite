@@ -215,8 +215,7 @@ The escalation is always offered, never assumed. The user's path of least resist
 
 Quickbench produces a `quickbench-{role-slug}-{province}-{YYYY-MM-DD}.md` **file artifact** as its END deliverable. The artifact contains the mini-report (markdown body) plus a YAML frontmatter block capturing `tool_calls[]` and resolution metadata. The same content is previewed inline in chat so the user can react without opening the file.
 
-- **Backend = google-drive**: also write to `quickbench-archive/{YYYY-MM-DD}-{role-slug}-{province}.md` in the persistence folder (see `references/persistence-and-ledger.md` § Repo layout). One commit per quickbench, message pattern `quickbench-archive: <role-slug>@<province> archived`.
-- **Backend = paste-mode**: deliver the file artifact in the chat for download; the user can save it to their own archive.
+- Also write to local `$STATE_ROOT/_orgs/<slug>/quickbench-archive/{YYYY-MM-DD}-{role-slug}-{province}.md` (non-schema artifact; see `references/persistence-and-ledger.md` § Where each thing lives). Deliver the file artifact in the chat for download.
 - **Mini-report fits on one mobile screen (~15-25 lines)** as both file body and chat preview.
 - Tables use compact markdown — three columns max in the percentile table (or the multi-province override layout per § Multi-Province when 3+ provinces).
 - The escalation offer is one sentence, ends with a question mark, easy to ignore.

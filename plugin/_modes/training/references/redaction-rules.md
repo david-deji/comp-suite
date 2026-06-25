@@ -67,7 +67,7 @@ Runs immediately before any artifact write:
 1. Read the artifact body (markdown + frontmatter).
 2. Scan for banned patterns.
 3. If `audience_tag` is `external`, additionally scan for company name (anywhere in body), unwhitelisted person names (any), and band/grade references that imply internal structure.
-4. On detection: refuse to write, surface warning naming the pattern + offending line, do not fall back to paste-mode (user must fix the source content).
+4. On detection: refuse to write, surface warning naming the pattern + offending line — user must fix the source content. No fallback path bypasses redaction.
 
 ---
 
@@ -106,6 +106,6 @@ If the user explicitly requests an override ("just include the dollar amount", "
 
 ## What this protocol does NOT contain
 
-- Drive backend specifics — those live in `persistence-and-ledger.md` (mirrored).
+- Backend and local-cache specifics — those live in `persistence-and-ledger.md`.
 - Audience-tag validation logic — that lives in `artifact-generation.md` § Audience tag check.
 - Per-mode redaction triggers — those live in the per-protocol files (every mode runs Phase 0 input scan and pre-write scan; the rules are uniform).

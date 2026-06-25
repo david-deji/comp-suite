@@ -1,6 +1,6 @@
 # Team Config Template
 
-The team-config YAML is the per-team durable state for `comp-team-transformer`. One file per team, stored at `team-configs/<team-slug>.yaml` in the shared persistence folder. Created by `/init`. Edited manually in v1 (no `/update` track).
+The team-config YAML is the per-team durable state for `comp-team-transformer`. One config per team; the `market` MCP backend is the source of truth (persisted as the `master.transformer.*` federated section via `engagement_put_section`). A read cache lives at `$STATE_ROOT/_orgs/<slug>/`. Created by `/init`. Edited manually in v1 (no `/update` track).
 
 This file documents the schema field-by-field, the validation rules enforced at parse time, and the v1/v2 boundary.
 
@@ -62,10 +62,8 @@ personas:
   bundled_pack: comp-team-v1        # default (5 personas)
   custom: []                        # additional per-team personas (paths under personas/)
 
-persistence:
-  drive_folder_id: <folder-id>      # shared with compensation-advisor
-  visibility: private               # enforced; skill verifies before any write (no "Anyone with link", no public sharing)
-  enabled: true                     # if false, paste-mode
+# persistence block retired (v2): schema state persists via the market MCP backend.
+# See references/persistence-and-ledger.md for the full contract.
 
 processes:
   # Index of processes under transformation. Updated by /discover and /transform.
@@ -113,7 +111,7 @@ processes:
 - `tone` — defaults to `consulting-peer` (mirrors comp-advisor's default). May override per team.
 - `audience_default` — defaults to `comp-team-internal`. Used in markdown working artifacts.
 - `upward_audience` — defaults to `vp-people`. Used in shareable PPTX targeting executive readout.
-- `brand.org_slug` — resolves the brand kit from `branding/<slug>/` in the persistence folder. When unset, defaults to `branding/_default/`.
+- `brand.org_slug` — resolves the brand kit from the `market` MCP backend via `brand_get_kit {org_slug}`. When unset, defaults to `branding/_default/`.
 - `brand: neutral` — alternative form for external-audience artifacts. Mutually exclusive with `org_slug`.
 
 ### `redaction` (required, hard rule)
@@ -133,11 +131,9 @@ Full enforcement rules in `redaction-rules.md`.
 - `bundled_pack` — must be `comp-team-v1` in v1. Only valid value. The pack ships 5 personas: HRBP, comp-manager, comp-analyst-operator, hris-tooling, change-management.
 - `custom` — list of paths to per-team custom persona YAML files. Loaded additively at council entry. See `persona-library.md` for the custom persona schema.
 
-### `persistence` (required)
+### `persistence` (retired in v2)
 
-- `drive_folder_id` — Google Drive folder ID for the shared comp-advisor persistence root. Required when `enabled: true`.
-- `visibility` — must be `private` when `enabled: true`. Skill verifies before any write that the folder is not shared with "Anyone with link" or made public. Hard gate.
-- `enabled` — when `false`, skill operates in paste-mode (no automatic writes; user pastes/saves manually).
+The `persistence:` block is no longer a backend selector. Schema state persists via the `market` MCP backend (see `references/persistence-and-ledger.md`). This key may be absent from v2 configs; if present it is ignored. Do not add `drive_folder_id` or `enabled` to new configs.
 
 ### `processes` (updated by `/discover` and `/transform`)
 
@@ -160,7 +156,7 @@ Enforced when team-config is loaded at Phase 0:
 1. `team.slug` matches `^[a-z][a-z0-9-]*$`. Reject otherwise.
 2. `scope.in_scope` is a non-empty list. Reject otherwise.
 3. All five `redaction.*` keys are present. Missing any key → hard fail.
-4. If `persistence.enabled == true`, then `persistence.visibility == private`. Reject otherwise.
+4. (v1 only — retired) `persistence.enabled` / `persistence.visibility` checks. In v2 configs this validation is skipped.
 5. `personas.bundled_pack == comp-team-v1`. Only valid value in v1; `+nbj` deferred to v2.
 6. Every `cycle.stages[].gating` is one of `live`, `prep`, `slack`. Reject otherwise.
 7. `team.language == en` and `team.domain == compensation` (v1 constants).
@@ -177,7 +173,7 @@ Reserved for v2; do not add in v1 configs:
 - `staleness` block — adds 6-month threshold for `current_state.md` re-discovery prompts.
 - `personas.bundled_pack: comp-team-v1+nbj` — adds Nate B. Jones thinker persona.
 - `team.language: fr` — French interview/output support.
-- A second-team router for users running multiple teams under one Drive folder.
+- A second-team router for users running multiple teams under one org.
 
 ---
 
@@ -218,9 +214,5 @@ redaction:
 personas:
   bundled_pack: comp-team-v1
   custom: []
-persistence:
-  drive_folder_id: 1AbCdEfGhIjKlMnOpQrStUvWxYz
-  visibility: private
-  enabled: true
 processes: []
 ```

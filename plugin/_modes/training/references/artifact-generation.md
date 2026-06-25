@@ -8,7 +8,7 @@ Loaded by SKILL.md at any mode entry that produces a file artifact. Provides the
 
 ## Artifact catalog
 
-| Mode | END artifact | Location (in shared Drive folder) | Owning protocol | Format |
+| Mode | END artifact | Location (in local `$STATE_ROOT` or backend) | Owning protocol | Format |
 |------|--------------|------------------------------------|-----------------|--------|
 | `/init` | `engagement-training-config.yaml` | `engagement-training-configs/<slug>.yaml` | `init-mode-protocol.md` | YAML |
 | `/brand init <org-slug>` | brand kit scaffold | `branding/<org-slug>/` (theme/, logo placeholders, _README.md, footnotes.yaml) | `brand-mode-protocol.md` + `brand-kit-protocol.md` (mirrored) | mixed |
@@ -119,13 +119,15 @@ audience_tag: comp-team-internal
 
 ## Write discipline
 
-### Atomicity (Drive backend)
+### Atomicity
 
-Drive lacks atomic multi-file saves. Co-dependent artifacts use the **batched-folder-write** pattern (per `persistence-and-ledger.md` mirrored):
+Co-dependent artifacts use the **staged-write** pattern (per `persistence-and-ledger.md`):
 
-1. Write all artifacts in a session to a `_pending/` subfolder of the target location.
-2. After all writes succeed, atomic move (Drive rename) from `_pending/<filename>` to `<filename>`.
+1. Write all local artifacts in a session to a `_pending/` subfolder of the target `$STATE_ROOT` location.
+2. After all writes succeed, move from `_pending/<filename>` to `<filename>`.
 3. On failure, surface to user — leave the partial state in `_pending/` for recovery rather than half-applied across the canonical paths.
+
+For schema state written to the `market` backend, use `engagement_put_section` with `expected_version` — on stale-reject, re-read and retry the read-modify-write loop per `persistence-and-ledger.md` D (optimistic concurrency).
 
 Single-file artifacts can write directly without `_pending/`.
 
@@ -137,7 +139,7 @@ Runs before every write. Per `redaction-rules.md`. Banned-pattern detection → 
 
 ### Visibility check
 
-Runs before every write. Per `persistence-and-ledger.md` (mirrored). Drive folder must be private (no "Anyone with link" or public sharing). Verified at first mode invocation in a session and on every checkpoint.
+Runs before every write. Per `persistence-and-ledger.md`. Local `$STATE_ROOT` artifacts must remain private (not exposed via public share). Backend writes are scoped to the authenticated org via OAuth identity — no additional visibility check required.
 
 ### Audience tag check
 
@@ -149,21 +151,15 @@ Every rendered deck (`/generate` per audience, `/cascade`) writes a `delivery_ta
 
 ---
 
-## Paste-mode fallback
+## Transport-failure fallback
 
-When `engagement-training-config.persistence.enabled == false` OR Drive backend is unreachable, the skill renders every artifact body in chat with explicit save instructions:
+When the `market` MCP backend is unreachable (connection error, timeout, 5xx), schema reads fall back to the local `$STATE_ROOT` read cache per `persistence-and-ledger.md` D1. Schema writes escalate/halt — never write-local-and-reconcile.
 
-> "Persistence disabled. Save the following as `<full path in Drive folder>`:
->
-> ```markdown
-> <artifact body>
-> ```
->
-> Confirm when saved, or say 'skip' to leave it un-persisted."
+Non-schema artifact writes (decks, facilitator guides, council scratch) always target local `$STATE_ROOT` and are unaffected by backend transport failures.
 
-Paste-mode does NOT skip the redaction pass — banned patterns still hard-refuse. The user can't bypass redaction by switching to paste-mode.
+The redaction pass is never skipped under any failure mode — banned patterns still hard-refuse.
 
-PPTX artifacts in paste-mode: skill produces a markdown spec (`<audience>.pptx-spec.md`) instead of a binary .pptx. The operator runs `node build_template.js` locally (or in Claude.ai scratch) to render. `examples/year-end-cycle/` demonstrates this format.
+PPTX artifacts are always delivered as chat-download; the operator runs `node build_template.js` locally (or in Claude.ai scratch) to render. `examples/year-end-cycle/` demonstrates this format.
 
 ---
 
@@ -171,6 +167,6 @@ PPTX artifacts in paste-mode: skill produces a markdown spec (`<audience>.pptx-s
 
 - Per-template content schemas — those live in the per-template files (`message_map_template.yaml`, `facilitator_guide_template.md`, `interactive_block_templates.json`, `cascade_kit_template.md`).
 - Mode-specific generation logic — those live in the per-protocol files (`ingest-protocol.md`, `generate-protocol.md`, `cascade-protocol.md`).
-- Drive API specifics — those live in `persistence-and-ledger.md` (mirrored from compensation-advisor).
+- Backend and local-cache specifics — those live in `persistence-and-ledger.md`.
 
 This file is the cross-cutting catalog of artifacts and the write discipline that applies to all of them.

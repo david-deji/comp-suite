@@ -33,11 +33,10 @@ Runs at every track entry except `/help`, `/resume`, `/status`. Four steps in or
 
 ### 2.1 Persistence backend test
 
-Run a Drive folder-list against `engagement-comms-config.persistence.drive_folder_id`. Three outcomes:
+Probe the `market` MCP backend: call `engagement_get_master` with the authenticated identity. Two outcomes:
 
-- **Success + visibility check passes** (folder is private, not "Anyone with link") — proceed.
-- **Success + visibility check fails** (folder shared broadly or public) — refuse all writes. Surface: "Persistence folder is `<visibility>`. Skill writes only to private folders. Restrict the folder to specific people or run paste-mode."
-- **Unreachable / permission denied** — fall back to paste-mode. Surface: "Drive backend unreachable. Operating in paste-mode for this session."
+- **Success** — backend reachable and OAuth identity resolves to an org membership. Proceed.
+- **Transport failure** (connection error, timeout, 5xx) — fall back to the local `$STATE_ROOT` read cache for this session. Surface: "Backend unreachable. Operating from local cache — reads only, no schema writes." Per `references/persistence-and-ledger.md` D1.
 
 Runs once per session. Cache result for the session.
 
@@ -66,7 +65,7 @@ On detection: refuse to proceed, surface warning naming the pattern category, in
 
 One-line summary:
 
-> "Loaded engagement `<slug>` (`<cycle-name>`). `<N>` artifacts configured. Org profile: `<loaded / using bundled defaults>`. Persistence: `<enabled / paste-mode>`."
+> "Loaded engagement `<slug>` (`<cycle-name>`). `<N>` artifacts configured. Org profile: `<loaded / using bundled defaults>`. Backend: `<reachable / cache-fallback>`."
 
 Then proceed to track-specific protocol.
 
@@ -120,9 +119,9 @@ Full rules: `references/brand-mode-protocol.md` + `references/brand-kit-protocol
 
 `meta-protocol.md`, `persistence-and-ledger.md`, `tools-available.md`, `brand-kit-protocol.md`, `production-and-qa.md`, `template-master.md`, `redaction-rules.md` are manual copies of canonical files in sibling skills. Never edit them here — coordinate with the canonical skill for any change, then re-copy.
 
-### 3.9 Paste-mode fallback
+### 3.9 Transport-failure fallback
 
-When persistence is disabled or unreachable, the skill renders every artifact body in chat with explicit save instructions. Paste-mode does NOT skip redaction — banned patterns still hard-refuse.
+When the `market` backend is unreachable (transport failure per §2.1), schema-state reads fall back to the local `$STATE_ROOT` cache. Schema writes are not attempted during a fallback session — the skill surfaces a warning and halts rather than writing to local cache as a substitute. Redaction still runs in full — banned patterns hard-refuse regardless.
 
 ### 3.10 Valid-combinations registry
 
@@ -134,11 +133,11 @@ The skill refuses to render a combination not in `template_assets/valid-combinat
 
 | Question | Answer |
 |----------|--------|
-| Where is the engagement config? | `engagement-comms-configs/<slug>.yaml` in shared Drive folder |
-| Where is the org voice/brand profile? | `org-comms-profiles/<org-slug>.yaml` in shared Drive folder |
-| Where are the comms artifacts? | `engagements/<slug>/comms/` in shared Drive folder |
-| Where are working drafts? | `engagements/<slug>/comms/_drafts/` (cleared on `/approve shipped`) |
-| Where are comms brand templates? | `branding/<org-slug>/comms-templates/` in shared Drive folder |
+| Where is the engagement config? | `engagements/<slug>` comms section in the `market` backend (`engagement_get` / `engagement_put_section`) |
+| Where is the org voice/brand profile? | `master.comms` federated section in the `market` backend (`engagement_get_master`) |
+| Where are the comms artifacts? | `engagements/<slug>/comms/` under local `$STATE_ROOT` (non-schema artifacts) |
+| Where are working drafts? | `$STATE_ROOT/_orgs/<org-slug>/engagements/<slug>/comms/_drafts/` (cleared on `/approve shipped`) |
+| Where are comms brand templates? | `branding/<org-slug>/comms-templates/` under local `$STATE_ROOT` |
 | Where are FR-CA additions? | `engagements/<slug>/comms/fr-ca-additions.yaml` |
 | Where are checkpoints? | `checkpoints/comp-comms-builder/<engagement>/checkpoint.yaml` |
 | Where is the persistence contract? | `references/persistence-and-ledger.md` (mirrored from compensation-advisor) |

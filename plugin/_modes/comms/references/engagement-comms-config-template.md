@@ -11,7 +11,7 @@ Schema version: 1.
 ```yaml
 # engagement-comms-configs/<engagement-slug>.yaml
 # Created by: /init
-# Written to: shared comp-advisor-state Drive folder
+# Persisted to: market MCP backend via engagement_put_section (comms section)
 
 schema_version: 1                          # required; must be 1
 
@@ -36,19 +36,6 @@ cycle_name: "<free text>"                  # required; human-readable cycle name
                                            # Example: "FY26 Annual Wage Review"
 
 created: YYYY-MM-DD                        # required; ISO date; set by /init; do not edit
-
-# ─── Persistence ──────────────────────────────────────────────────────────────
-
-persistence:
-  enabled: true                            # required; true | false
-                                           # When false: paste-mode (no automatic Drive writes)
-  drive_folder_id: "<folder-id>"           # required if enabled=true
-                                           # The shared comp-advisor-state Drive folder ID
-                                           # Found in Drive folder URL or via the Google Drive connector
-  visibility: private                      # required if enabled=true; hard-gated
-                                           # Must be private — refused if folder is publicly shared
-                                           # Allowed values: private
-                                           # "shared" and "public" are rejected at session start
 
 # ─── Source recommendation ────────────────────────────────────────────────────
 
@@ -97,7 +84,7 @@ languages:
                                            # fr-ca — French secondary (rare; EN-primary employer with QC operations)
 
   glossary_source: vocabulary/fr-ca-glossary.yaml
-                                           # path relative to Drive folder root
+                                           # path within the local $STATE_ROOT library; LOCAL — not backend
                                            # default shown; do not modify unless maintaining a fork
 
 # ─── Artifacts ────────────────────────────────────────────────────────────────
@@ -220,12 +207,12 @@ speaker_register_overrides: {}             # optional; empty map = no overrides
 # ─── Branding ────────────────────────────────────────────────────────────────
 
 branding:
-  org_slug: <client_slug>                  # required if persistence enabled
-                                           # Resolves branding/<org_slug>/comms-templates/ in Drive
+  org_slug: <client_slug>                  # required
+                                           # Resolves branding/<org_slug>/comms-templates/ under $STATE_ROOT
                                            # Typically same as client_slug
 
   regenerate_at_draft: true                # required; boolean
-                                           # true — read fresh branding from Drive on every /draft (default)
+                                           # true — read fresh branding from $STATE_ROOT on every /draft (default)
                                            # false — use cached brand templates within the session
 
 # ─── Optional: training-designer handoff ────────────────────────────────────
@@ -236,7 +223,7 @@ training_handoff:
                                            # false — no handoff; standard /ingest interview
 
   message_map_path: null                   # required if enabled=true; null otherwise
-                                           # Path relative to Drive folder root
+                                           # Path relative to $STATE_ROOT
                                            # Example: cycles/pharmacy-fy26/year-end-2026/message-map.yaml
                                            # See training-designer-handoff.md for details
 ```
@@ -245,13 +232,12 @@ training_handoff:
 
 ## Field validation at `/init`
 
-The `/init` walkthrough validates the following before writing the config to Drive:
+The `/init` walkthrough validates the following before persisting the config via `engagement_put_section`:
 
 | Check | Rule |
 |---|---|
 | `engagement_slug` format | Must match `^[a-z][a-z0-9-]*$` |
 | `client_slug` format | Must match `^[a-z][a-z0-9-]*$` |
-| `persistence.visibility` | Must be `private`; refuse if any other value |
 | `languages.primary` | Must be `fr-ca` or `en` |
 | `languages.secondary` | Must be `fr-ca`, `en`, or null |
 | `artifacts[].artifact_type` | Must be one of 4 v1 slugs |

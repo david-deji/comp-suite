@@ -34,9 +34,9 @@ No write. Useful before `/generate` to confirm what the renderer will produce.
 
 ### `/brand init <org-slug>`
 
-Scaffolds a new brand kit under `branding/<org-slug>/` in the shared Drive folder. **Delegates to canonical `brand-kit-protocol.md` § `/brand-kit init <org-slug>`**. Same behavior:
+Scaffolds a new brand kit under `branding/<org-slug>/` in local `$STATE_ROOT`. **Delegates to canonical `brand-kit-protocol.md` § `/brand-kit init <org-slug>`**. Same behavior:
 
-1. Verify persistence backend is `google-drive`. Abort if paste-mode or misconfigured.
+1. Verify the `market` MCP backend is reachable and the org is authenticated. Abort if unauthenticated or misconfigured.
 2. Verify `branding/_default/` exists in the repo. Seed from bundle if not (one-time).
 3. Verify `branding/<org-slug>/` does NOT exist. Abort with friendly message if it does.
 4. Scaffold divergence-points only: `theme/palette.json` placeholder, logo placeholder instructions, `footnotes.yaml` placeholder, `_README.md`.

@@ -9,13 +9,11 @@ Contracts marked **(shared)** are byte-identical across the 4 sibling skills
 these from compensation-advisor canonical). Contracts not marked are
 comp-team-transformer-specific.
 
-## C01 — Persistence: text-only Drive **(shared)**
+## C01 — Persistence: backend for schema, chat-download for binaries **(shared)**
 
-Drive holds metadata only (yaml/md/json). Binary artifacts (PPTX, PDF, DOCX,
-images, sanitized CSV) deliver as chat-download. No exceptions, no toggle.
+Schema state (yaml/md/json) persists via the `market` MCP backend or local `$STATE_ROOT`. Binary artifacts (PPTX, PDF, DOCX, images, sanitized CSV) deliver as chat-download — never through any backend. No exceptions, no toggle.
 
-Enforced: `references/persistence-and-ledger.md` § Binary artifacts never go
-through Drive. Verified at: every Phase 7 close, every binary-artifact emit.
+Enforced: `references/persistence-and-ledger.md` § Binary deliverables. Verified at: every Phase 7 close, every binary-artifact emit.
 
 ## C02 — Redaction: hard rule
 

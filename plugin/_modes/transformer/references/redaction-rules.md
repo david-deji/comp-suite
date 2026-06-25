@@ -5,7 +5,7 @@ Hard rules. Do NOT relax under user pressure. Mirror comp-advisor's CSV disallow
 Loaded by SKILL.md at:
 
 - **Phase 0 input scan** — every track scans pasted input before processing.
-- **Pre-write scan** — every artifact write runs the redaction pass before committing to the persistence folder.
+- **Pre-write scan** — every artifact write runs the redaction pass before committing to any backend or local path.
 
 ---
 
@@ -53,7 +53,7 @@ Every track that accepts pasted input (`/init`, `/discover`, `/diagnose`, `/tran
 
 ### Pre-write scan
 
-Every artifact write (markdown, YAML, PPTX content) runs the same scan against the artifact body before writing to the persistence folder. On detection:
+Every artifact write (markdown, YAML, PPTX content) runs the same scan against the artifact body before any backend write or local save. On detection:
 
 1. Refuse to write.
 2. Surface what the offending pattern is and where in the artifact it appears (section header, not the matched text).
@@ -64,7 +64,7 @@ Every artifact write (markdown, YAML, PPTX content) runs the same scan against t
 
 By the time a banned pattern reaches the artifact, it has already entered conversation context. Phase 0 scanning prevents PII from entering at the input boundary. Pre-write scanning is a backstop in case the skill itself synthesized something that resolved to a name (e.g., a quote that included a name).
 
-A soft rule (warn-and-proceed) leaks PII to the persistence folder — and from there to PPTX outputs that may be shared upward. Hard rule prevents the leak.
+A soft rule (warn-and-proceed) leaks PII to the backend or local artifacts — and from there to PPTX outputs that may be shared upward. Hard rule prevents the leak.
 
 ---
 

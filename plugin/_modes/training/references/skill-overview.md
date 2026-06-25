@@ -12,7 +12,7 @@ Phase map, Phase 0 detail, and core principles for `comp-training-designer`. Loa
 | **Phase 1** | `/ingest` | Source extraction → message-map (conversational interview) | `cycles/<engagement>/<cycle-slug>/message-map.yaml` |
 | **Phase 2** | `/generate` | Per-audience render (audience-design interview → council auto-fire → bundle render) | per-audience PPTX + facilitator guide + interactive blocks |
 | **Phase 3** | `/cascade` | Manager deck → 30-min team-meeting variant (mechanical derivation) | `managers-cascade-kit.pptx` + `managers-cascade-facilitator.md` |
-| **Phase 4** | `/brand` | Read/write engagement brand kit (shared with siblings) | `branding/<org-slug>/` in shared persistence |
+| **Phase 4** | `/brand` | Read/write engagement brand kit (shared with siblings) | `branding/<org-slug>/` in local `$STATE_ROOT` |
 
 `/init`, `/council`, `/checkpoint`, `/resume`, `/help` are utility/control modes — they don't sit in the phase progression.
 
@@ -22,7 +22,7 @@ Phase map, Phase 0 detail, and core principles for `comp-training-designer`. Loa
 
 Sequence (silent unless something fails):
 
-1. **Persistence backend test.** Drive MCP folder-list against `persistence.drive_folder_id`. If unreachable or permissions denied: surface error and offer paste-mode fallback. Skill behaves identically in paste-mode except writes are deferred (user pastes/saves manually).
+1. **Backend availability check.** Confirm the `market` MCP backend is reachable (OAuth identity resolved). If transport fails, fall back to the local `$STATE_ROOT` read cache per `persistence-and-ledger.md` D1. Surface error if both are unavailable.
 
 2. **Engagement-training-config load.** If user pasted YAML, parse against schema (per `engagement-training-config-template.md`). If a `engagement.slug` was referenced, auto-load `engagement-training-configs/<slug>.yaml`. If neither: prompt "No engagement-training-config — run `/init` first?" and exit.
 

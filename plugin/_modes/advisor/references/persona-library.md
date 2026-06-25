@@ -28,7 +28,7 @@ Custom persona schema mirrors this shape — same fields, no invented extras.
 
 ## Custom persona schema
 
-Each custom persona lives in its own file at `personas/<persona_id>.yaml` in the persistence folder:
+Each custom persona lives in its own file at `personas/<persona_id>.yaml` under local `$STATE_ROOT/_orgs/<slug>/personas/`:
 
 ```yaml
 persona:
@@ -112,7 +112,7 @@ The index is what `library-resolution.md` § Persona library scans at Phase 0. W
 
 When council-mode dispatches the per-persona blocks:
 
-1. Read `personas/_index.yaml` from the persistence folder (skip if paste-mode).
+1. Read `personas/_index.yaml` from local `$STATE_ROOT/_orgs/<slug>/personas/` (skip if the directory does not exist).
 2. For each entry, read the referenced `personas/<id>.yaml` file. Validate the 4 required fields. Surface any validation failure as: "Custom persona `<id>` failed to load: <reason>. Skipping this persona for this council."
 3. Build the union pool: bundled-7 (read from `council-mode.md` § Perspective pool table) + valid customs.
 4. Detect ID collisions between custom and bundled: if any, surface "Custom persona `<id>` collides with bundled `<id>`. Bundled wins; skipping custom." and exclude the custom one from the pool.

@@ -104,7 +104,7 @@ The variants for Q4-Q9 are catalogued in `template_assets/intake_variants.json`.
 
 **Adding a new variant**: edit `template_assets/intake_variants.json`. Add either a new `variants[]` entry (for a new question) or a new clause-key (for a new scope dimension on an existing question). Add new role families to `examples_by_role_family`. Add new provinces' peer lists to `peer_companies_by_province`. No edit to this protocol file is required.
 
-**Adding a new role family** (e.g., the engagement scopes to "frozen foods"): if `examples_by_role_family` does not contain the family, surface to user before generating Q4: "I don't have role examples cached for `frozen foods`. Suggest 2-3 specific roles I should reference (e.g., 'frozen-foods clerks', 'cold-storage warehouse staff'). I'll use them this engagement and add them to the catalog for next time." On user input, append to `examples_by_role_family` AND save the addition back to the persistence folder at `engagements/<slug>/intake-additions.json` (per `references/persistence-and-ledger.md` repo layout).
+**Adding a new role family** (e.g., the engagement scopes to "frozen foods"): if `examples_by_role_family` does not contain the family, surface to user before generating Q4: "I don't have role examples cached for `frozen foods`. Suggest 2-3 specific roles I should reference (e.g., 'frozen-foods clerks', 'cold-storage warehouse staff'). I'll use them this engagement and add them to the catalog for next time." On user input, append to `examples_by_role_family` AND save the addition to local `$STATE_ROOT/_orgs/<slug>/engagements/<slug>/intake-additions.json` (per `references/persistence-and-ledger.md` § Where each thing lives).
 
 ### Q8 Competitor Wage Validation (item 2.1 web grounding)
 
@@ -263,6 +263,5 @@ Intake produces an `intake-form-{cycle-slug}.pdf` **file artifact** as its END d
 
 - **Variant approval loop happens in chat text** — variant proposals, reactions, and revisions are interactive prose. No artifacts during the iterations themselves.
 - **After all variants approved**, the assembled intake PDF is the file artifact. Presented via `present_files`, with cycle name and scope summary in the response text.
-- **Backend = google-drive**: also write both files (PDF + meta YAML) to `intake-archive/<cycle-slug>/` in the persistence folder. One commit per cycle.
-- **Backend = paste-mode**: deliver both files in the chat for download.
+- Also write both files (PDF + meta YAML) to local `$STATE_ROOT/_orgs/<slug>/intake-archive/<cycle-slug>/` (non-schema artifact; see `references/persistence-and-ledger.md` § Where each thing lives). Deliver as chat-download artifacts.
 - Do not narrate the build process step-by-step. The user approved the variants; the build itself is silent.

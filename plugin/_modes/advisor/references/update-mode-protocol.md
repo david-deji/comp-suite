@@ -1,6 +1,6 @@
 # Update Mode Protocol
 
-Update mode is a guided refresh of an existing engagement-config YAML block. It is the maintenance counterpart to Init — same 8-section schema (Sections 0-7, including the persistence section added in Batch E.2), same output format, but the user pastes their current config and only stale or changed sections get walked. Update is also where the user shifts the `cycle` section as the wage review progresses week-over-week (e.g., "we're now at Options Review, week −9, this cycle's intake came back with these answers"), and where they wire up `persistence` (Section 7) if Init was run before persistence was configured.
+Update mode is a guided refresh of an existing engagement-config YAML block. It is the maintenance counterpart to Init — same schema (Sections 0-6), same output format, but the user pastes their current config and only stale or changed sections get walked. Update is also where the user shifts the `cycle` section as the wage review progresses week-over-week (e.g., "we're now at Options Review, week −9, this cycle's intake came back with these answers").
 
 Loaded by SKILL.md when the Intent Router classifies a request as Update.
 
@@ -26,7 +26,7 @@ If the user pasted a config but the YAML is malformed, surface the parse error a
 | Dimension | Init | Update |
 |---|---|---|
 | Input | Nothing (or a few facts the user types) | Full pasted YAML config |
-| Walk-through | All 8 sections, all questions | Only sections flagged stale, conflicting, or changed (and `cycle` whenever the user signals progress; and `persistence` whenever the user wants to wire up or change the persistence backend) |
+| Walk-through | All sections, all questions | Only sections flagged stale, conflicting, or changed (and `cycle` whenever the user signals progress) |
 | Speed | 20-35 minutes | 3-10 minutes typical, faster if only dates are stale |
 | Output | New YAML block | Merged YAML block: untouched sections preserved verbatim, refreshed sections rewritten |
 
@@ -116,28 +116,13 @@ Sometimes the user wants to refresh a whole section, not just stale items — fo
 2. Ask whether to **edit in place** (walk question-by-question with current values pre-filled as defaults) or **rebuild from scratch** (treat the section as blank and run the Init questions for it).
 3. For edit-in-place, when the user accepts a default by saying "keep" or pressing through, do not re-prompt.
 
-Trigger phrases that indicate a section-level refresh request: "redo audience", "rebuild costing", "refresh benchmark", "audience changed", "wire up persistence", "switch to paste-mode", or naming a specific archetype/role to add or remove.
+Trigger phrases that indicate a section-level refresh request: "redo audience", "rebuild costing", "refresh benchmark", "audience changed", or naming a specific archetype/role to add or remove.
 
 ---
 
-## Section 7 — Persistence (special case)
+## Persistence config (legacy block)
 
-Section 7 (`persistence`) is often missing from configs produced by older versions of `/init` (pre-Batch-E.2). Update mode treats a missing `persistence` block as **eligible for first-time scaffold**, not as "skipped on purpose."
-
-When the scan summary shows `persistence: ✗ not provided`, surface it explicitly:
-
-> "I notice your config has no `persistence` block — every session starts cold. Want to wire up Google Drive (Claude.ai connector) persistence now? That gives you resumable engagements, shared brand kits, and a ledger of past scenarios. Takes 1-2 questions."
-
-If the user agrees, walk the same two questions from `references/init-mode-protocol.md` § Section 7:
-
-1. Persistence backend? (`google-drive` / `paste-mode`)
-2. Folder path? (default `comp-advisor-state`)
-
-Append the resulting `persistence:` block to the config. Surface the persistence block in the merged YAML output.
-
-If the user wants to **change** an existing `persistence` block (e.g., switch backends, change repo path, rotate ownership), walk the same two questions with current values pre-filled as defaults.
-
-If the user wants to **remove** persistence (switch from google-drive to paste-mode permanently), confirm by quoting the current block, then remove it from the config. Skill defaults to paste-mode when the block is absent.
+Configs produced by older versions of `/init` may carry a `persistence:` block with a `backend: google-drive` or `backend: paste-mode` selector. That block is retired — persistence is now handled by the market MCP backend (OAuth identity → org membership) and is not configured per-engagement. When Update mode encounters a `persistence:` block in the pasted config, remove it from the merged output and note: "Removed legacy `persistence:` block — backend is now the market MCP backend, no per-config selector required." See `references/persistence-and-ledger.md`.
 
 ---
 
@@ -179,7 +164,6 @@ Final output is a single YAML code block, schema-identical to Init output. Inclu
     created_by_skill: compensation-advisor
     created_via: /init
     last_updated_via: /update
-    shared_folder_id: <drive-folder-id>
     sibling_skills: [comp-comms-builder, comp-team-transformer, comp-training-designer]
   ```
 - All sections that existed in the input, with refreshed `last_verified` dates **only on sections actually touched.**
@@ -218,7 +202,7 @@ This keeps Update mode out of the engagement flow and reserves it for between-en
 
 Update produces an updated `engagement-config-{slug}.yaml` **file artifact** as its END deliverable — same shape as Init's output, but reflecting the deltas applied in this session.
 
-- **Backend = google-drive**: Update writes the new revision to `configs/<slug>.yaml` in the persistence folder (overwriting the prior version; the Drive version history preserves the trail). Surfaces a chat confirmation with the Drive file ID and a one-line summary of changed fields.
-- **Backend = paste-mode** (or persistence not configured): Update delivers the updated config as a downloadable file artifact in the chat. The user owns paste-back.
+- Update writes the new revision to `configs/<slug>.yaml` via `engagement_put` (market backend). Surfaces a chat confirmation with a one-line summary of changed fields.
+- On transport failure: deliver the updated config as a downloadable file artifact in the chat. The user pastes it back on reconnection.
 - **Mid-walkthrough turns**: chat text + YAML code-block previews of the deltas, so the user sees what's about to change.
-- After emit, do not auto-suggest a next engagement. End the session with one line confirming the artifact + commit (or paste-mode delivery) and stop.
+- After emit, do not auto-suggest a next engagement. End the session with one line confirming the artifact + commit and stop.
