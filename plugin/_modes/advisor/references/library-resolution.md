@@ -8,10 +8,10 @@ Loaded by SKILL.md whenever an asset class needs to be resolved — at Phase 0 (
 
 ## Resolution principle
 
-**Repo wins, bundle is the seed.** When the persistence folder (default `comp-advisor-state`) has a matching asset, it takes precedence over the bundled fallback. The bundled assets serve two roles:
+**Local repo wins, bundle is the seed.** When the local `$STATE_ROOT` library path has a matching asset, it takes precedence over the bundled fallback. The bundled assets serve two roles:
 
 1. **Seed**: the source from which `_default` and per-org scaffolds are populated on first use.
-2. **Fallback**: the value used when the persistence backend is unavailable (paste-mode) or the repo has no matching asset.
+2. **Fallback**: the value used when the local library has no matching asset.
 
 The skill never edits bundled assets at runtime. All persistent additions land in the repo.
 
@@ -104,11 +104,11 @@ The match-strength field travels with the asset for the entire engagement and is
 
 ## Phase 0 loaded-config summary — required fields
 
-When persistence backend resolves to `google-drive`, Phase 0 must surface to the user, before any analysis begins:
+Phase 0 must surface to the user, before any analysis begins:
 
 ```
 Loaded config summary:
-  Persistence backend: google-drive (repo: <folder>)
+  Backend: market MCP (org: <org_slug>)
   Brand kit: <org_slug or _default> [<override-files-listed>]
   CBA auto-loaded: <agreement_id> (<role>@<province>) [<match-strength>]
   Survey archive matches: <vendor> <year> <cut> [<match-strength>]
@@ -122,7 +122,7 @@ Each line is omitted when it has no content (e.g., no CBA matches → no CBA lin
 
 ## Failure handling
 
-- **Repo unreachable** (network failure, Google Drive (Claude.ai connector) misconfigured): fall through to bundled-fallback for everything; surface as "Persistence backend: paste-mode (repo unreachable)" in loaded-config summary; warn that auto-saves will not occur this session.
+- **Backend unreachable** (transport failure, auth error — D1 per `references/persistence-and-ledger.md`): fall through to local `$STATE_ROOT` cache or bundled-fallback for libraries; surface as "Backend: unreachable — local cache / bundled fallback in use" in loaded-config summary; warn that schema writes will not succeed this session.
 - **Repo file corrupt** (YAML parse fails, JS module throws on require): surface the exact filename and parse error to the user; do NOT silently fall back to default — this is a corruption signal the user needs to fix manually.
 - **Asset class entirely missing from repo** (e.g., no `cba-library/` folder yet): treat as match-strength `none`; do not error.
 - **Override-file collision** (e.g., persona `id` collision between bundled and custom): skip the custom one with a warning; the bundled one wins because the bundled set is the load-bearing default.
@@ -139,7 +139,7 @@ Each line is omitted when it has no content (e.g., no CBA matches → no CBA lin
 | FR-CA term added during engagement | `engagements/<slug>/fr-ca-additions.yaml` | When the skill encounters an unapproved term and the user provides the FR-CA equivalent |
 | Brand-kit org scaffold | `branding/<org-slug>/` skeleton | `/brand-kit init <org-slug>` |
 
-Auto-saves go through the standard close-time close-time write sequence pattern (`Drive batch write`) per `persistence-and-ledger.md` — they are NOT separate commits. This preserves the all-or-nothing close discipline.
+Auto-saves go through the standard close-time write sequence per `persistence-and-ledger.md` — they are NOT separate operations. This preserves the all-or-nothing close discipline.
 
 ---
 
@@ -154,7 +154,7 @@ A library-resolution implementation is complete when:
 - [ ] Survey aged/geo-adjusted matches surface their warning class
 - [ ] Vocabulary canonical resolves repo-first when present, bundle-fallback when not
 - [ ] Custom personas appear in council pool; bundled personas always present; collision skipped with warning
-- [ ] Repo-unreachable fallback works without erroring; surfaces as paste-mode
+- [ ] Backend-unreachable fallback works without erroring; surfaces as local-cache / bundled-fallback
 - [ ] Asset-corruption surfaces filename + parse error, does NOT silently fall back
 
 ---

@@ -15,8 +15,8 @@ Every track and every utility command produces an END deliverable file artifact 
 | **Engagement-config + state** | | | |
 | `engagement-config-{slug}.yaml` | End of Init mode; optionally at Phase 0 if user added inline answers | Always (Init mode) | `references/init-mode-protocol.md` |
 | `engagement-state.yaml` | End of Phase 7 (after user accepts deck) | Always (all non-Init engagement tracks: C, D, R, R-lite) | `references/production-and-qa.md` § Phase 7 + `references/persistence-and-ledger.md` § Session end |
-| `checkpoint.yaml` | Mid-engagement at every checkpoint (auto + manual `/checkpoint`) | Always when `persistence.backend: google-drive` | `references/persistence-and-ledger.md` § /checkpoint |
-| `outcome-history.yaml` ledger entry | End of Phase 7 (close-time close-time write sequence) — append a stub with `outcome_observed_*` null | Always when `persistence.backend: google-drive` | `references/persistence-and-ledger.md` § /ledger |
+| `checkpoint.yaml` | Mid-engagement at every checkpoint (auto + manual `/checkpoint`) | Always (market MCP backend via `engagement_put`) | `references/persistence-and-ledger.md` § /checkpoint |
+| `outcome-history.yaml` ledger entry | End of Phase 7 (close-time write sequence) — append a stub with `outcome_observed_*` null | Always (backend via `engagement_append_decision`) | `references/persistence-and-ledger.md` § /ledger |
 | **Phase 6 deck companions** | | | |
 | `cost-scenarios.xlsx` | Phase 6 (alongside PPTX) | `deck.artifacts` includes `xlsx` | `references/artifact-generation.md` § cost-scenarios.xlsx (this file) |
 | `market-data.csv` | Phase 6 (alongside PPTX) | `deck.artifacts` includes `csv` | `references/artifact-generation.md` § market-data.csv (this file) |
@@ -34,7 +34,7 @@ Every track and every utility command produces an END deliverable file artifact 
 | CBA library entry (`cba-library/<agreement-id>.yaml`) | `/cba ingest` — user pastes a CBA, skill normalizes + writes; prior version moves to `cba-library/_history/` on overwrite | `/cba ingest` invocation | `references/cba-library-protocol.md` (or persistence-and-ledger.md § cba-library) |
 | Survey archive entry (`survey-archive/<vendor>/<year>/<cut>.yaml`) | `/survey ingest` — user pastes a survey block, skill normalizes; prior version moves to `_history/` on overwrite | `/survey ingest` invocation | `references/survey-house-protocol.md` § Auto-save to survey archive |
 | Vocabulary promotion (`vocabulary/fr-ca-glossary.yaml`) | `/glossary promote` — promote N user-confirmed FR-CA terms from session memory to canonical | `/glossary promote` invocation | `references/fr-ca-glossary.md` |
-| Quickbench archive (`quickbench-archive/{date}-{role-slug}-{province}.md`) | End of `/quickbench` track when persistence backend active (the same MD as the user-facing artifact, archived for ledger queries) | `persistence.backend: google-drive` AND `/quickbench` track | `references/persistence-and-ledger.md` § quickbench-archive |
+| Quickbench archive (`quickbench-archive/{date}-{role-slug}-{province}.md`) | End of `/quickbench` track (the same MD as the user-facing artifact, archived locally for ledger queries) | `/quickbench` track; written to `$STATE_ROOT` | `references/persistence-and-ledger.md` § quickbench-archive |
 
 **PPTX is always generated** in Phase 6 of engagement tracks (C, D) — that's the primary deliverable, not an optional artifact. The PPTX is built per `template_assets/branding/<active-kit>/build_template.js` and styled per the active brand kit; per-deck variation is added on top of the regenerated template. Secondary artifacts above are the focus of the discipline rules in this file.
 
@@ -97,9 +97,7 @@ YAML file matching the engagement-state schema in `engagement-config-template.md
 
 ### Filename pattern
 
-When persistence backend is active, the file lives at `engagements/<engagement_slug>/engagement-state.yaml` in the persistence folder (one canonical state file per engagement, no date in filename — the engagement slug already encodes the cycle).
-
-When in paste/download mode, the file is delivered to the user as `engagement-state-YYYY-MM-DD-{engagement-slug}.yaml` for download.
+The file is written to the market MCP backend via `engagement_put` (engagement body — schema state) and simultaneously delivered as a download artifact. The canonical path for local reference is `$STATE_ROOT/_orgs/<org_slug>/engagements/<engagement_slug>/engagement-state.yaml` (local read cache, not a write target). One canonical state file per engagement, no date in filename — the engagement slug already encodes the cycle.
 
 ### Required fields at generation time
 
@@ -146,17 +144,16 @@ After generating the PPTX (and any xlsx/csv), produce the state file via the clo
 
 In paste/download mode, deliver the state file as a download with the same instruction adapted: "Save this alongside the deck. After the meeting, fill the `outcome` block manually or paste both files back when running `/ledger update` in a future session."
 
-### Close-time write (close-time write sequence when persistence backend is active)
+### Close-time write (close-time write sequence)
 
-Assemble all writes into a single Google Drive sequenced batch write call (close-time write sequence):
+Sequenced MCP backend writes — order matters; binary deliverables are chat-downloaded first:
 
-1. Write `engagement-state.yaml` to `engagements/<slug>/`. Set `engagement_status: closed`, `closed_date: today`, `closed_by: user_acceptance`.
-2. Add the Phase 6c PPTX to `deliverables/`. Add the PDF (when item 1.5 lands), any `council-state-*.yaml` produced during the engagement, the cost-scenarios.xlsx (if generated), and the market-data.csv (if generated). Sanitized workforce data CSV lands in `inputs/`.
-3. Append a stub entry to `ledger/outcome-history.yaml` with all `outcome_observed_*` fields null. (Read current ledger first, append, write back as part of the same `Drive batch write` payload.)
-4. Delete `checkpoint.yaml` if present — engagement is closed. Use Google Drive `google_drive_delete_file` in the same logical write sequence if supported, otherwise as a follow-on call.
-5. Single file description: `engagement: <slug> closed — <headline_decision>`
+1. `engagement_put` — write engagement body with `engagement_status: closed`, `closed_date: today`, `closed_by: user_acceptance` (pass `expected_version`; retry read-modify-write on stale-reject per D optimistic-concurrency).
+2. Deliver PPTX (and PDF when available), any `council-state-*.yaml`, cost-scenarios.xlsx, market-data.csv as chat-download artifacts. Sanitized workforce data CSV also delivered as download. Binaries never go through any backend.
+3. `engagement_append_decision` — append a stub entry with `decision_type: engagement_closed` and all `outcome_observed_*` fields null (idempotent on `id`).
+4. Locally, delete `checkpoint.yaml` from `$STATE_ROOT` if present — engagement is closed.
 
-**Failure handling:** if the `Drive batch write` call fails partway (network, auth, conflict), the skill must NOT report success. Surface the error, offer two paths: (a) retry once with the full payload; (b) fall back to download-and-manual-upload, providing the user with the exact files to upload by hand. Never declare close without a verified Drive file ID returned from MCP.
+**Failure handling:** if any MCP write fails, do NOT report success. Surface the error, offer retry. Never declare close without a confirmed backend response. Per `references/persistence-and-ledger.md` § D2: on write failure, escalate/halt — never write-local-and-reconcile.
 
 ### engagement_mode block
 
@@ -281,18 +278,15 @@ When any non-PPTX artifact fails generation:
 
 After deck acceptance:
 
-**When persistence backend is active (google-drive mode):**
-1. Build the full close-time payload in memory: engagement-state.yaml (with `engagement_status: closed`), deliverables (PPTX + any xlsx/csv), council-state files produced this engagement, sanitized inputs CSV.
-2. Read current `ledger/outcome-history.yaml`, append the new stub entry (outcome fields null).
-3. Single atomic `Drive batch write` commit with all of the above + delete of `checkpoint.yaml` if present. Commit message: `engagement: <slug> closed — <headline_decision>`.
-4. Verify Drive file ID returned. On failure, surface and offer retry/fallback per § Close-time write.
-5. Surface the close confirmation message with Drive file ID + repo paths + `/ledger update <slug>` instruction.
+**Close sequence:**
+1. Deliver binary artifacts as chat-downloads (PPTX, xlsx, csv, council-state files, sanitized CSV).
+2. `engagement_put` — write engagement body closed (see § Close-time write).
+3. `engagement_append_decision` — append closed stub with outcome fields null.
+4. Delete local `checkpoint.yaml` from `$STATE_ROOT` if present.
+5. Surface close confirmation: backend confirmation + local paths + `/ledger update <slug>` instruction.
 6. Engagement complete.
 
-**Paste/download mode (google-drive unavailable):**
-1. Generate `engagement-state-YYYY-MM-DD-{engagement-slug}.yaml`.
-2. Present to user with the "save and fill outcome block manually after meeting" instruction.
-3. Engagement complete.
+**On backend transport failure:** deliver binary artifacts as chat-downloads unchanged; surface the schema-write error; offer retry. Do not silently fall back to a local-only write — per D2 in `references/persistence-and-ledger.md`, halt on write failure.
 
 ---
 

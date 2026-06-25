@@ -464,7 +464,7 @@
     {
       "phase": "workshop_synthesis",
       "question_id": "WS-05",
-      "question_text": "Ready to write the org-comms-profile to Drive? This will create or update org-comms-profiles/<org-slug>.yaml. Confirm: yes / review-first / abort.",
+      "question_text": "Ready to save the org-comms-profile? This will create or update org-comms-profiles/<org-slug>.yaml via the backend. Confirm: yes / review-first / abort.",
       "applies_to_modes": ["self", "directed-interview"],
       "expected_answer_shape": "yes | review-first | abort",
       "follow_up_triggers": [

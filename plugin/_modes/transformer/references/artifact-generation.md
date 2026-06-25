@@ -8,7 +8,7 @@ Loaded by SKILL.md at any track entry that produces a file artifact. Provides th
 
 ## Artifact catalog
 
-| Track | END artifact | Location (in shared Drive folder) | Owning protocol | Format |
+| Track | END artifact | Location (under `$STATE_ROOT`) | Owning protocol | Format |
 |-------|--------------|------------------------------------|-----------------|--------|
 | `/init` | `team-config.yaml` | `team-configs/<slug>.yaml` | `init-mode-protocol.md` | YAML |
 | `/discover` (raw capture) | `discovery-<date>-<process>-<mode>.md` | `discovery/<slug>/YYYY-MM-DD-<process-slug>-<mode>.md` | `discovery-protocol.md` | Markdown (append-only) |
@@ -120,12 +120,12 @@ length_cap_words: 800
 
 ## Write discipline
 
-### Atomicity (Drive backend)
+### Atomicity
 
-Drive lacks atomic multi-file saves. Co-dependent artifacts use the **batched-folder-write** pattern (per `persistence-and-ledger.md`):
+Co-dependent artifacts use the **batched-folder-write** pattern (per `persistence-and-ledger.md`):
 
 1. Write all artifacts in a session to a `_pending/` subfolder of the target location.
-2. After all writes succeed, atomic move (Drive rename) from `_pending/<filename>` to `<filename>`.
+2. After all writes succeed, move from `_pending/<filename>` to `<filename>`.
 3. On failure, surface to user — leave the partial state in `_pending/` for recovery rather than half-applied across the canonical paths.
 
 Single-file artifacts can write directly without `_pending/`.
@@ -136,7 +136,7 @@ Runs before every write. Per `redaction-rules.md`. Banned-pattern detection → 
 
 ### Visibility check
 
-Runs before every write. Per `persistence-and-ledger.md`. Drive folder must be private (no "Anyone with link" or public sharing). Verified at first track invocation in a session and on every checkpoint.
+Runs before every write. Per `persistence-and-ledger.md`. Non-schema artifacts under `$STATE_ROOT` are local to the operator's machine and not shared externally.
 
 ### Audience tag check
 
@@ -144,11 +144,11 @@ Frontmatter must contain a valid `audience` tag (`comp-team-internal`, `vp-peopl
 
 ---
 
-## Paste-mode fallback
+## Chat-render fallback
 
-When `team-config.persistence.enabled == false` OR Drive backend is unreachable, the skill renders every artifact body in chat with explicit save instructions:
+When the `market` backend is unreachable and no local cache is available, the skill renders every artifact body in chat with explicit save instructions:
 
-> "Persistence disabled. Save the following as `<full path in Drive folder>`:
+> "Backend unreachable. Save the following as `<full path under $STATE_ROOT>`:
 >
 > ```markdown
 > <artifact body>
@@ -156,7 +156,7 @@ When `team-config.persistence.enabled == false` OR Drive backend is unreachable,
 >
 > Confirm when saved, or say 'skip' to leave it un-persisted."
 
-Paste-mode does NOT skip the redaction pass — banned patterns still hard-refuse. The user can't bypass redaction by switching to paste-mode.
+The chat-render fallback does NOT skip the redaction pass — banned patterns still hard-refuse. The user cannot bypass redaction this way.
 
 ---
 
@@ -164,6 +164,6 @@ Paste-mode does NOT skip the redaction pass — banned patterns still hard-refus
 
 - Output schemas (those live in the per-template files: `current-state.md`, `diagnosis_template.md`, `transform_spec_template.md`, `roadmap_template.md`).
 - Track-specific generation logic (those live in the per-protocol files: `discovery-protocol.md`, `diagnose-protocol.md`, `transform-protocol.md`, `roadmap-protocol.md`).
-- Drive API specifics (those live in `persistence-and-ledger.md` — mirrored from `github.com/david-deji/compensation-advisor`).
+- Backend / ledger specifics (those live in `persistence-and-ledger.md`).
 
 This file is the cross-cutting catalog of artifacts and the write discipline that applies to all of them.

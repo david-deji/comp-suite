@@ -53,7 +53,7 @@ Before dispatching any individual artifact render, run these checks:
 
 1. **Config exists** — `engagement-comms-configs/<engagement-slug>.yaml` loadable from Drive. If not, surface: "No engagement config for `<engagement-slug>`. Run `/init` first." Abort.
 2. **Source recommendation accessible** — read-test the recommendation source (same as draft-protocol Step 4). If required fields are missing, list them all at once and abort. Do not start the cascade and fail mid-run.
-3. **Drive write permissions** — verify the Drive folder accepts writes (from Phase 0 persistence test). If in paste-mode, confirm: "Cascade will produce up to 16 artifacts. In paste-mode, each will be surfaced in chat. Confirm to proceed."
+3. **Backend reachability** — verify the `market` MCP backend is authenticated and reachable (per `persistence-and-ledger.md` D1/D2). Rendered artifacts deliver as chat-download; bytes never round-trip through a backend.
 4. **Artifacts enabled** — surface the planned artifact list with expected languages and formats:
 
 ```

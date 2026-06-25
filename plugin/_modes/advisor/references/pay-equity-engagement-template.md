@@ -9,8 +9,8 @@ This file is INPUT. The 22 in-skill tools own all generated state files
 
 ## File location
 
-Lives at `engagements/<client-slug>/pay-equity/pay-equity-engagement.yaml` in the
-Google Drive (Claude.ai connector)-backed persistence folder (per `references/persistence-and-ledger.md`).
+Lives at `engagements/<client-slug>/pay-equity/pay-equity-engagement.yaml`, persisted via the
+pay-equity tooling's own persistence layer (`scripts/pay_equity/persistence_gdrive.py`; migration to the v2 model tracked as MIM-0042).
 
 ## Full schema
 
@@ -63,14 +63,12 @@ operator:
   language: fr                       # fr | en — chat language; affichages always FR
   entry_mode: paste                  # paste | csv | guided  (Phase 3 job-class entry preference)
 
-# --- Persistence (inherits comp-advisor convention) ---
-# Top-level engagement-config.yaml's persistence block applies here too;
-# this section can override per-engagement.
-persistence:
-  backend: google-drive                # google-drive | paste
-  folder: comp-advisor-state
-  folder_visibility: private
-  last_verified: 2026-05-03
+# --- Persistence ---
+# Pay-equity working data persists via the pay-equity tooling's own layer
+# (scripts/pay_equity/persistence_gdrive.py). Migrating that layer to the v2 model
+# (local $STATE_ROOT or backend entities) is tracked as MIM-0042 — no persistence
+# block to configure here. comp-advisor schema state (master/engagement/cycle/
+# decision) persists automatically to the market MCP backend, not via this file.
 
 # --- Side deliverables (optional) ---
 # When the operator wants non-statutory output (executive deck, board memo,

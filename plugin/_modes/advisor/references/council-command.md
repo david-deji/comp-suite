@@ -115,5 +115,5 @@ Mode can be specified inline: `/council memo: ...`, `/council integrated: ...`. 
 ## Output Discipline
 
 - Output is chat text + one YAML state artifact (+ optional memo).
-- The state YAML's destination depends on the active persistence backend: with `persistence.backend: google-drive` it auto-saves to the persistence folder (`engagements/<slug>/council-state-{date}.yaml`, or `engagements/_council-standalone/<derived-slug>/...` for standalone runs); in paste mode it is presented as a file artifact via the file primitive for the user to save to their own store. See `references/council-mode.md` § Step 8 and `references/persistence-and-ledger.md` § Commit discipline.
+- The state YAML is written to `$STATE_ROOT/_orgs/<org_slug>/engagements/<slug>/council-state-{date}.yaml` (non-schema artifact — local only; standalone runs use `$STATE_ROOT/_orgs/_council-standalone/<derived-slug>/...`) and presented as a download artifact. See `references/council-mode.md` § Step 8 and `references/persistence-and-ledger.md` § Binary deliverables.
 - After delivery, the response ends without a generic next-step suggestion. If the user wants to escalate to a deck, they do.

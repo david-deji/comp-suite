@@ -21,9 +21,8 @@ _meta:
 
 persistence:
   last_verified: YYYY-MM-DD
-  backend: google-drive                                  # google-drive | paste — auto-detected at session start; this forces the mode
-  folder: "comp-advisor-state"                   # private Google Drive folder holding configs/, engagements/, ledger/, branding/, cba-library/, survey-archive/, vocabulary/, personas/, quickbench-archive/
-  folder_visibility: private                             # MUST be private — skill calls get_repository at session start and refuses to write to publicly shared folders
+  # Schema state (engagements, cycles, brand, costing) → market MCP backend (automatic; no operator config needed).
+  # Non-schema artifacts (deliverables, personas, vocabulary) → local $STATE_ROOT/_orgs/<slug>/.
 
 engagement_scope:
   last_verified: YYYY-MM-DD

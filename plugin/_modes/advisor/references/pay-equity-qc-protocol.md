@@ -15,7 +15,7 @@
 > **See also:**
 > - `references/pay-equity-engagement-template.md` — schema for `pay-equity-engagement.yaml`
 > - `references/pay-equity-render-branching.md` — CNESST-vs-side-deliverable branching rule
-> - `references/persistence-and-ledger.md` — comp-advisor's Google Drive (Claude.ai connector) backend (this protocol's persistence layer rides on top)
+> - `references/persistence-and-ledger.md` — comp-advisor's v2 persistence model (`market` MCP backend). The pay-equity tooling has its own separate persistence layer (`scripts/pay_equity/persistence_gdrive.py`); migrating it to the v2 model is tracked as MIM-0042.
 > - `scripts/pay_equity/` — the in-skill Python module (22 tools, called via `call_tool(name, **kwargs)`)
 > - `template_assets/pay_equity_cnesst/` — 7 affichage `.template.md` files
 
@@ -67,8 +67,8 @@ calls are plain in-process Python invocations.
 | 22 | `respond_to_observation` | observations.py | Operator reply to logged observation |
 
 Engagement data lives in `engagements/<client-slug>/pay-equity/`. Files are JSON in v1
-(see `scripts/pay_equity/persistence_gdrive.py` for the format note). The skill orchestration
-layer writes files to the Google Drive (Claude.ai connector)-backed persistence folder per `references/persistence-and-ledger.md`.
+(see `scripts/pay_equity/persistence_gdrive.py` for the format note). The pay-equity tooling
+persists these files via its own persistence layer (`persistence_gdrive.py`); migrating that layer off Google Drive to the v2 model is tracked as MIM-0042.
 
 ---
 
@@ -1032,8 +1032,8 @@ operator pre-OCRs locally and uses Path A, or falls back to Path C.
 
 **Path B file storage:** orchestration commits the original PDF to
 `engagements/<slug>/pay-equity/prior/<YYYY>/exercise-source.pdf` and the confirmed
-extraction to `prior/<YYYY>/parsed-state.yaml`, both via Google Drive (Claude.ai connector) per the persistence
-contract.
+extraction to `prior/<YYYY>/parsed-state.yaml`, both via the pay-equity tooling's persistence
+layer (`persistence_gdrive.py`; migration tracked as MIM-0042).
 
 **Tool call** (invoke via `call_tool("name", **kwargs)`):
 ```

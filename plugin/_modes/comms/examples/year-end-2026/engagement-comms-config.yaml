@@ -8,11 +8,6 @@ client_slug: acme
 cycle_name: "FY26 Annual Wage Review"
 created: 2026-05-03
 
-persistence:
-  enabled: true
-  drive_folder_id: "<replace-with-shared-comp-advisor-state-folder-id>"
-  visibility: private
-
 recommendation_source:
   type: compensation-advisor
   engagement_slug: pharmacy-fy26

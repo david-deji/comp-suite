@@ -114,14 +114,14 @@ This slot is intentionally unassigned in v1 for comp-comms-builder to
 keep C-numbering aligned with sibling skills. Assignment deferred to v1.1
 based on friction log.
 
-## C11 — Drive folder visibility (private only) **(shared)**
+## C11 — Backend write integrity **(shared)**
 
-Skill verifies the persistence folder is owned by the user and not publicly
-shared (no "Anyone with link") before any write. Public-link sharing → hard
-refuse with a setup pointer.
+Skill verifies the `market` MCP backend is reachable and authenticated before
+any schema-state write. On transport failure, escalate/halt per D2 — never
+write-local-and-reconcile.
 
-Enforced: `persistence-and-ledger.md` § Privacy & cleanup. Verified at: every
-session start (Phase 0 backend probe), every close-time write.
+Enforced: `persistence-and-ledger.md` § Read/write contract (D2). Verified at:
+every session start (backend probe), every close-time write.
 
 ## C12 — Federated section ownership (master.yaml) **(shared)**
 

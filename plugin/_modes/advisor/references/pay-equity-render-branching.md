@@ -83,7 +83,7 @@ language is `en`, OR explicit "produce an English version" request):
    ```
    Ce document est une traduction. La version française fait foi.
    ```
-4. Both files commit to the persistence folder.
+4. Both files persist via the pay-equity tooling's own persistence layer (`scripts/pay_equity/persistence_gdrive.py`; its migration off Google Drive is tracked separately as MIM-0042).
 
 The English version is a courtesy translation; the French version is the legal
 artifact. Operators must understand this distinction before distributing.

@@ -57,7 +57,7 @@ memo_length_cap_words: 800
 
 ## Perspective pool
 
-Seven bundled comp-scoped personas, plus any custom personas registered in the persistence folder's `personas/` library. Pick 4-6 per run based on the question. Do not run all seven (or all available) by default — more personas dilute rather than add.
+Seven bundled comp-scoped personas, plus any custom personas registered in `$STATE_ROOT`'s `personas/` library. Pick 4-6 per run based on the question. Do not run all seven (or all available) by default — more personas dilute rather than add.
 
 **Pool resolution**: bundled-7 ∪ custom personas from `personas/_index.yaml`. See `references/persona-library.md` for custom persona schema, loading procedure, and collision rules. Custom personas appear in the roster declaration tagged `(custom)`; bundled appear tagged `(bundled)`.
 
@@ -238,10 +238,9 @@ After all persona blocks, return to orchestrator voice and produce the synthesis
 
 After output completes, produce the `council-state-YYYY-MM-DD-{slug}.yaml` artifact. The persistence backend determines write behavior:
 
-- **`persistence.backend: google-drive`**: write to `engagements/<slug>/council-state-YYYY-MM-DD.yaml` via Google Drive `google_drive_create_file` with file description `council: <slug> @ <date> — <synthesis_one_liner>` (per `references/persistence-and-ledger.md` § Write discipline). For standalone council runs (no engagement slug), write to a session-tagged folder under `engagements/_council-standalone/` with a derived slug.
-- **Paste mode** (or persistence absent): present the YAML as a file artifact via the file primitive; user saves to their own store.
+Write `council-state-YYYY-MM-DD-{slug}.yaml` as a local artifact to `$STATE_ROOT/_orgs/<org_slug>/engagements/<slug>/` (non-schema artifact — local only per `references/persistence-and-ledger.md`). For standalone council runs (no engagement slug), write under `$STATE_ROOT/_orgs/_council-standalone/<derived-slug>/`. Present the file as a download artifact simultaneously.
 
-Either way, next year's R-lite can read both `engagement-state` and `council-state` for full reasoning continuity. When google-drive is active, the read happens automatically at Phase 0 prior_engagement_refs lookup; in paste mode the user pastes both files when starting the next cycle.
+Either way, next year's R-lite can read both `engagement-state` (loaded from the market MCP backend at Phase 0) and `council-state` (pasted or loaded from `$STATE_ROOT`) for full reasoning continuity.
 
 ## Synthesis styles
 
