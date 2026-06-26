@@ -7,10 +7,9 @@ Generates 2 HTML documents:
 
 from datetime import date
 from html import escape
-from pathlib import Path
 
 from ._base import (
-    _read, _fmt, _pct, _dimension_fr, _predominance_fr, _method_fr,
+    _fmt, _pct, _dimension_fr, _predominance_fr, _method_fr,
     build_html_document, employer_header, signature_block, disclaimer_block,
 )
 from ._legal_text import (
@@ -21,12 +20,12 @@ from ._legal_text import (
 )
 
 
-def generate_1er_affichage(eng_dir: Path) -> str:
+def generate_1er_affichage(
+    engagement: dict,
+    job_classes: dict,
+    evaluation: dict,
+) -> str:
     """Build the 1er affichage HTML (steps 1-2) for 50+ employees."""
-    engagement = _read(eng_dir, "engagement.json")
-    job_classes = _read(eng_dir, "job-classes.json")
-    evaluation = _read(eng_dir, "evaluation-grid.json")
-
     display_date = date.today().isoformat()
     classes = job_classes.get("classes", [])
     grid = evaluation.get("grid", {})
@@ -151,13 +150,13 @@ def generate_1er_affichage(eng_dir: Path) -> str:
     return build_html_document(parts)
 
 
-def generate_2e_affichage(eng_dir: Path) -> str:
+def generate_2e_affichage(
+    engagement: dict,
+    job_classes: dict,
+    compensation: dict,
+    adjustments: dict,
+) -> str:
     """Build the 2e affichage HTML (steps 3-4) for 50+ employees."""
-    engagement = _read(eng_dir, "engagement.json")
-    job_classes = _read(eng_dir, "job-classes.json")
-    compensation = _read(eng_dir, "compensation.json")
-    adjustments = _read(eng_dir, "adjustments.json")
-
     display_date = date.today().isoformat()
     classes = job_classes.get("classes", [])
     comparisons = compensation.get("comparison_results", [])
@@ -204,7 +203,7 @@ def generate_2e_affichage(eng_dir: Path) -> str:
 """)
     for comp in comparisons:
         fid = comp.get("female_class_id", "")
-        mid = comp.get("male_comparator_id") or "\u2014"
+        mid = comp.get("male_comparator_id") or "—"
         parts.append(f"""<tr>
   <td>{escape(fid)}</td>
   <td>{escape(title_map.get(fid, ''))}</td>

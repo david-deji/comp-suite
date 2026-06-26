@@ -1,15 +1,9 @@
 """Shared helpers for posting generation."""
 
-import json
 from html import escape
 from pathlib import Path
 
 _CSS_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "posting" / "affichage.css"
-
-
-def _read(eng_dir: Path, filename: str) -> dict:
-    with open(eng_dir / filename, encoding="utf-8") as f:
-        return json.load(f)
 
 
 def _fmt(v, prefix="$") -> str:

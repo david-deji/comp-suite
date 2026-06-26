@@ -11,9 +11,8 @@ Spec anchors:
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
-from scripts.pay_equity import persistence_gdrive as persistence
 from scripts.pay_equity.app import tool as mcp_tool
 from scripts.pay_equity.errors import MissingDataError, ValidationError
 from scripts.pay_equity.models import (
@@ -106,15 +105,48 @@ def _fmt_pct(v: float) -> str:
     return f"{v:.1f}%".replace(".", ",")
 
 
-def _render_evaluation_summary_table(eng_dir, language: str) -> str:
-    eval_path = eng_dir / "evaluation-grid.json"
-    jc_path = eng_dir / "job-classes.json"
-    if not eval_path.exists() or not jc_path.exists():
-        raise MissingDataError(
-            "evaluation-grid.json or job-classes.json missing — score classes first."
-        )
-    eval_file = persistence.read_json(eval_path, EvaluationFile)
-    jc_file = persistence.read_json(jc_path, JobClassesFile)
+# --- Assemblers ------------------------------------------------------------
+# Pure helpers that build the file-shaped models the renderers expect from the
+# per-entity backend dicts the orchestrator passes in (OR-8). The orchestrator
+# fetches via payequity_get_*/list_* and reassembles the file shape here; no
+# network/MCP call lives in this module.
+
+def assemble_evaluation_file(evaluation: dict) -> EvaluationFile:
+    """Build an EvaluationFile from the backend evaluation-grid dict.
+
+    Accepts either the full file-shaped dict ({grid, class_scores, ...}) or the
+    per-entity getters reassembled into that shape by the orchestrator.
+    """
+    return EvaluationFile.model_validate(evaluation)
+
+
+def assemble_job_classes_file(job_classes: dict) -> JobClassesFile:
+    """Build a JobClassesFile from the backend job-classes dict."""
+    return JobClassesFile.model_validate(job_classes)
+
+
+def assemble_compensation_file(compensation: dict) -> CompensationFile:
+    """Build a CompensationFile from the backend compensation dict.
+
+    The orchestrator reassembles comparison_results / regression / global_comparison
+    (from payequity_list_comparison_results / get_regression_result / get_global_result
+    / get_compensation_meta) into the file shape before passing it in (OR-5/OR-8).
+    """
+    return CompensationFile.model_validate(compensation)
+
+
+def assemble_adjustment_file(adjustments: dict) -> AdjustmentFile:
+    """Build an AdjustmentFile from the backend adjustments dict.
+
+    The orchestrator reassembles class_adjustments / payment_schedule /
+    retroactive_events (with interest_breakdown) into the file shape (OR-8).
+    """
+    return AdjustmentFile.model_validate(adjustments)
+
+
+def _render_evaluation_summary_table(
+    eval_file: EvaluationFile, jc_file: JobClassesFile, language: str
+) -> str:
     title = "Sommaire d'évaluation des catégories" if language == "fr" else "Evaluation summary by class"
     cols_label = ("Catégorie", "Titre", "Prédominance", "Total", "Qualifications", "Responsabilités", "Effort", "Conditions") if language == "fr" else ("Class", "Title", "Predominance", "Total", "Qualifications", "Responsibilities", "Effort", "Conditions")
 
@@ -148,12 +180,7 @@ def _render_evaluation_summary_table(eng_dir, language: str) -> str:
     return _h(title) + _table(list(cols_label), rows)
 
 
-def _render_compensation_comparison_table(eng_dir, language: str) -> str:
-    comp_path = eng_dir / "compensation.json"
-    if not comp_path.exists():
-        raise MissingDataError("compensation.json missing — call compare_compensation first.")
-    comp = persistence.read_json(comp_path, CompensationFile)
-
+def _render_compensation_comparison_table(comp: CompensationFile, language: str) -> str:
     title = "Comparaison des rémunérations" if language == "fr" else "Compensation comparison"
     cols = (
         ("Catégorie féminine", "Méthode", "Comparateur", "Rém. féminine ($)", "Rém. masculine ($)", "Écart ($)", "Écart (%)", "Ajustement requis")
@@ -205,12 +232,7 @@ def _render_compensation_comparison_table(eng_dir, language: str) -> str:
     return body
 
 
-def _render_adjustment_schedule_table(eng_dir, language: str) -> str:
-    adj_path = eng_dir / "adjustments.json"
-    if not adj_path.exists():
-        raise MissingDataError("adjustments.json missing — call calculate_adjustments first.")
-    adj = persistence.read_json(adj_path, AdjustmentFile)
-
+def _render_adjustment_schedule_table(adj: AdjustmentFile, language: str) -> str:
     title_class = "Ajustements par catégorie" if language == "fr" else "Per-class adjustments"
     cols_class = (
         ("Catégorie", "Titre", "Écart hor. ($)", "Écart ann. ($)", "Effectifs", "Coût classe ($)")
@@ -251,12 +273,7 @@ def _render_adjustment_schedule_table(eng_dir, language: str) -> str:
     )
 
 
-def _render_retroactive_calculation_table(eng_dir, language: str) -> str:
-    adj_path = eng_dir / "adjustments.json"
-    if not adj_path.exists():
-        raise MissingDataError("adjustments.json missing — call calculate_adjustments first.")
-    adj = persistence.read_json(adj_path, AdjustmentFile)
-
+def _render_retroactive_calculation_table(adj: AdjustmentFile, language: str) -> str:
     title = "Calcul rétroactif (intérêts par période de paie)" if language == "fr" else "Retroactive calculation (per-pay-period interest)"
     note = (
         f"\n*{UNVERIFIED_TAG} : valeurs fondées sur la méthode CNESST par période de paie. "
@@ -309,11 +326,7 @@ def _render_retroactive_calculation_table(eng_dir, language: str) -> str:
     return out
 
 
-def _render_obligations_summary(eng_dir, language: str) -> str:
-    eng_path = eng_dir / "engagement.json"
-    if not eng_path.exists():
-        raise MissingDataError("engagement.json missing.")
-    eng = persistence.read_json(eng_path, Engagement)
+def _render_obligations_summary(eng: Engagement, language: str) -> str:
     matrix = get_obligations_matrix(eng.size_tier, eng.exercise_type)
     title = "Résumé des obligations" if language == "fr" else "Obligations summary"
     out = _h(title)
@@ -340,11 +353,7 @@ def _render_obligations_summary(eng_dir, language: str) -> str:
     return out
 
 
-def _render_job_classes_table(eng_dir, language: str) -> str:
-    jc_path = eng_dir / "job-classes.json"
-    if not jc_path.exists():
-        raise MissingDataError("job-classes.json missing.")
-    jc = persistence.read_json(jc_path, JobClassesFile)
+def _render_job_classes_table(jc: JobClassesFile, language: str) -> str:
     title = "Inventaire des catégories d'emploi" if language == "fr" else "Job classes inventory"
     cols = (
         ("Catégorie", "Titre", "Effectifs", "% femmes", "Prédominance", "Méthode")
@@ -364,11 +373,7 @@ def _render_job_classes_table(eng_dir, language: str) -> str:
     return _h(title) + _table(list(cols), rows)
 
 
-def _render_regression_line_summary(eng_dir, language: str) -> str:
-    comp_path = eng_dir / "compensation.json"
-    if not comp_path.exists():
-        raise MissingDataError("compensation.json missing.")
-    comp = persistence.read_json(comp_path, CompensationFile)
+def _render_regression_line_summary(comp: CompensationFile, language: str) -> str:
     if not comp.regression:
         raise MissingDataError("regression not run — compare_compensation in hybrid mode required.")
     r = comp.regression
@@ -391,21 +396,86 @@ def _render_regression_line_summary(eng_dir, language: str) -> str:
     return out
 
 
-_RENDERERS = {
-    "evaluation_summary_table": _render_evaluation_summary_table,
-    "compensation_comparison_table": _render_compensation_comparison_table,
-    "adjustment_schedule_table": _render_adjustment_schedule_table,
-    "retroactive_calculation_table": _render_retroactive_calculation_table,
-    "obligations_summary": _render_obligations_summary,
-    "job_classes_table": _render_job_classes_table,
-    "regression_line_summary": _render_regression_line_summary,
+_PARTICIPATION_GATED_DOCS = {
+    "adjustment_schedule_table",
+    "compensation_comparison_table",
+    "obligations_summary",
+    "retroactive_calculation_table",
 }
+
+
+def _render_body(
+    document_type: str,
+    engagement: Engagement,
+    language: str,
+    *,
+    job_classes: Optional[dict],
+    evaluation: Optional[dict],
+    compensation: Optional[dict],
+    adjustments: Optional[dict],
+) -> str:
+    """Dispatch to the matching renderer, assembling the file-shaped model it needs.
+
+    Raises MissingDataError when the orchestrator did not supply the entity the
+    requested document_type requires — the same operator-facing signal the old
+    on-disk reads produced.
+    """
+    if document_type == "evaluation_summary_table":
+        if evaluation is None or job_classes is None:
+            raise MissingDataError(
+                "evaluation-grid.json or job-classes.json missing — score classes first."
+            )
+        return _render_evaluation_summary_table(
+            assemble_evaluation_file(evaluation),
+            assemble_job_classes_file(job_classes),
+            language,
+        )
+    if document_type == "compensation_comparison_table":
+        if compensation is None:
+            raise MissingDataError("compensation.json missing — call compare_compensation first.")
+        return _render_compensation_comparison_table(
+            assemble_compensation_file(compensation), language
+        )
+    if document_type == "adjustment_schedule_table":
+        if adjustments is None:
+            raise MissingDataError("adjustments.json missing — call calculate_adjustments first.")
+        return _render_adjustment_schedule_table(
+            assemble_adjustment_file(adjustments), language
+        )
+    if document_type == "retroactive_calculation_table":
+        if adjustments is None:
+            raise MissingDataError("adjustments.json missing — call calculate_adjustments first.")
+        return _render_retroactive_calculation_table(
+            assemble_adjustment_file(adjustments), language
+        )
+    if document_type == "obligations_summary":
+        return _render_obligations_summary(engagement, language)
+    if document_type == "job_classes_table":
+        if job_classes is None:
+            raise MissingDataError("job-classes.json missing.")
+        return _render_job_classes_table(assemble_job_classes_file(job_classes), language)
+    if document_type == "regression_line_summary":
+        if compensation is None:
+            raise MissingDataError("compensation.json missing.")
+        return _render_regression_line_summary(
+            assemble_compensation_file(compensation), language
+        )
+    raise ValidationError(
+        f"document_type={document_type!r} not in {VALID_DOCUMENT_TYPES}"
+    )
 
 
 @mcp_tool
 def render_document(
-    client_slug: str,
     document_type: str,
+    engagement: dict,
+    *,
+    job_classes: Optional[dict] = None,
+    evaluation: Optional[dict] = None,
+    compensation: Optional[dict] = None,
+    adjustments: Optional[dict] = None,
+    regression: Optional[dict] = None,
+    participation_gate: Optional[tuple[bool, str]] = None,
     language: str = "fr",
     include_disclaimer: bool = True,
 ) -> dict[str, Any]:
@@ -418,6 +488,11 @@ def render_document(
     in guided mode, the AVIS DE RÉVISION JURIDIQUE block is also embedded.
     Retroactive calculations carry an [UNVERIFIED] tag until the CNESST Excel
     spreadsheet is matched.
+
+    Pure: the orchestrator fetches each entity the document_type needs via
+    payequity_get_*/list_* and passes it in. `participation_gate` is the
+    precomputed (ok, reason) tuple from has_participation_gate_satisfied
+    (recomputed gate from maintenance.py) — this function reads no files.
     """
     if document_type not in VALID_DOCUMENT_TYPES:
         raise ValidationError(
@@ -426,33 +501,40 @@ def render_document(
     if language not in ("fr", "en"):
         raise ValidationError(f"language={language!r} not in ('fr', 'en')")
 
-    if not persistence.engagement_exists(client_slug):
-        raise MissingDataError(
-            f"engagement.json not found for {client_slug!r}."
-        )
-    eng_dir = persistence.get_engagement_dir(client_slug)
-    engagement = persistence.read_json(eng_dir / "engagement.json", Engagement)
+    engagement_model = Engagement.model_validate(engagement)
+
+    # The orchestrator may pass the regression result separately (per-entity
+    # getter) rather than already folded into the compensation file shape;
+    # merge it in so the assembler sees a complete CompensationFile (OR-8).
+    if compensation is not None and regression is not None and not compensation.get("regression"):
+        compensation = {**compensation, "regression": regression}
 
     # R5 REG-H1: Art. 76.2.1 hard gate — refuse to render maintien deliverables
     # when the participation gate has not been satisfied. Operators see this
     # as a MissingDataError pointing them at record_participation_session.
-    _PARTICIPATION_GATED_DOCS = {
-        "adjustment_schedule_table",
-        "compensation_comparison_table",
-        "obligations_summary",
-        "retroactive_calculation_table",
-    }
+    # The gate is the precomputed (ok, reason) tuple the orchestrator passes in.
     if (
-        engagement.exercise_type.value == "maintenance"
+        engagement_model.exercise_type.value == "maintenance"
         and document_type in _PARTICIPATION_GATED_DOCS
     ):
-        from scripts.pay_equity.tools.maintenance import has_participation_gate_satisfied
-
-        ok, reason = has_participation_gate_satisfied(eng_dir)
+        if participation_gate is None:
+            raise MissingDataError(
+                "Art. 76.2.1: participation gate not evaluated — call "
+                "record_participation_session before rendering this document."
+            )
+        ok, reason = participation_gate
         if not ok:
             raise MissingDataError(reason)
 
-    body = _RENDERERS[document_type](eng_dir, language)
+    body = _render_body(
+        document_type,
+        engagement_model,
+        language,
+        job_classes=job_classes,
+        evaluation=evaluation,
+        compensation=compensation,
+        adjustments=adjustments,
+    )
 
     parts: list[str] = []
     if include_disclaimer:
@@ -466,7 +548,7 @@ def render_document(
     parts.append("\n\n")
 
     avis_included = False
-    if engagement.employee_count >= 100 and engagement.operator_mode == OperatorMode.GUIDED:
+    if engagement_model.employee_count >= 100 and engagement_model.operator_mode == OperatorMode.GUIDED:
         parts.append(
             AVIS_REVISION_JURIDIQUE_FR if language == "fr" else AVIS_REVISION_JURIDIQUE_EN
         )
@@ -494,5 +576,9 @@ __all__ = [
     "PROFESSIONAL_DISCLAIMER_FR",
     "UNVERIFIED_TAG",
     "VALID_DOCUMENT_TYPES",
+    "assemble_adjustment_file",
+    "assemble_compensation_file",
+    "assemble_evaluation_file",
+    "assemble_job_classes_file",
     "render_document",
 ]

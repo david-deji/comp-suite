@@ -6,10 +6,9 @@ consultant to fill) and pre-filled legal/recourse sections.
 
 from datetime import date
 from html import escape
-from pathlib import Path
 
 from ._base import (
-    build_html_document, employer_header, signature_block, disclaimer_block, _read,
+    build_html_document, employer_header, signature_block, disclaimer_block,
 )
 from ._legal_text import (
     recourse_art100,
@@ -30,9 +29,8 @@ def _placeholder_section(label: str) -> str:
 """
 
 
-def generate_nouvel_initial(eng_dir: Path) -> str:
+def generate_nouvel_initial(engagement: dict) -> str:
     """Nouvel affichage for 10-49 initial (art. 35)."""
-    engagement = _read(eng_dir, "engagement.json")
     display_date = date.today().isoformat()
 
     parts = []
@@ -67,9 +65,8 @@ def generate_nouvel_initial(eng_dir: Path) -> str:
     return build_html_document(parts)
 
 
-def generate_nouvel_1er(eng_dir: Path) -> str:
+def generate_nouvel_1er(engagement: dict) -> str:
     """Nouvel affichage for 50+ initial, 1er affichage (art. 75)."""
-    engagement = _read(eng_dir, "engagement.json")
     display_date = date.today().isoformat()
 
     parts = []
@@ -104,9 +101,8 @@ def generate_nouvel_1er(eng_dir: Path) -> str:
     return build_html_document(parts)
 
 
-def generate_nouvel_2e(eng_dir: Path) -> str:
+def generate_nouvel_2e(engagement: dict) -> str:
     """Nouvel affichage for 50+ initial, 2e affichage (art. 75)."""
-    engagement = _read(eng_dir, "engagement.json")
     display_date = date.today().isoformat()
 
     parts = []
@@ -141,14 +137,11 @@ def generate_nouvel_2e(eng_dir: Path) -> str:
     return build_html_document(parts)
 
 
-def generate_nouvel_maintenance(eng_dir: Path, engagement: dict | None = None) -> str:
+def generate_nouvel_maintenance(engagement: dict) -> str:
     """Nouvel affichage for maintenance (art. 76.4).
 
     Conditional recourse sections based on maintenance_evaluation_method.
     """
-    if engagement is None:
-        engagement = _read(eng_dir, "engagement.json")
-
     display_date = date.today().isoformat()
     eval_method = engagement.get("maintenance_evaluation_method") or "employer_alone"
 

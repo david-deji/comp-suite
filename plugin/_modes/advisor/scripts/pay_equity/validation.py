@@ -17,8 +17,11 @@ Centralizes the validation rules workers need to enforce across tools:
 """
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 from typing import Any
+
+from scripts.pay_equity.errors import ValidationError
 
 # Constraint thresholds (HARD per constraints.md)
 DISPROPORTION_THRESHOLD_PP_DEFAULT = 20.0
@@ -39,6 +42,24 @@ MANDATED_FACTORS: tuple[str, ...] = (
     "effort",
     "conditions",
 )
+
+
+# --- Slug / identifier validation ------------------------------------------
+
+# Lowercase alnum + hyphens, 1-64 chars, starts with alnum. Blocks `..`,
+# leading hyphens, slashes, dots, null bytes. Same regex as the original
+# persistence module — both client_slug and template_id flow through this.
+_SAFE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+
+
+def validate_safe_identifier(value: str, *, field: str = "identifier") -> str:
+    """Reject values that could escape a directory via traversal or absolute paths."""
+    if not isinstance(value, str) or not _SAFE_ID_RE.match(value):
+        raise ValidationError(
+            f"Invalid {field}: must match [a-z0-9][a-z0-9-]{{0,63}}",
+            data={"field": field, "value_kind": type(value).__name__},
+        )
+    return value
 
 
 def validate_job_class_grouping(class_data: dict) -> list[str]:
@@ -212,6 +233,7 @@ __all__ = [
     "FACTOR_WEIGHT_MIN",
     "FACTOR_WEIGHT_MAX",
     "MANDATED_FACTORS",
+    "validate_safe_identifier",
     "validate_job_class_grouping",
     "validate_grid_structure",
     "validate_participation_timing",

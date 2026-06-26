@@ -8,26 +8,19 @@ Spec anchors:
 """
 from __future__ import annotations
 
-from datetime import date
 from typing import Any, Optional
 
 from pydantic import ValidationError as PydanticValidationError
 
-from scripts.pay_equity import persistence_gdrive as persistence
 from scripts.pay_equity.app import tool as mcp_tool
-from scripts.pay_equity.computation.predominance import determine_predominance as _compute_predominance
-from scripts.pay_equity.errors import MissingDataError, ValidationError
+from scripts.pay_equity.errors import ValidationError
 from scripts.pay_equity.models import (
     JobClass,
-    JobClassesFile,
     Predominance,
     PredominanceMethod,
     PredominanceOverrideEvidence,
 )
-from scripts.pay_equity.validation import (
-    DISPROPORTION_THRESHOLD_PP_DEFAULT,
-    PAY_SPREAD_WARN_THRESHOLD,
-)
+from scripts.pay_equity.validation import PAY_SPREAD_WARN_THRESHOLD
 
 
 PAY_SPREAD_PCT = PAY_SPREAD_WARN_THRESHOLD * 100  # 30
@@ -60,34 +53,22 @@ def _normalize_class(payload: dict[str, Any]) -> dict[str, Any]:
 
 @mcp_tool
 def add_job_classes(
-    client_slug: str,
+    existing_classes: list[dict[str, Any]],
     classes: list[dict[str, Any]],
     enterprise_female_percentage: Optional[float] = None,
 ) -> dict[str, Any]:
-    """Add job classes to the engagement.
+    """Add job classes to the engagement (pure).
 
     Validates three-criteria grouping (similar duties / similar qualifications /
     same compensation range). Warns on >30% pay spread within a class. Warns on
-    >70% description token overlap between classes (likely-duplicate). Persists
-    JobClassesFile and invalidates downstream files (evaluation/compensation/
-    adjustments) when the file already exists.
+    >70% description token overlap between classes (likely-duplicate). Receives the
+    current classes (fetched by the orchestrator) and returns the full validated
+    class set for the orchestrator to persist; downstream staleness is server-side.
     """
-    if not persistence.engagement_exists(client_slug):
-        raise MissingDataError(
-            f"engagement.json not found for {client_slug!r} — call create_engagement first."
-        )
-
-    eng_dir = persistence.get_engagement_dir(client_slug)
-    jc_path = eng_dir / "job-classes.json"
-
-    existing: list[JobClass] = []
-    pre_existing_file = jc_path.exists()
-    if pre_existing_file:
-        try:
-            f = persistence.read_json(jc_path, JobClassesFile)
-            existing = list(f.classes)
-        except Exception:
-            existing = []
+    existing: list[JobClass] = [
+        JobClass(**{k: v for k, v in c.items() if k in JobClass.model_fields})
+        for c in existing_classes
+    ]
 
     warnings: list[str] = []
     pay_spread_warnings: list[dict[str, Any]] = []
@@ -167,18 +148,6 @@ def add_job_classes(
         female = sum(c.female_incumbents for c in all_classes)
         enterprise_pct = round(female / total * 100, 2) if total else 0.0
 
-    file_payload = JobClassesFile(
-        client_slug=client_slug,
-        classes=all_classes,
-        enterprise_female_percentage=enterprise_pct,
-        last_updated=date.today(),
-    )
-    persistence.write_json(jc_path, file_payload)
-
-    invalidated = []
-    if pre_existing_file:
-        invalidated = persistence.invalidate_downstream(eng_dir, "job-classes.json")
-
     warnings.extend(w["message"] for w in pay_spread_warnings)
     warnings.extend(w["message"] for w in similar_description_warnings)
 
@@ -190,140 +159,58 @@ def add_job_classes(
         "pay_spread_warnings": pay_spread_warnings,
         "similar_description_warnings": similar_description_warnings,
         "enterprise_female_percentage": enterprise_pct,
-        "invalidated_files": invalidated,
     }
 
 
 @mcp_tool
-def determine_predominance(
-    client_slug: str,
-    disproportion_threshold_pp: float = DISPROPORTION_THRESHOLD_PP_DEFAULT,
-) -> dict[str, Any]:
-    """Run the 4-criteria CNESST predominance test on all job classes.
+def summarize_predominance(classes: list[dict[str, Any]]) -> dict[str, Any]:
+    """Cross-class predominance summary (pure).
 
-    Order applied: numerical (>=60%) → disproportion vs enterprise ratio
-    (default >=20pp) → operator-applied historical/stereotype path for remaining
-    neutrals. Sets `global_comparison_eligible=true` when no male classes exist
-    (signals RLRQ E-12.001 r.2 path).
+    The per-class 4-criteria predominance math runs server-side
+    (`payequity_compute_predominance`). This residual keeps the cross-class
+    signals that must stay in tested Python: the no-male `global_comparison_eligible`
+    route (RLRQ E-12.001 r.2) and the override-skip tally (overridden classes are
+    excluded from the server recompute). Receives the classes with their
+    determined predominance and returns the bucketed counts.
     """
-    if not persistence.engagement_exists(client_slug):
-        raise MissingDataError(
-            f"engagement.json not found for {client_slug!r}."
-        )
-    eng_dir = persistence.get_engagement_dir(client_slug)
-    jc_path = eng_dir / "job-classes.json"
-    if not jc_path.exists():
-        raise MissingDataError(
-            f"job-classes.json not found for {client_slug!r} — call add_job_classes first."
-        )
+    female_classes: list[str] = []
+    male_classes: list[str] = []
+    neutral_classes: list[str] = []
+    override_classes: list[str] = []
 
-    file = persistence.read_json(jc_path, JobClassesFile)
-    enterprise_pct = file.enterprise_female_percentage
-
-    results: list[dict[str, Any]] = []
-    warnings: list[str] = []
-    counts = {"female": 0, "male": 0, "neutral": 0}
-
-    updated_classes: list[JobClass] = []
-    for cls in file.classes:
-        # Skip classes with operator overrides — preserve them.
-        if cls.is_override and cls.predominance:
-            counts[cls.predominance.value] += 1
-            results.append(
-                {
-                    "class_id": cls.id,
-                    "predominance": cls.predominance.value,
-                    "method": cls.predominance_method.value if cls.predominance_method else "operator_override",
-                    "female_pct": cls.female_percentage,
-                    "preserved_override": True,
-                }
-            )
-            updated_classes.append(cls)
-            continue
-
-        outcome = _compute_predominance(
-            female_pct=cls.female_percentage,
-            enterprise_female_pct=enterprise_pct,
-            threshold_pp=disproportion_threshold_pp,
-        )
-        method_map = {
-            "quantitative": PredominanceMethod.QUANTITATIVE,
-            "disproportion": PredominanceMethod.DISPROPORTION,
-        }
-        new_pred = Predominance(outcome["predominance"])
-        new_method = method_map.get(outcome["method"])
-        cls = cls.model_copy(
-            update={
-                "predominance": new_pred,
-                "predominance_method": new_method,
-            }
-        )
-        counts[new_pred.value] += 1
-        if new_pred == Predominance.NEUTRAL:
-            warnings.append(
-                f"class {cls.id}: neutral — apply historical/stereotype override or accept as neutral."
-            )
-        results.append(
-            {
-                "class_id": cls.id,
-                **{k: v for k, v in outcome.items()},
-            }
-        )
-        updated_classes.append(cls)
-
-    male_classes = counts["male"]
-    no_male = male_classes == 0
-
-    file = file.model_copy(
-        update={
-            "classes": updated_classes,
-            "all_predominance_determined": all(
-                c.predominance is not None for c in updated_classes
-            ),
-            "last_updated": date.today(),
-        }
-    )
-    persistence.write_json(jc_path, file)
-    persistence.invalidate_downstream(eng_dir, "job-classes.json")
+    for cls in classes:
+        cls_id = cls.get("id")
+        if cls.get("is_override"):
+            override_classes.append(cls_id)
+        pred = cls.get("predominance")
+        if pred == Predominance.FEMALE.value:
+            female_classes.append(cls_id)
+        elif pred == Predominance.MALE.value:
+            male_classes.append(cls_id)
+        elif pred == Predominance.NEUTRAL.value:
+            neutral_classes.append(cls_id)
 
     return {
-        "results": results,
-        "summary": {
-            "female_classes": counts["female"],
-            "male_classes": counts["male"],
-            "neutral_classes": counts["neutral"],
-            "no_male_classes": no_male,
-        },
-        "warnings": warnings,
-        "global_comparison_eligible": no_male,
-        "disproportion_threshold_pp": disproportion_threshold_pp,
-        "enterprise_female_percentage": enterprise_pct,
+        "global_comparison_eligible": len(male_classes) == 0,
+        "female_classes": female_classes,
+        "male_classes": male_classes,
+        "neutral_classes": neutral_classes,
+        "override_classes": override_classes,
     }
 
 
 @mcp_tool
 def override_predominance(
-    client_slug: str,
-    class_id: str,
+    job_class: dict[str, Any],
     predominance: str,
     evidence: dict[str, Any],
 ) -> dict[str, Any]:
-    """Override the quantitative predominance result using stereotype or historical test.
+    """Override the quantitative predominance result using stereotype or historical test (pure).
 
-    Requires structured PredominanceOverrideEvidence. The evidence is persisted
-    into the JobClass record and downstream files invalidated.
+    Requires structured PredominanceOverrideEvidence. Receives the single target
+    job class (fetched by the orchestrator) and returns the one updated class for
+    the orchestrator to persist with `is_override=True`.
     """
-    if not persistence.engagement_exists(client_slug):
-        raise MissingDataError(
-            f"engagement.json not found for {client_slug!r}."
-        )
-    eng_dir = persistence.get_engagement_dir(client_slug)
-    jc_path = eng_dir / "job-classes.json"
-    if not jc_path.exists():
-        raise MissingDataError(
-            f"job-classes.json not found for {client_slug!r}."
-        )
-
     try:
         new_pred = Predominance(predominance)
     except ValueError:
@@ -340,47 +227,34 @@ def override_predominance(
     except Exception as exc:
         raise ValidationError(f"evidence invalid: {type(exc).__name__}")
 
-    file = persistence.read_json(jc_path, JobClassesFile)
-    found = False
-    previous_pred: Optional[Predominance] = None
-    new_classes: list[JobClass] = []
-    for c in file.classes:
-        if c.id == class_id:
-            previous_pred = c.predominance
-            method = (
-                PredominanceMethod.HISTORICAL
-                if ev.evidence_type == "historical"
-                else PredominanceMethod.STEREOTYPE
-            )
-            c = c.model_copy(
-                update={
-                    "predominance": new_pred,
-                    "predominance_method": method,
-                    "predominance_override_evidence": ev,
-                    "is_override": True,
-                }
-            )
-            found = True
-        new_classes.append(c)
-    if not found:
-        raise ValidationError(f"class_id {class_id!r} not found")
-
-    file = file.model_copy(update={"classes": new_classes, "last_updated": date.today()})
-    persistence.write_json(jc_path, file)
-    invalidated = persistence.invalidate_downstream(eng_dir, "job-classes.json")
+    cls = JobClass(**{k: v for k, v in job_class.items() if k in JobClass.model_fields})
+    previous_pred: Optional[Predominance] = cls.predominance
+    method = (
+        PredominanceMethod.HISTORICAL
+        if ev.evidence_type == "historical"
+        else PredominanceMethod.STEREOTYPE
+    )
+    updated = cls.model_copy(
+        update={
+            "predominance": new_pred,
+            "predominance_method": method,
+            "predominance_override_evidence": ev,
+            "is_override": True,
+        }
+    )
 
     return {
-        "class_id": class_id,
+        "job_class": updated.model_dump(mode="json"),
+        "class_id": updated.id,
         "previous_predominance": previous_pred.value if previous_pred else None,
         "new_predominance": new_pred.value,
         "evidence_recorded": True,
         "method": ev.evidence_type,
-        "invalidated_files": invalidated,
     }
 
 
 __all__ = [
     "add_job_classes",
-    "determine_predominance",
+    "summarize_predominance",
     "override_predominance",
 ]

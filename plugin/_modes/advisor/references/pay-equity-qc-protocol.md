@@ -15,60 +15,94 @@
 > **See also:**
 > - `references/pay-equity-engagement-template.md` — schema for `pay-equity-engagement.yaml`
 > - `references/pay-equity-render-branching.md` — CNESST-vs-side-deliverable branching rule
-> - `references/persistence-and-ledger.md` — comp-advisor's v2 persistence model (`market` MCP backend). The pay-equity tooling has its own separate persistence layer (`scripts/pay_equity/persistence_gdrive.py`); migrating it to the v2 model is tracked as MIM-0042.
-> - `scripts/pay_equity/` — the in-skill Python module (22 tools, called via `call_tool(name, **kwargs)`)
+> - `scripts/pay_equity/` — the in-skill Python module (pure compute/validate/render, called via `call_tool(name, **kwargs)`)
 > - `template_assets/pay_equity_cnesst/` — 7 affichage `.template.md` files
+>
+> **Persistence model.** Engagement DATA and the heavy CNESST math live in the org-scoped
+> MCP backend, exposed as `payequity_*` tools. The in-skill Python tools are PURE
+> compute/validate/render over data passed in — they persist nothing. The orchestration
+> is the only layer that calls `payequity_*`: it **fetches** engagement data
+> (`payequity_get_*` / `payequity_list_*`), passes it to the pure Python tool via
+> `call_tool(<logical_name>, <data>)`, then **persists** the result back to the backend
+> (`payequity_put_*` / `payequity_compute_*` / `payequity_append_audit_log`). There is no
+> sandbox-FS engagement store and no Google Drive sync on the pay-equity surface — the
+> backend IS the store.
 
 ---
 
 ## Overview
 
 Guide an operator through a complete Quebec pay equity exercise under the *Loi sur l'équité
-salariale* (RLRQ c E-12.001). All numerical computations are performed by the in-skill Python
-module at `scripts/pay_equity/`. The skill authors only narrative prose; all financial data
-and tables are rendered by tool calls.
+salariale* (RLRQ c E-12.001). The heavy numerical work (scoring, predominance, comparison,
+adjustments) is performed server-side by the `payequity_compute_*` backend tools; pure
+input-shaping, statutory gates, cross-class summaries, and document rendering are performed
+by the in-skill Python module at `scripts/pay_equity/`. The skill authors only narrative
+prose; all financial data and tables are rendered by tool calls.
 
 **Architecture principle:** The LLM never writes numbers. Every table, dollar amount, score,
 gap, and schedule comes from `render_document`. Templates use `{{RENDERED:document_type}}` for
 tool output and `{{NARRATIVE:section_name}}` for prose written by the skill.
 
+**Two call surfaces — keep them distinct:**
+- `payequity_*` (e.g. `payequity_get_engagement`, `payequity_put_job_class`,
+  `payequity_compute_comparison`, `payequity_append_audit_log`) — the org-scoped MCP backend.
+  The orchestration calls these by their `payequity_*` names to fetch, persist, and run heavy math.
+- `call_tool("<logical_name>", **kwargs)` — the in-skill PURE Python tools, invoked by logical
+  name (`build_class_compensation`, `summarize_predominance`, `validate_adjustment_inputs`, …).
+  These never touch the network or persist; they compute/validate/render over data the
+  orchestration passes in.
+
 ---
 
-## In-skill tools (22)
+## In-skill pure tools + backend compute tools
 
-All numerical work is performed by Python functions in `scripts/pay_equity/`. Functions
-are registered into `TOOL_REGISTRY` at import time via `@mcp_tool`; the orchestration code
-calls them by name with `call_tool("tool_name", **kwargs)`. There is no MCP server — the
-calls are plain in-process Python invocations.
+Pure input-shaping, validation, cross-class summaries, and rendering are performed by Python
+functions in `scripts/pay_equity/`, invoked by logical name with `call_tool("name", **kwargs)`.
+The heavy CNESST math and ALL persistence are server-side `payequity_*` backend tools. The
+orchestration wires the two together: fetch (`payequity_get_*`/`payequity_list_*`) →
+`call_tool(<pure fn>, <data>)` → persist (`payequity_put_*`/`payequity_compute_*`/`payequity_append_audit_log`).
 
-| # | Tool | Module | Notes |
-|---|------|--------|-------|
-| 1 | `list_engagements` | engagement.py | |
-| 2 | `create_engagement` | engagement.py | |
-| 3 | `load_engagement` | engagement.py | |
-| 4 | `get_obligations` | engagement.py | |
-| 5 | `record_posting_date` | engagement.py | Re-anchors retention floor (Loi 25) |
-| 6 | `process_deletion_request` | engagement.py | Loi 25 deletion gate |
-| 7 | `set_maintenance_committee` | engagement.py | 100+ only |
-| 8 | `add_job_classes` | job_classes.py | |
-| 9 | `validate_class_groupings` | job_classes.py | |
-| 10 | `determine_predominance` | job_classes.py | 4-criteria order (R4) |
-| 11 | `list_grid_templates` | evaluation.py | |
-| 12 | `select_grid` | evaluation.py | |
-| 13 | `customize_grid` | evaluation.py | 5 hard rules (R6); only physical ≤ mental overridable |
-| 14 | `score_job_classes` | evaluation.py | |
-| 15 | `get_evaluation_summary` | evaluation.py | |
-| 16 | `compare_compensation` | compensation.py | No grade-tolerance param (R8 G-04/05) |
-| 17 | `calculate_adjustments` | adjustments.py | Per-pay-period interest (R3); equal-width banding (G-01) |
-| 18 | `import_prior_exercise` | maintenance.py | Maintenance audit prior data |
-| 19 | `compare_to_prior` | maintenance.py | Bill 10 retroactivity |
-| 20 | `render_document` | render.py | 16 valid `document_type` values |
-| 21 | `log_observation` | observations.py | 60-day consultation window (50+) |
-| 22 | `respond_to_observation` | observations.py | Operator reply to logged observation |
+**Pure in-skill tools (`call_tool`):**
 
-Engagement data lives in `engagements/<client-slug>/pay-equity/`. Files are JSON in v1
-(see `scripts/pay_equity/persistence_gdrive.py` for the format note). The pay-equity tooling
-persists these files via its own persistence layer (`persistence_gdrive.py`); migrating that layer off Google Drive to the v2 model is tracked as MIM-0042.
+| Logical name | Module | Notes |
+|------|--------|-------|
+| `create_engagement` | engagement.py | Builds engagement + retention-policy models for persist |
+| `get_obligations` | engagement.py | Pure matrix over `size_tier` + `exercise_type` |
+| `record_posting_date` | engagement.py | Re-anchors retention floor (Loi 25) over passed-in models |
+| `process_deletion_request` | engagement.py | Loi 25 retention-floor advisory check; returns audit entry |
+| `set_maintenance_committee` | engagement.py | 100+ only; builds committee model |
+| `add_job_classes` | job_classes.py | Validates/normalizes/merges classes |
+| `validate_class_groupings` | job_classes.py | Pay-spread + similar-description warnings |
+| `summarize_predominance` | job_classes.py | Cross-class no-male signal (`global_comparison_eligible`) |
+| `override_predominance` | job_classes.py | Validates evidence; returns the one overridden class |
+| `list_grid_templates` | evaluation.py | Packaged template assets (no engagement data) |
+| `select_grid` | evaluation.py | Builds grid + sub-factors + weights for persist |
+| `customize_grid` | evaluation.py | 5 hard rules (R6); only physical ≤ mental overridable |
+| `all_classes_scored` | evaluation.py | Completeness gate before comparison |
+| `get_evaluation_summary` | evaluation.py | Banding (G-01) + bias warnings; returns audit entry on override |
+| `build_class_compensation` | compensation.py | Shapes one class-compensation input for persist |
+| `validate_adjustment_inputs` | adjustments.py | Art.76.5.1 installments + R3 retroactive-event guards |
+| `import_prior_exercise` | maintenance.py | Diff vs current classes (snapshot NOT persisted) |
+| `record_participation_session` | maintenance.py | Art.76.2.1 60-day hard gate; returns session + audit entry |
+| `render_document` | render.py | 16 valid `document_type` values; pure over passed-in entities |
+| `log_observation` | observations.py | 60-day consultation window (50+) |
+| `respond_to_observation` | observations.py | Operator reply to logged observation |
+
+**Backend compute + persistence tools (`payequity_*`):** the orchestration calls these for the
+heavy math and all state. Reads: `payequity_get_engagement` (+ `stale_entities`),
+`payequity_get_job_class`/`payequity_list_*`, `payequity_get_evaluation_grid`,
+`payequity_get_participation_session`, `payequity_get_posting_metadata`, `payequity_get_observations`, etc.
+Compute (server runs the math AND persists): `payequity_compute_predominance` (per non-override class),
+`payequity_compute_scoring` (per class), `payequity_compute_comparison` (job-to-job→regression→global),
+`payequity_compute_adjustments` (interest + schedule). Writes: `payequity_put_*` per entity,
+`payequity_put_cycle`, `payequity_put_retroactive_event`, `payequity_append_audit_log`.
+
+> There is NO `payequity_list_engagements` (engagement is keyed by `engagement_id`, not enumerated)
+> and NO audit-log READ tool (`payequity_append_audit_log` is write-only — legally-material decisions
+> are appended for the trail; gates that need to re-check timing **recompute** from persisted data).
+
+Engagement data lives in the org-scoped backend, keyed by `engagement_id` (the client slug). The
+orchestration never writes engagement JSON to a sandbox or to Google Drive; it persists via `payequity_put_*`.
 
 ---
 
@@ -89,7 +123,7 @@ v1 supports `operator_mode: "expert"` only. Behavior:
 | Adjustment review gate (Gate C) | Mandatory — cannot skip |
 
 Mode is set at engagement creation via `call_tool("create_engagement", operator_mode="expert", ...)`.
-`operator_mode` is stored canonically in `engagement.json`. The dual expert/guided mode from
+`operator_mode` is stored canonically in the backend engagement entity (`payequity_get_engagement`). The dual expert/guided mode from
 the standalone skill is **collapsed**: all `# In guided mode:` branches are removed, and
 the AVIS DE RÉVISION JURIDIQUE gate (which fires when `employee_count >= 100 AND
 operator_mode == "guided"`, R8 D-D) is preserved in the ported tool code but is currently
@@ -110,21 +144,38 @@ Phase 0 (mode/entry selection) precedes Phase 1 and is not numbered.
 
 ---
 
-## Skill-Layer Operations (NOT registered tools)
+## Skill-Layer Operations (NOT pure tools, NOT backend tools)
 
-The 22 tools above cover every numeric or stateful operation. The skill orchestration code
-also handles a few lightweight operations directly:
+The pure tools + `payequity_*` backend cover every numeric or stateful operation. The skill
+orchestration code also handles a few lightweight operations directly:
 
 | Operation | Storage | Notes |
 |-----------|---------|-------|
-| `generate_reposting` | `output/` | Produce reposting document by re-running `render_document` after observations + responses are recorded |
-| `export_input_checklist` | Rendered inline | Assemble pre-computation checklist from `engagement.json` and downstream files |
+| `generate_reposting` | Operator deliverable | Produce reposting document by re-running `render_document` after observations + responses are recorded; delivered to operator (not engagement data) |
+| `export_input_checklist` | Rendered inline | Assemble pre-computation checklist from the fetched `payequity_get_*` entities |
 
-**Replaced by tools (no longer skill-layer):**
-- `set_committee` → `call_tool("set_maintenance_committee", ...)` (Tool 7)
-- `set_posting_date` → `call_tool("record_posting_date", ...)` (Tool 5)
-- `log_observation` → `call_tool("log_observation", ...)` (Tool 21)
-- (responses to observations) → `call_tool("respond_to_observation", ...)` (Tool 22)
+**Routed through tools (no longer free-standing skill-layer ops):**
+- `set_committee` → `call_tool("set_maintenance_committee", ...)` → `payequity_put_maintenance_committee`
+- `set_posting_date` → `call_tool("record_posting_date", ...)` → `payequity_put_engagement` + `payequity_put_retention_policy`
+- `log_observation` → `payequity_get_observations` → `call_tool("log_observation", ...)` → `payequity_put_observation`
+- (responses to observations) → `payequity_get_observations` → `call_tool("respond_to_observation", ...)` → `payequity_put_observation`
+
+## Orchestration working-files — disposition
+
+Only ephemeral sandbox cursors remain client-side. Everything that holds engagement DATA or a
+legally-material decision goes to the backend.
+
+| Working file | Disposition |
+|---|---|
+| `session-state.json` | **KEEP** — ephemeral sandbox cursor: phase pointer, pending inputs, gate bookkeeping, `operator_decisions`. Holds no engagement data; regenerable on resume. Legally-material decisions inside `operator_decisions` (comparison_method, grade-band rationale, schedule_type) ALSO go to the backend via `payequity_append_audit_log`. |
+| `review-gate-A/B/C.json` | **KEEP** — ephemeral gate-confirmation bookkeeping. Confirmation milestones that must survive → `payequity_append_audit_log`. |
+| `consultation.json` | **GONE** — observations → `payequity_put_observation`/`payequity_get_observations`; posting dates → `payequity_put_posting_metadata`/`payequity_get_posting_metadata`. |
+| `operator-decisions.json` | **GONE** — every operator override/decision → `payequity_append_audit_log`. |
+| `retention-policy-decisions.json` | **GONE** — Loi 25 deletion-decision trail → `payequity_append_audit_log`. |
+| `participation.json` | **GONE** — engagement DATA → `payequity_put_participation_session`/`payequity_get_participation_session`. |
+| `events.json` | **GONE** — retroactive events are compute inputs → `payequity_put_retroactive_event`/`payequity_list_retroactive_events`. |
+| `prior-exercise.json` | **GONE** — prior exercise registered as a closed cycle via `payequity_put_cycle` (`prior_cycle_id` linkage); the imported snapshot is transient import provenance (diff surfaced, not stored). |
+| `comite-pv.md`, reposting markdown | **KEEP** — skill-authored deliverable markdown (rendered output, not engagement data). Committee DATA itself → `payequity_put_maintenance_committee`. |
 
 ---
 
@@ -158,22 +209,28 @@ The skill maintains `session-state.json` in the engagement directory:
 ```
 
 Write to `session-state.json` after every operator response, not just at phase boundaries.
-`operator_mode` is NOT in `session-state.json` — read from `engagement.json`.
+`session-state.json` is an ephemeral sandbox cursor — it holds no engagement data and is
+regenerable on resume. `operator_mode` is NOT in `session-state.json` — read it from the
+backend engagement (`payequity_get_engagement`). Legally-material entries in `operator_decisions`
+(comparison_method, grade-band rationale, schedule_type) are also appended to the backend via
+`payequity_append_audit_log`.
 
 ---
 
 ## Error Handling
 
-**Stale file warnings from `load_engagement`:** Display the warning to the operator.
-Warn and proceed by default; the operator may re-run the upstream phase or acknowledge
-and proceed with stale data.
+**Stale entity warnings from the backend:** `payequity_get_engagement` returns a
+`stale_entities` set (the backend marks downstream entities stale when an upstream entity is
+re-persisted). Display the warning to the operator. Warn and proceed by default; the operator
+may re-run the upstream phase or acknowledge and proceed with stale data.
 
-**skill tool errors:** Surface the error message verbatim to the operator. Do not silently retry.
-State which phase was affected and what data was missing.
+**Tool errors:** Surface the error message verbatim to the operator — whether from a
+`call_tool` pure function or a `payequity_*` backend call. Do not silently retry. State which
+phase was affected and what data was missing.
 
 **Stale warning structure:**
 ```
-[AVERTISSEMENT] {filename} est obsolète: {stale_reason}
+[AVERTISSEMENT] {entity} est obsolète: {stale_reason}
 Pour recalculer: retournez à la Phase {N} et relancez {tool_name}.
 Pour accepter les données existantes: tapez "continuer avec données obsolètes".
 ```
@@ -218,9 +275,14 @@ Present numbered options to operator:
 2. Audit de maintien (5 ans)
 ```
 
-**Resuming an existing engagement:** Call `list_engagements()` and offer to resume if any
-engagements are found. Load with `load_engagement(client_slug)` and display stale warnings.
-Resume from last completed phase per `session-state.json`.
+**Resuming an existing engagement:** Engagement is keyed by `engagement_id` (the client slug),
+not enumerated — there is no `payequity_list_engagements`. To resume, take the known
+`engagement_id` and call `payequity_get_engagement(engagement_id)` (which returns the engagement
+plus its `stale_entities` set); aggregate the rest of the state directly from the per-entity
+getters/listers (`payequity_get_job_class`/`payequity_list_*`, `payequity_get_evaluation_grid`,
+`payequity_list_class_compensations`, `payequity_list_comparison_results`,
+`payequity_list_class_adjustments`, `payequity_get_adjustment_meta`). Display stale warnings.
+Resume from the last completed phase per `session-state.json`.
 
 ---
 
@@ -254,26 +316,31 @@ participation_required = (intended_maintien_mode == "employer_solo")
 
 If `participation_required = true`, the maintien mode is set to `employer_solo_with_participation` and Phase M2.5 (Processus de participation) becomes mandatory and cannot be skipped. The operator cannot opt out — Art. 76.2.1 is a binding obligation.
 
-**Tool call** (invoke via `call_tool("name", **kwargs)`):
-```
-create_engagement(
-  client_name,
-  neq,
-  employee_count,
-  exercise_type,                    # "initial" | "maintenance"
-  operator_mode="expert",          # always "expert" in v1 (the dual mode collapsed)
-  has_union,
-  reference_period_start,
-  reference_period_end,
-  establishments,                   # list[{name, location, employee_count}]
-  # Maintenance-only fields:
-  initial_had_committee,            # required if exercise_type = "maintenance"
-  has_accredited_association,       # required if exercise_type = "maintenance"
-  intended_maintien_mode            # required if exercise_type = "maintenance"
-)
-```
+**Orchestration:**
 
-**After call:** Call `get_obligations(client_slug)` and display the obligation matrix.
+1. **fetch-before (existence guard):** `payequity_get_engagement(engagement_id=slug)`. If found, refuse — do not overwrite an existing engagement.
+2. **call (pure):** `call_tool("create_engagement", ...)` — builds and returns BOTH the engagement and retention-policy models plus a summary dict. It receives no prior state (creation).
+   ```
+   create_engagement(
+     client_name,
+     neq,
+     employee_count,
+     exercise_type,                    # "initial" | "maintenance"
+     operator_mode="expert",          # always "expert" in v1 (the dual mode collapsed)
+     has_union,
+     reference_period_start,
+     reference_period_end,
+     establishments,                   # list[{name, location, employee_count}]
+     # Maintenance-only fields:
+     initial_had_committee,            # required if exercise_type = "maintenance"
+     has_accredited_association,       # required if exercise_type = "maintenance"
+     intended_maintien_mode            # required if exercise_type = "maintenance"
+   )
+   ```
+3. **persist-after:** `payequity_put_engagement(<engagement>)` then `payequity_put_retention_policy(<retention_policy>)`.
+
+**After persist:** fetch `payequity_get_engagement(engagement_id)` to read `size_tier` + `exercise_type`,
+call `call_tool("get_obligations", size_tier=..., exercise_type=...)`, and display the obligation matrix.
 
 **Obligation routing:**
 
@@ -301,7 +368,7 @@ For 50-99: ask "Souhaitez-vous former un comité d'équité salariale? (facultat
 
 **Purpose:** Collect committee composition. Validate legal requirements.
 
-**This is a skill-layer operation (`set_committee`), not an skill tool.**
+**This runs through `call_tool("set_maintenance_committee", ...)` → `payequity_put_maintenance_committee`.**
 
 **Collect for each member:**
 - Nom complet
@@ -318,8 +385,13 @@ For 50-99: ask "Souhaitez-vous former un comité d'équité salariale? (facultat
 - Employee rep ratio not met → "Le comité doit avoir au moins 2/3 de représentants des employés."
 - Women not majority of employee reps → "La majorité des sièges des employés doit être occupée par des femmes (Loi, art. 21)."
 
-**Storage:** Write committee data to `session-state.json`. Committee is written to `comite-pv.md`
-during Phase 10 document generation.
+**Orchestration:**
+- fetch-before: `payequity_get_engagement(engagement_id)` to confirm the engagement exists.
+- call (pure): `call_tool("set_maintenance_committee", ...)` — builds and validates the committee model.
+- persist-after: `payequity_put_maintenance_committee(<committee>)`.
+
+**Storage:** Committee DATA lives in the backend (`payequity_put_maintenance_committee`), not in
+`session-state.json`. The `comite-pv.md` deliverable is rendered from that data during Phase 10.
 
 ---
 
@@ -338,23 +410,26 @@ during Phase 10 document generation.
 
 Accept paste block (JSON or CSV). Map fields automatically. Ask for any missing required fields.
 
-**Tool call** (invoke via `call_tool("name", **kwargs)`):
-```
-add_job_classes(
-  client_slug,
-  classes: [{
-    title,
-    description,
-    total_incumbents,
-    female_incumbents,
-    male_incumbents,
-    pay_range_min,   # optional
-    pay_range_max    # optional
-  }]
-)
-```
+**Orchestration:**
+- fetch-before: `payequity_get_job_class(...)` / list the engagement's existing classes (so the pure tool can merge against them).
+- call (pure): `call_tool("add_job_classes", existing_classes=..., classes=..., enterprise_female_percentage=...)` — validates the three-criteria Art.54 hard-fail, normalizes, merges, and returns the full validated class set (plus pay-spread and similar-description warnings).
+  ```
+  add_job_classes(
+    existing_classes,        # the fetched current classes
+    classes: [{
+      title,
+      description,
+      total_incumbents,
+      female_incumbents,
+      male_incumbents,
+      pay_range_min,   # optional
+      pay_range_max    # optional
+    }]
+  )
+  ```
+- persist-after: `payequity_put_job_class(...)` per class (or batch) with the validated set. The backend sets `stale_entities` on downstream entities — there is no Python invalidation step.
 
-**After add_job_classes:** Call `validate_class_groupings(client_slug)`.
+**After persisting classes:** run `call_tool("validate_class_groupings", classes=...)` over the persisted set.
 
 **Display validation results:**
 - `pay_spread_flags`: Classes with >30% pay spread — ask operator to confirm grouping is correct
@@ -381,10 +456,10 @@ add_job_classes(
 
 **Purpose:** Determine gender predominance for all classes.
 
-**Tool call** (invoke via `call_tool("name", **kwargs)`):
-```
-determine_predominance(client_slug)
-```
+**Orchestration:**
+1. **fetch:** `payequity_get_job_class(...)` / list all classes for the engagement.
+2. **compute (server, per class):** loop `payequity_compute_predominance(engagement_id, class_id, disproportion_threshold_pp=...)` over each class **where `is_override` is false** — the backend tool is single-class, ports the 4-criteria test (R4), overwrites `predominance` with the algorithmic result, and persists it. Skip any class already marked `is_override=True` (the server tool does NOT preserve overrides — see Phase-4 override path below).
+3. **summarize (pure, cross-class):** `call_tool("summarize_predominance", classes=...)` over the full class set (overridden + computed) to derive the cross-class `global_comparison_eligible` (= no male-predominant class) signal plus the female/male/neutral/override counts. The server's per-class compute does not emit this cross-class signal.
 
 **Display results:** Table of class → predominance (féminine / masculine / neutre) with method
 (quantitative) and female percentage.
@@ -396,32 +471,34 @@ determine_predominance(client_slug)
 3. **Historique** — historically associated with one gender even if current ratio is neutral (operator-applied)
 4. **Stéréotype** — culturally identified as men's or women's work even if current ratio is neutral (operator-applied)
 
-The MCP applies tests 1 and 2 automatically. Tests 3 and 4 are operator-applied via
-`override_predominance` for any class still neutral after tests 1-2.
+The server `payequity_compute_predominance` applies tests 1 and 2 automatically (per non-override
+class). Tests 3 and 4 are operator-applied via `override_predominance` for any class still neutral
+after tests 1-2.
 
 **For classes still `neutral` after tests 1-2:** Ask operator to apply stereotype
 or historical test. If override needed:
+- fetch-before: `payequity_get_job_class(engagement_id, class_id)` (the single target class).
+- call (pure): `call_tool("override_predominance", job_class=..., predominance=..., evidence=...)` — validates the evidence and returns the one updated class with `is_override=True`.
+  ```
+  override_predominance(
+    job_class,                 # the fetched target class
+    predominance,   # "female" | "male" | "neutral"
+    evidence: {
+      evidence_type,             # "stereotype" | "historical"
+      description,               # min 10 chars
+      historical_period_years,   # if historical
+      historical_period_start,   # if historical
+      committee_decision,        # boolean
+      cnesst_reference,
+      decided_by,
+      decided_date
+    }
+  )
+  ```
+- persist-after: `payequity_put_job_class(<updated class>)`. The backend sets stale on downstream entities. (Because overridden classes carry `is_override=True`, the Phase-4 compute loop above skips them on any re-run — the override is preserved client-side, not server-side.)
 
-```
-override_predominance(
-  client_slug,
-  class_id,
-  predominance,   # "female" | "male" | "neutral"
-  evidence: {
-    evidence_type,             # "stereotype" | "historical"
-    description,               # min 10 chars
-    historical_period_years,   # if historical
-    historical_period_start,   # if historical
-    committee_decision,        # boolean
-    cnesst_reference,
-    decided_by,
-    decided_date
-  }
-)
-```
-
-**Zero-male-class detection:** If `global_comparison_eligible = true` in `determine_predominance`
-output, inform operator:
+**Zero-male-class detection:** If `global_comparison_eligible = true` in the
+`call_tool("summarize_predominance", ...)` output, inform operator:
 ```
 Aucune classe à prédominance masculine n'a été détectée.
 La méthode de comparaison globale (RLRQ E-12.001 r.2) est disponible.
@@ -442,7 +519,8 @@ Store this flag in `session-state.json` under `operator_decisions.comparison_met
 
 **Purpose:** Select or customize the evaluation grid.
 
-**Tool call** (invoke via `call_tool("name", **kwargs)`): `list_grid_templates()` — display the 3 available templates:
+**Tool call** (pure, no engagement fetch): `call_tool("list_grid_templates")` — reads the packaged
+template assets and displays the 3 available templates:
 
 | ID | Nom | Secteur cible | Sous-facteurs | Points max |
 |----|-----|--------------|--------------|-----------|
@@ -451,9 +529,9 @@ Store this flag in `session-state.json` under `operator_decisions.comparison_met
 | manufacturing | Grille fabrication / métiers | Fabrication, construction, métiers | N | N |
 
 **Selection:**
-```
-select_grid(client_slug, template_id)
-```
+- fetch-before: `payequity_get_engagement(engagement_id)` to confirm the engagement exists.
+- call (pure): `call_tool("select_grid", template_id=...)` — reads the packaged template and builds the grid, sub-factor objects, and the `sub_factor_weights` (kept on the grid entity, not on sub-factors).
+- persist-after: `payequity_put_evaluation_grid(<grid>)` (carries `dimension_weights` + `sub_factor_weights`); `payequity_put_sub_factor(...)` per sub-factor. The backend sets stale on downstream entities.
 
 **Bias guidance (display after selection):**
 ```
@@ -463,24 +541,28 @@ doivent chacune avoir un poids entre 10% et 40%.
 ```
 
 **Customization (optional):** If operator wants to modify the grid:
-```
-customize_grid(
-  client_slug,
-  modifications: {
-    add: [{id, name, dimension, description, levels, points_per_level}],
-    remove: ["sf_id"],
-    modify: [{id, ...fields}]
-  }
-)
-```
+- fetch-before: `payequity_get_evaluation_grid(engagement_id)` — returns the grid plus its `sub_factor_weights`.
+- call (pure): `call_tool("customize_grid", current_grid=..., current_sub_factor_weights=..., modifications=..., override_physical_dominance=..., override_rationale=...)` — runs the R6 5-rule check (`validate_grid_structure`) over the passed-in weights.
+  ```
+  customize_grid(
+    current_grid,                # the fetched grid
+    current_sub_factor_weights,  # the fetched weights
+    modifications: {
+      add: [{id, name, dimension, description, levels, points_per_level}],
+      remove: ["sf_id"],
+      modify: [{id, ...fields}]
+    }
+  )
+  ```
+- persist-after (only when `is_valid = true`): `payequity_put_evaluation_grid(<grid>)`; `payequity_put_sub_factor(...)` per factor. The backend sets stale.
 
-Display `validation_warnings` from customize_grid. If `is_valid = false`, stop and require
-the operator to fix the grid before advancing.
+Display `validation_warnings` from `customize_grid`. If `is_valid = false`, stop, do not persist, and
+require the operator to fix the grid before advancing.
 
 **Gate before scoring:** Require operator to type `confirmer la grille` before advancing to Phase 6.
 
 **Acceptance criteria:**
-- `evaluation-grid.json` written
+- Evaluation grid persisted via `payequity_put_evaluation_grid` (+ sub-factors)
 - `is_valid = true`
 - Operator has explicitly confirmed grid
 
@@ -528,20 +610,23 @@ The operator selects a level number (1-N) — the tool accepts both level number
 raw point values.
 
 **In expert mode:** Accept batch scoring as a JSON array. Level numbers (1-5) are
-accepted as an alternative to raw point values:
+accepted as an alternative to raw point values. The scoring math is server-side and
+**single-class** — the orchestration **loops** `payequity_compute_scoring` once per class
+(it scores and persists that class's score), then runs the pure completeness gate:
 ```
-score_job_classes(
-  client_slug,
-  scores: [
-    {class_id: "JC-001", scores: {sf_id: level_or_points, ...}},
-    ...
-  ],
-  scored_by: "operator_name"
-)
-```
+# server, per class — loop over the batch:
+for each {class_id, awarded}:
+    payequity_compute_scoring(engagement_id, class_id, awarded, scored_by="operator_name")
 
-After scoring anchors, call `get_evaluation_summary(client_slug)` and display the
-anchor scores to verify the spread makes sense:
+# pure completeness gate (cross-class):
+call_tool("all_classes_scored", class_ids=[...all class ids...], scored_ids=[...scored ids...])
+```
+`payequity_compute_scoring` does NOT compute completeness; `call_tool("all_classes_scored", ...)`
+is the gate before comparison.
+
+After scoring anchors, fetch the grid + classes and call
+`call_tool("get_evaluation_summary", evaluation=..., job_classes=...)` to display the
+anchor scores and verify the spread makes sense:
 ```
 Classes-repères cotées:
   Anchor haute: [title] — [score] points
@@ -567,7 +652,9 @@ Display anchor scores as reference; accept batch input or sequential entry as th
 
 ### After all classes scored
 
-Call `get_evaluation_summary(client_slug)`.
+- fetch: `payequity_get_evaluation_grid(engagement_id)`; `payequity_get_job_class(...)`/list all classes.
+- call (pure): `call_tool("get_evaluation_summary", evaluation=..., job_classes=..., grade_band_width=..., grade_band_width_rationale=...)` — produces the ranked table, equal-width banding (R8 G-01), bias warnings, and any unscored classes. When the operator supplies a band-width override, the tool also returns an `operator_decision` audit entry.
+- persist-after (only when an override is supplied): `payequity_append_audit_log(engagement_id, entry=<operator_decision>)` — the grade-band-width override is legally-material audit trail, not a sandbox file.
 
 **Display evaluation summary:**
 - Ranked table of classes by score
@@ -604,8 +691,9 @@ Store confirmed `grade_band_width` and `grade_band_rationale` in `operator_decis
 **Purpose:** Surface all judgment-dependent inputs before any gap calculation. Cannot be
 skipped in either operator mode.
 
-**This is a skill-layer operation (`export_input_checklist`).** Assemble from engagement
-JSON files. Do not call an skill tool.
+**This is a skill-layer operation (`export_input_checklist`).** Assemble the checklist from the
+entities fetched via `payequity_get_*`/`payequity_list_*` (engagement, classes, grid, scores).
+Do not call a backend compute tool.
 
 **Checklist (display in full):**
 ```
@@ -650,7 +738,7 @@ PRÉ-CALCUL — REVUE DES DONNÉES DÉTERMINANTES
 **Regression parameters (if method requires):**
 - `regression_weighted` (true/false) + `regression_weight_rationale`
 
-**Gate A — write `review-gate-A.json`:**
+**Gate A — write `review-gate-A.json`** (ephemeral sandbox cursor — gate-confirmation bookkeeping, no engagement data):
 ```json
 {
   "gate": "A",
@@ -662,7 +750,10 @@ PRÉ-CALCUL — REVUE DES DONNÉES DÉTERMINANTES
 ```
 
 **To advance:** Operator types `confirmer` to proceed, or `modifier [item]` to return to
-the relevant phase. Write `operator_confirmed: true` to `review-gate-A.json`.
+the relevant phase. Write `operator_confirmed: true` to `review-gate-A.json`, and append the
+confirmation milestone (with the confirmed `operator_decisions` — comparison_method, grade-band
+rationale, regression params) to the backend via `payequity_append_audit_log(engagement_id, entry=...)`
+so the legally-material decisions survive the ephemeral gate file.
 
 **This gate cannot be bypassed regardless of operator mode.**
 
@@ -697,29 +788,28 @@ If provided explicitly, `total_compensation_hourly` must equal the sum of all co
 When multiple male classes fall in the same grade band, the tool uses a **simple average**
 of their structure rates (one rate per class). Headcount is irrelevant for this averaging.
 
-**Tool call** (invoke via `call_tool("name", **kwargs)`):
-```
-compare_compensation(
-  client_slug,
-  method,                    # from operator_decisions
-  grade_band_width,          # from operator_decisions (required for job_to_job, hybrid)
-  grade_band_rationale,      # from operator_decisions
-  regression_weighted,       # from operator_decisions (required for regression, hybrid)
-  regression_weight_rationale,
-  class_compensations: [{
-    class_id,
-    total_compensation_hourly, # structure rate: top of step scale or midpoint of merit range
-    base_salary_hourly,
-    annual_hours,
-    bonuses_commissions,
-    shift_differentials,
-    group_insurance_employer,
-    pension_employer,
-    paid_leave_above_statutory,
-    other_monetary
-  }]
-)
-```
+**Orchestration:**
+1. **fetch:** `payequity_get_job_class(...)`/list; `payequity_get_evaluation_grid(...)`; `payequity_list_class_compensations(...)` (preserve any operator-entered components).
+2. **call (pure, per class — input shaping only):** `call_tool("build_class_compensation", payload=...)` for each class to assemble the `ClassCompensation` (component sum, score/grade fallbacks):
+   ```
+   build_class_compensation({
+     class_id,
+     total_compensation_hourly, # structure rate: top of step scale or midpoint of merit range
+     base_salary_hourly,
+     annual_hours,
+     bonuses_commissions,
+     shift_differentials,
+     group_insurance_employer,
+     pension_employer,
+     paid_leave_above_statutory,
+     other_monetary
+   })
+   ```
+3. **persist input:** `payequity_put_class_compensation(<built class compensation>)` per class.
+4. **compute (server — the keystone math):** `payequity_compute_comparison(engagement_id, method=..., grade_band_width=..., regression_weighted=...)`. The server reads classes + grid + compensations, runs the job-to-job → regression → global decision flow (ported verbatim, SC-01 parity, including the `total_gap_annual` 1950-hour fallback and the UNVERIFIED tagging), and persists `comparison_result`×N, `regression_result`, `global_result`, and `compensation_meta`. The decision flow is NOT done in Python.
+
+`method`, `grade_band_width`, `grade_band_rationale`, `regression_weighted`, and
+`regression_weight_rationale` come from `operator_decisions`.
 
 **Display gap results:**
 - Per-class table: female class, comparator, method, female comp, male comp, gap $/h, gap %
@@ -734,12 +824,10 @@ guided):**
 - `R² < 0.50`: acknowledgment required
 - `slope ≤ 0`: flag displayed
 
-**For maintenance audits:** After `compare_compensation`, call:
-```
-compare_to_prior(client_slug)
-```
-Display the diff: new classes, abolished classes, changed scores, changed compensation,
-changed gaps, carry-forward gaps, auto-flagged classes.
+**For maintenance audits:** After the comparison computes, surface the prior-vs-current diff
+produced by `call_tool("import_prior_exercise", ...)` at Phase M1 (the diff is computed against
+the current classes and surfaced, not stored). Display: new classes, abolished classes, changed
+scores, changed compensation, changed gaps, carry-forward gaps, auto-flagged classes.
 
 **Gap-table skeptics (pré-confirmation, before Gate B):** Before presenting the Gate B prompt,
 run the `gap-table-skeptics` panel (`$ASSET_ROOT/_core/primitives/gap-table-skeptics.md`) on the gap
@@ -762,7 +850,9 @@ routing only — it does **not** auto-block. **Gate B stays human:** the operato
 skeptic absent/invalid after one re-dispatch is recorded in `missing[]` and surfaced above the
 gate (never silently treated as "no concern").
 
-**Gate B — write `review-gate-B.json`** after operator confirms the gap analysis.
+**Gate B — write `review-gate-B.json`** (ephemeral sandbox cursor) after operator confirms the
+gap analysis. Append the confirmation milestone to the backend via
+`payequity_append_audit_log(engagement_id, entry=...)`.
 
 **Acceptance criteria:**
 - Compensation data submitted for all classes
@@ -815,18 +905,21 @@ finding 4.
   art_101_rationale     # required if art_101_override = true
 }
 ```
+Persist each via `payequity_put_retroactive_event(engagement_id, event=...)` — these are
+computation inputs the server's adjustment engine consumes (replaces the old `events.json`).
 
-**Tool call** (invoke via `call_tool("name", **kwargs)`):
-```
-calculate_adjustments(
-  client_slug,
-  schedule,              # "lump_sum" | "installments"
-  first_payment_date,
-  num_installments,      # 1-4 initial; 1-5 maintenance
-  exercise_type,
-  retroactive_events     # maintenance only
-)
-```
+**Orchestration:**
+1. **validate (pure, pre-flight):** `call_tool("validate_adjustment_inputs", num_years=..., retroactive_events=...)` — enforces the Art.76.5.1 `num_years ∈ [1, MAX_INSTALLMENT_YEARS]` installments guard and the R3 retroactive-event `pay_periods`-required hard error as structured refusals BEFORE the heavy math runs. On a refusal, stop and collect corrected inputs.
+2. **compute (server — interest + schedule):** `payequity_compute_adjustments(engagement_id, schedule=..., first_payment_date=..., num_years=..., retroactive_events=..., day_convention=..., interest_rate=..., custom_percentages=...)`. The server reads the comparison results + retroactive events, computes per-class adjustments + the per-pay-period interest breakdown (never midpoint, R3) + the payment schedule, and persists `class_adjustment`×N, the interest breakdown, the payment schedule, and `adjustment_meta`.
+   ```
+   payequity_compute_adjustments(
+     engagement_id,
+     schedule,              # "lump_sum" | "installments"
+     first_payment_date,
+     num_years,             # ≤4 initial; ≤5 maintenance (Art.76.5.1)
+     retroactive_events     # maintenance only (already persisted above)
+   )
+   ```
 
 **Display adjustment summary:**
 - Per-class: gap $/h, gap annual, total class cost, incumbents
@@ -836,10 +929,11 @@ calculate_adjustments(
 
 **Store** `schedule_type` and `num_installments` in `operator_decisions`.
 
-**Gate C — write `review-gate-C.json`** after operator confirms.
+**Gate C — write `review-gate-C.json`** (ephemeral sandbox cursor) after operator confirms.
+Append the confirmation milestone to the backend via `payequity_append_audit_log(engagement_id, entry=...)`.
 
 **Acceptance criteria:**
-- `calculate_adjustments` returned without error
+- `payequity_compute_adjustments` returned without error
 - Payment schedule displayed and confirmed
 - `review-gate-C.json` written
 
@@ -882,29 +976,66 @@ a consolidated index. Fail explicitly if establishment list is missing.
 
 **Document generation workflow:**
 
-For each document, follow the template file in `templates/[stem].template.md`:
-1. Replace all `{{RENDERED:document_type}}` placeholders with the output of
-   `render_document(client_slug, document_type, language, include_disclaimer=true)`
-2. Replace all `{{NARRATIVE:section_name}}` placeholders with prose authored by the skill
-   (no numbers, no financial data — narrative prose only)
-3. Assemble the complete document
-4. Write to `engagements/[client-slug]/output/[filename].md`
+For each document:
 
-**render_document calls by document:**
+1. **Fetch engagement data from backend.** Always:
+   - `payequity_get_engagement(engagement_id)` — base engagement entity
+   Then per document type fetch only what that document needs (see table below).
+2. **Assemble entities** via pure `call_tool("assemble_<type>", ...)` helpers that reshape
+   per-entity backend dicts into file-shaped models (OR-8). No heavy math here.
+3. **Render** via `call_tool("render_document", document_type, engagement, *, job_classes,
+   evaluation, compensation, adjustments, regression, participation_gate, language,
+   include_disclaimer)` — pure Python, returns rendered string.
+4. **Replace `{{RENDERED:document_type}}`** placeholders with the rendered output.
+5. **Replace `{{NARRATIVE:section_name}}`** placeholders with prose authored by the skill
+   (no numbers, no financial data — narrative prose only).
+6. **Assemble the complete document** and return content to the operator as a deliverable.
 
-| Document stem | render_document calls needed |
-|---------------|------------------------------|
-| inventaire-classes | `classes` |
-| grille-evaluation | `grid`, `scores` |
-| rapport-comparaison | `gaps`, `regression_summary` |
-| ajustements | `adjustments`, `payment_schedule`, `retroactive`, `interest` |
-| affichage-initial-interim | `classes` |
-| affichage-initial-final | `classes`, `scores`, `gaps`, `adjustments`, `payment_schedule` |
-| affichage-maintien | `maintenance_events`, `maintenance_classes`, `maintenance_adjustments`, `maintenance_payment`, `maintenance_interest` |
-| comite-pv | `committee_composition` |
-| provenance-donnees | `provenance` |
-| justification-methode | `regression_summary`, `payment_schedule` |
-| demes-prep | (no render calls — checklist from metadata) |
+**Affichage = operator deliverable (OR-9):** Return content + intended filename; do not
+write to a sandbox path as a persistence source-of-truth. The operator publishes the
+affichage; the backend records the posting date (see Phase M1.5 / posting metadata).
+
+**Participation gate (OR-7):** For documents that include the 60-day participation section
+(maintien affichage), recompute the gate at render time:
+```
+payequity_get_participation_session(engagement_id)  →  session
+maintien_posting_date = engagement.maintien_posting_date
+result = call_tool("has_participation_gate_satisfied", engagement, session, maintien_posting_date)
+# → (bool satisfied, str reason)
+```
+Do NOT read the audit log to check gate status — `payequity_append_audit_log` is write-only.
+
+**Backend fetches by document type:**
+
+| Document stem | Additional `payequity_get_*` / `list_*` fetches |
+|---------------|--------------------------------------------------|
+| inventaire-classes | `payequity_list_job_classes(engagement_id)` |
+| grille-evaluation | `payequity_get_evaluation_grid(engagement_id)`, `payequity_list_job_classes` |
+| rapport-comparaison | `payequity_list_comparison_results(engagement_id)`, `payequity_get_regression_result(engagement_id)`, `payequity_get_global_result(engagement_id)` |
+| ajustements | `payequity_list_class_adjustments(engagement_id)`, `payequity_list_payment_schedule(engagement_id)`, `payequity_list_interest_breakdown(engagement_id)`, `payequity_get_adjustment_meta(engagement_id)` |
+| affichage-initial-interim | `payequity_list_job_classes` |
+| affichage-initial-final | `payequity_list_job_classes`, `payequity_get_evaluation_grid`, `payequity_list_comparison_results`, `payequity_list_class_adjustments`, `payequity_list_payment_schedule` |
+| affichage-maintien | `payequity_list_retroactive_events(engagement_id)`, `payequity_list_job_classes`, `payequity_list_class_adjustments`, `payequity_list_payment_schedule`, `payequity_list_interest_breakdown`, `payequity_get_participation_session(engagement_id)` |
+| comite-pv | `payequity_get_maintenance_committee(engagement_id)` |
+| provenance-donnees | `payequity_get_compensation_meta(engagement_id)` |
+| justification-methode | `payequity_get_regression_result`, `payequity_list_payment_schedule` |
+| demes-prep | (no additional fetches — checklist from base engagement entity) |
+
+**call_tool("render_document", ...) rendered sections by document stem:**
+
+| Document stem | `document_type` arg | Key assembled entities passed |
+|---------------|--------------------|-----------------------------|
+| inventaire-classes | `classes` | job_classes |
+| grille-evaluation | `grid`, `scores` | evaluation, job_classes |
+| rapport-comparaison | `gaps`, `regression_summary` | compensation, regression |
+| ajustements | `adjustments`, `payment_schedule`, `retroactive`, `interest` | adjustments |
+| affichage-initial-interim | `classes` | job_classes |
+| affichage-initial-final | `classes`, `scores`, `gaps`, `adjustments`, `payment_schedule` | job_classes, evaluation, compensation, adjustments |
+| affichage-maintien | `maintenance_events`, `maintenance_classes`, `maintenance_adjustments`, `maintenance_payment`, `maintenance_interest` | adjustments, participation_gate |
+| comite-pv | `committee_composition` | (committee from engagement) |
+| provenance-donnees | `provenance` | compensation |
+| justification-methode | `regression_summary`, `payment_schedule` | regression, adjustments |
+| demes-prep | (no render calls — checklist from metadata) | — |
 
 **Disclaimer placement:**
 - Affichage documents: disclaimer at bottom, after all legally mandated content
@@ -938,13 +1069,15 @@ gated per-call by `check_budget`).
 require `confirmer` to write files, or `modifier [document]` to revise a specific section.
 This gate cannot be bypassed.
 
-**After confirmation:** Write all documents to `engagements/[client-slug]/output/`.
+**After confirmation:** Deliver all documents to the operator (content + intended filenames).
+Affichage documents are operator deliverables — not sandbox/Drive writes. The operator is
+responsible for posting.
 
 **Acceptance criteria:**
-- All render_document calls succeeded
+- All `payequity_get_*` / `list_*` fetches succeeded
+- All `call_tool("render_document", ...)` calls returned without error
 - All templates resolved (no unresolved placeholders remain)
-- All files written to `output/`
-- Operator confirmed the document list
+- Operator confirmed the document list and received deliverables
 
 ---
 
@@ -955,7 +1088,9 @@ This gate cannot be bypassed.
 **Purpose:** Track two sequential 60-day posting periods. Legal basis: art. 75 (two postings),
 art. 76 (60-day consultation, reposting within 30 days of first posting's expiry).
 
-**This phase uses skill-layer operations only — no in-skill tools.**
+**Orchestration:** fetch-before → call_tool (pure) → persist-after.
+`consultation.json` is GONE — all posting dates and observations are persisted to the
+backend.
 
 ### Sous-phase A — Affichage provisoire
 
@@ -966,15 +1101,9 @@ Fin de la période de consultation: {interim_posting_date + 60 jours}
 Date limite de réaffichage: {interim_posting_date + 60 jours + 30 jours}
 ```
 
-Write to `consultation.json`:
-```json
-{
-  "interim_posting_date": "YYYY-MM-DD",
-  "interim_deadline": "YYYY-MM-DD",
-  "final_posting_date": null,
-  "observations": [],
-  "status": "interim_active"
-}
+Persist the posting date:
+```
+payequity_put_posting_metadata(engagement_id, interim_posting_date=..., status="interim_active")
 ```
 
 ### Sous-phase B — Suivi des observations (fenêtre de 60 jours)
@@ -987,7 +1116,13 @@ log observation:
   contenu: [texte libre]
 ```
 
-Append to `consultation.json` observations array. Display running status:
+Orchestration:
+1. `payequity_get_observations(engagement_id)` → existing observations list
+2. `call_tool("log_observation", observations, date=..., source=..., content=...)` → updated
+   observations list (pure — adds entry, computes running counts)
+3. `payequity_put_observation(engagement_id, observation=...)` — persist new observation
+
+Display running status from returned observation list:
 ```
 Jours écoulés: {N} / 60
 Jours restants: {R}
@@ -1001,8 +1136,14 @@ When operator types `fermer consultation`:
   - Décision: acceptée | rejetée | partiellement acceptée
   - Motif: [texte]
 
-Skill generates reposting document (not via MCP — skill-authored markdown). Write to
-`engagements/[client-slug]/output/reaffichage.md`.
+Orchestration per observation:
+1. `payequity_get_observations(engagement_id)` → observations
+2. `call_tool("respond_to_observation", observations, obs_id=..., decision=..., motif=...)` →
+   updated observation (pure — sets response fields)
+3. `payequity_put_observation(engagement_id, observation=...)` — persist response
+
+Skill generates reposting document via `call_tool("render_document", "reaffichage", ...)`
+and returns it to the operator as a deliverable (not a sandbox file write).
 
 ### Sous-phase D — Affichage final
 
@@ -1030,31 +1171,36 @@ skill (Node.js). Pay equity reuses it instead of forking a parallel Python PDF s
 output, not by raw PDF bytes. v1 does **not** bundle OCR — for image-based PDFs, the
 operator pre-OCRs locally and uses Path A, or falls back to Path C.
 
-**Path B file storage:** orchestration commits the original PDF to
-`engagements/<slug>/pay-equity/prior/<YYYY>/exercise-source.pdf` and the confirmed
-extraction to `prior/<YYYY>/parsed-state.yaml`, both via the pay-equity tooling's persistence
-layer (`persistence_gdrive.py`; migration tracked as MIM-0042).
+**Path B source material:** the source PDF is operator-supplied input — it is not stored as
+a backend entity or via Drive. The extracted and operator-confirmed data is what the
+orchestration passes to `call_tool("import_prior_exercise", ...)`. The prior cycle + class
+diff live in the backend via `payequity_put_cycle`; the raw PDF is the operator's own file.
 
-**Tool call** (invoke via `call_tool("name", **kwargs)`):
-```
-import_prior_exercise(
-  client_slug,
-  prior_data: {
-    exercise_date,
-    job_classes: [{
-      title,
-      predominance,
-      evaluation_score,
-      total_compensation_hourly,
-      incumbents
-    }],
-    comparison_method,
-    adjustments_applied: [{class_title, adjustment_amount, date_applied}]
-  }
-)
-```
+**Orchestration:**
+1. Collect and parse `prior_data` via Path A / B / C above.
+2. Fetch current job classes: `payequity_list_job_classes(engagement_id)` → `current_classes`.
+3. Compute diff and register prior exercise:
+   ```
+   call_tool("import_prior_exercise", prior_data, current_classes=current_classes)
+   ```
+   Returns a `prior_exercise_diff` (class-level delta: new, abolished, changed, unchanged).
+4. Register prior exercise as a closed cycle in the backend:
+   ```
+   payequity_put_cycle(
+     engagement_id,
+     exercise_type="initial",   # or "maintien" depending on the prior exercise type
+     status="closed",
+     prior_cycle_id=prior_data.exercise_date   # identifier for the closed cycle
+   )
+   ```
+5. Surface the diff to the operator for confirmation.
 
-**Display import summary:** imported_classes count, exercise date, prior method.
+The `prior_exercise_diff` is a transient computation result — it is not persisted as a
+separate backend entity. The closed cycle registration via `payequity_put_cycle` is the
+durable backend record.
+
+**Display import summary:** imported_classes count, exercise date, prior method,
+class diff (added / abolished / changed / unchanged counts).
 Operator confirms before advancing.
 
 ---
@@ -1126,12 +1272,39 @@ The skill blocks advancement to Phase 7 (Gate A) if the planned `maintien_postin
 - Extend the planned posting date, OR
 - Demonstrate participation completed earlier than the recorded date
 
-**Output:** Written to `participation.json` in the engagement directory. The summary feeds Section 2 of the maintien affichage (`{{NARRATIVE:participation_outcomes}}`).
+**Orchestration:**
+```
+call_tool("record_participation_session", engagement, participation_session=...)
+→ validated_session (pure — checks completeness, timing against maintien_posting_date)
+
+If validated_session.timing_blocked:
+    Block advancement; operator must correct dates.
+
+payequity_put_participation_session(engagement_id, session=validated_session)
+```
+
+If operator requests a force-override of the 60-day timing gate (rare, with documented
+rationale), append the override rationale to the audit log:
+```
+payequity_append_audit_log(engagement_id, entry={
+  event: "participation_gate_override",
+  rationale: ...,
+  authorized_by: ...,
+  timestamp: ...
+})
+```
+
+`participation.json` and `operator-decisions.json` are GONE — all participation data
+and operator decisions flow through the backend.
+
+The session data feeds Section 2 of the maintien affichage
+(`{{NARRATIVE:participation_outcomes}}`) at render time via
+`payequity_get_participation_session(engagement_id)`.
 
 **Acceptance criteria:**
-- All required components recorded in `participation.json`
+- All required components recorded via `payequity_put_participation_session`
 - `participation_completion_date` set
-- Timing validation passes
+- Timing validation passes (or force-override documented in audit log)
 - For non-unionized employees: representative designation either complete OR documented "no representative needed" (if all employees are unionized)
 
 ---
@@ -1188,7 +1361,18 @@ or only current cycle? No primary source found.]
 Signalez cette situation à un conseiller juridique avant de finaliser les ajustements.
 ```
 
-**Write events to `events.json` in engagement directory.**
+**Persist each event to the backend:**
+```
+payequity_put_retroactive_event(engagement_id, event={
+  event_type, event_date, date_precision, description,
+  affected_class_ids, evidence, compensation_change_direction,
+  art_101_override, art_101_rationale  # maintenance only
+})
+```
+
+`events.json` is GONE — retroactive events are persisted as backend entities and fetched
+by `payequity_list_retroactive_events(engagement_id)` when Phase 9 and document generation
+need them.
 
 ---
 
@@ -1200,8 +1384,11 @@ Signalez cette situation à un conseiller juridique avant de finaliser les ajust
 | Gate B | After gap analysis confirmed (Phase 8) | Phase 9 |
 | Gate C | After adjustment confirmed (Phase 9) | Phase 10 |
 
-All three gates write JSON to the engagement directory. All three require explicit `confirmer`.
-None can be bypassed regardless of operator mode.
+All three gates write ephemeral JSON cursors to the sandbox (`review-gate-A/B/C.json` — no
+engagement data, gate bookkeeping only). All three also append the confirmation milestone
+to the backend via `payequity_append_audit_log(engagement_id, entry=...)` so legally-material
+decisions are durably recorded. All three require explicit `confirmer`. None can be bypassed
+regardless of operator mode.
 
 ---
 

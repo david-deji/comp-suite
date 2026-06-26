@@ -1,35 +1,34 @@
-"""Tools 21-22: Observation logging and response during consultation periods.
+"""Tools 20-21: Observation logging and response during consultation periods.
 
 Employees may submit observations during the 60-day consultation period
 following a posting. These tools record and respond to those observations.
+
+Pure compute. The orchestrator passes the current observations file (or None)
+in — fetched via payequity_get_observations — and persists the returned
+observations_file via payequity_put_observation. No persistence lives here.
 """
 
 from datetime import date
 from typing import Optional
 
 from scripts.pay_equity.app import tool as mcp_tool
-from scripts.pay_equity.errors import EngagementNotFoundError, ValidationError
+from scripts.pay_equity.errors import ValidationError
 from scripts.pay_equity.models.observation import (
     Observation,
     ObservationsFile,
-)
-from scripts.pay_equity.persistence_gdrive import (
-    get_engagement_dir,
-    read_json,
-    write_json,
 )
 
 
 VALID_CATEGORIES = {"question", "comment", "objection", "correction_request"}
 
 
-def _load_observations(eng_dir, client_slug: str) -> ObservationsFile:
-    """Load observations.json or return an empty ObservationsFile."""
-    path = eng_dir / "observations.json"
-    try:
-        return read_json(path, ObservationsFile)
-    except FileNotFoundError:
+def _coerce_observations(
+    observations: Optional[dict], client_slug: str
+) -> ObservationsFile:
+    """Validate a passed-in observations dict, or build an empty ObservationsFile."""
+    if observations is None:
         return ObservationsFile(client_slug=client_slug)
+    return ObservationsFile.model_validate(observations)
 
 
 def _next_obs_id(observations: list[Observation]) -> str:
@@ -57,6 +56,7 @@ def _parse_iso_date(value: str, *, field: str) -> date:
 
 @mcp_tool
 def log_observation(
+    observations: Optional[dict],
     client_slug: str,
     posting_type: str,
     observer_description: str,
@@ -64,16 +64,18 @@ def log_observation(
     received_date: str,
     category: Optional[str] = None,
 ) -> dict:
-    """Record an employee observation received during the 60-day consultation period.
+    """Record an employee observation received during the 60-day consultation period (pure).
 
+    observations: the current observations file (or None on first observation),
+        fetched by the orchestrator via payequity_get_observations.
     posting_type: which posting this observation relates to.
     observer_description: who submitted (e.g. "Groupe d'employees du service comptable").
     category: optional, one of question, comment, objection, correction_request.
-    """
-    eng_dir = get_engagement_dir(client_slug)
-    if not eng_dir.exists():
-        raise EngagementNotFoundError(f"Engagement '{client_slug}' not found.")
 
+    Appends the new observation, computes the next id, and returns the full
+    updated observations_file for the orchestrator to persist via
+    payequity_put_observation.
+    """
     if category is not None and category not in VALID_CATEGORIES:
         raise ValidationError(
             f"Invalid category '{category}'. "
@@ -82,7 +84,7 @@ def log_observation(
 
     received = _parse_iso_date(received_date, field="received_date")
 
-    data = _load_observations(eng_dir, client_slug)
+    data = _coerce_observations(observations, client_slug)
     data.client_slug = client_slug
 
     obs_id = _next_obs_id(data.observations)
@@ -99,33 +101,35 @@ def log_observation(
     data.observations.append(observation)
     data.last_updated = date.today()
 
-    write_json(eng_dir / "observations.json", data)
-
     return {
-        "client_slug": client_slug,
+        "observations_file": data.model_dump(mode="json"),
         "observation_id": obs_id,
-        "posting_type": posting_type,
-        "received_date": received.isoformat(),
-        "total_observations": len(data.observations),
+        "summary": {
+            "client_slug": client_slug,
+            "observation_id": obs_id,
+            "posting_type": posting_type,
+            "received_date": received.isoformat(),
+            "total_observations": len(data.observations),
+        },
     }
 
 
 @mcp_tool
 def respond_to_observation(
-    client_slug: str,
+    observations: dict,
     observation_id: str,
     response_text: str,
 ) -> dict:
-    """Record a response to an employee observation.
+    """Record a response to an employee observation (pure).
 
-    Updates the observation's response and response_date fields.
-    Returns the updated observation.
+    observations: the current observations file, fetched by the orchestrator via
+        payequity_get_observations.
+
+    Updates the observation's response and response_date fields and returns the
+    full updated observations_file (for payequity_put_observation) plus the
+    updated_observation.
     """
-    eng_dir = get_engagement_dir(client_slug)
-    if not eng_dir.exists():
-        raise EngagementNotFoundError(f"Engagement '{client_slug}' not found.")
-
-    data = _load_observations(eng_dir, client_slug)
+    data = _coerce_observations(observations, "")
 
     target: Optional[Observation] = None
     for obs in data.observations:
@@ -135,13 +139,15 @@ def respond_to_observation(
 
     if target is None:
         raise ValidationError(
-            f"Observation '{observation_id}' not found for engagement '{client_slug}'."
+            f"Observation '{observation_id}' not found for engagement "
+            f"'{data.client_slug}'."
         )
 
     target.response = response_text
     target.response_date = date.today()
     data.last_updated = date.today()
 
-    write_json(eng_dir / "observations.json", data)
-
-    return target.model_dump(mode="json")
+    return {
+        "observations_file": data.model_dump(mode="json"),
+        "updated_observation": target.model_dump(mode="json"),
+    }

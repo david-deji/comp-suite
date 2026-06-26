@@ -5,10 +5,9 @@ Content varies based on has_participation_process and maintenance_evaluation_met
 
 from datetime import date
 from html import escape
-from pathlib import Path
 
 from ._base import (
-    _read, _fmt, _pct, _predominance_fr,
+    _fmt, _pct, _predominance_fr,
     build_html_document, employer_header, signature_block, disclaimer_block,
 )
 from ._legal_text import (
@@ -20,14 +19,12 @@ from ._legal_text import (
 )
 
 
-def generate_maintenance_html(eng_dir: Path, engagement: dict | None = None) -> str:
+def generate_maintenance_html(
+    engagement: dict,
+    job_classes: dict,
+    adjustments: dict,
+) -> str:
     """Build the maintenance posting HTML (art. 76.3)."""
-    if engagement is None:
-        engagement = _read(eng_dir, "engagement.json")
-
-    job_classes = _read(eng_dir, "job-classes.json")
-    adjustments = _read(eng_dir, "adjustments.json")
-
     display_date = date.today().isoformat()
     classes = job_classes.get("classes", [])
     class_adjustments = adjustments.get("class_adjustments", [])
@@ -99,7 +96,7 @@ def generate_maintenance_html(eng_dir: Path, engagement: dict | None = None) -> 
 """)
         for ev in maintenance_events:
             affected = ", ".join(ev.get("affected_class_ids", []))
-            end_date = ev.get("end_date") or "\u2014"
+            end_date = ev.get("end_date") or "—"
             generates = "Oui" if ev.get("generates_adjustment", False) else "Non"
             parts.append(f"""<tr>
   <td>{escape(str(ev.get('event_type', '')))}</td>

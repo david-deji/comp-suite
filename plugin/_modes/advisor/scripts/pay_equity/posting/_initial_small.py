@@ -6,10 +6,9 @@ evaluation grid details or sub-factor tables (those are 50+ only).
 
 from datetime import date
 from html import escape
-from pathlib import Path
 
 from ._base import (
-    _read, _fmt, _pct, _predominance_fr, _method_fr,
+    _fmt, _pct, _predominance_fr, _method_fr,
     build_html_document, employer_header, signature_block, disclaimer_block,
 )
 from ._legal_text import (
@@ -20,13 +19,13 @@ from ._legal_text import (
 )
 
 
-def generate_initial_small_html(eng_dir: Path) -> str:
+def generate_initial_small_html(
+    engagement: dict,
+    job_classes: dict,
+    compensation: dict,
+    adjustments: dict,
+) -> str:
     """Build the art. 35 posting HTML for enterprises with 10-49 employees."""
-    engagement = _read(eng_dir, "engagement.json")
-    job_classes = _read(eng_dir, "job-classes.json")
-    compensation = _read(eng_dir, "compensation.json")
-    adjustments = _read(eng_dir, "adjustments.json")
-
     display_date = date.today().isoformat()
     classes = job_classes.get("classes", [])
     comparisons = compensation.get("comparison_results", [])

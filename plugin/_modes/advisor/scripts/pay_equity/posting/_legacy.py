@@ -5,12 +5,9 @@ This is the original monolithic generate_posting_html moved here unchanged.
 
 from datetime import date
 from html import escape
-from pathlib import Path
-
-from scripts.pay_equity.persistence_gdrive import ENGAGEMENTS_ROOT
 
 from ._base import (
-    _read, _fmt, _pct, _dimension_fr, _predominance_fr, _method_fr,
+    _fmt, _pct, _dimension_fr, _predominance_fr, _method_fr,
     build_html_document,
 )
 
@@ -19,18 +16,14 @@ def generate_legacy_posting_html(
     client_slug: str,
     posting_type: str = "final",
     posting_date: str | None = None,
-    engagements_root: Path | None = None,
+    *,
+    engagement: dict,
+    job_classes: dict,
+    evaluation: dict,
+    compensation: dict,
+    adjustments: dict,
 ) -> str:
-    """Build the full posting HTML from engagement data files (legacy format)."""
-    root = engagements_root or ENGAGEMENTS_ROOT
-    eng_dir = root / client_slug
-
-    engagement = _read(eng_dir, "engagement.json")
-    job_classes = _read(eng_dir, "job-classes.json")
-    evaluation = _read(eng_dir, "evaluation-grid.json")
-    compensation = _read(eng_dir, "compensation.json")
-    adjustments = _read(eng_dir, "adjustments.json")
-
+    """Build the full posting HTML from engagement data dicts (legacy format)."""
     client_name = escape(engagement.get("client_name", client_slug))
     size_tier = engagement.get("size_tier", "")
     employee_count = engagement.get("employee_count", "")
@@ -71,12 +64,12 @@ def generate_legacy_posting_html(
     # --- Header ---
     parts.append(f"""
 <h1>{escape(title_full)}</h1>
-<p class="legal-ref">Loi sur l'\u00e9quit\u00e9 salariale, RLRQ c E-12.001, art. 75</p>
+<p class="legal-ref">Loi sur l'équité salariale, RLRQ c E-12.001, art. 75</p>
 
 <div class="employer-block">
   <p><strong>Employeur&nbsp;:</strong> {client_name}</p>
-  <p><strong>Nombre de personnes salari\u00e9es&nbsp;:</strong> {employee_count}</p>
-  <p><strong>Cat\u00e9gorie d'entreprise&nbsp;:</strong> {escape(size_tier)} salari\u00e9s</p>
+  <p><strong>Nombre de personnes salariées&nbsp;:</strong> {employee_count}</p>
+  <p><strong>Catégorie d'entreprise&nbsp;:</strong> {escape(size_tier)} salariés</p>
   <p><strong>Type d'exercice&nbsp;:</strong> {"Initial" if exercise_type == "initial" else "Maintien"}</p>
   <p><strong>Date d'affichage&nbsp;:</strong> {escape(display_date)}</p>
 </div>
@@ -84,14 +77,14 @@ def generate_legacy_posting_html(
 
     # --- Section 1: Job Classes ---
     parts.append("""
-<h2>1. Identification des cat\u00e9gories d'emplois \u00e0 pr\u00e9dominance f\u00e9minine et masculine</h2>
+<h2>1. Identification des catégories d'emplois à prédominance féminine et masculine</h2>
 
 <div class="explanation">
-  La Loi sur l'\u00e9quit\u00e9 salariale exige que l'employeur identifie les cat\u00e9gories d'emplois
-  au sein de l'entreprise et d\u00e9termine leur pr\u00e9dominance sexuelle. Une cat\u00e9gorie d'emplois
-  est \u00e0 pr\u00e9dominance f\u00e9minine ou masculine lorsqu'elle est couramment associ\u00e9e aux femmes
-  ou aux hommes en raison de st\u00e9r\u00e9otypes occupationnels, ou lorsqu'au moins 60&nbsp;% des
-  personnes salari\u00e9es qui occupent les emplois de cette cat\u00e9gorie sont du m\u00eame sexe.
+  La Loi sur l'équité salariale exige que l'employeur identifie les catégories d'emplois
+  au sein de l'entreprise et détermine leur prédominance sexuelle. Une catégorie d'emplois
+  est à prédominance féminine ou masculine lorsqu'elle est couramment associée aux femmes
+  ou aux hommes en raison de stéréotypes occupationnels, ou lorsqu'au moins 60&nbsp;% des
+  personnes salariées qui occupent les emplois de cette catégorie sont du même sexe.
 </div>
 """)
 
@@ -99,7 +92,7 @@ def generate_legacy_posting_html(
 <table>
 <tr>
   <th>Classe</th><th>Titre</th><th class="right">Effectif</th>
-  <th class="right">% F\u00e9minin</th><th>Pr\u00e9dominance</th><th>M\u00e9thode</th>
+  <th class="right">% Féminin</th><th>Prédominance</th><th>Méthode</th>
 </tr>
 """)
     for c in classes:
@@ -118,18 +111,18 @@ def generate_legacy_posting_html(
     sub_factors = grid.get("sub_factors", [])
 
     parts.append("""
-<h2>2. M\u00e9thode d'\u00e9valuation des cat\u00e9gories d'emplois</h2>
+<h2>2. Méthode d'évaluation des catégories d'emplois</h2>
 
 <div class="explanation">
-  L'\u00e9valuation des cat\u00e9gories d'emplois a \u00e9t\u00e9 effectu\u00e9e \u00e0 l'aide d'une m\u00e9thode par
-  points et facteurs, conform\u00e9ment \u00e0 l'article 57 de la Loi. Cette m\u00e9thode \u00e9value
-  chaque cat\u00e9gorie d'emplois selon les quatre grandes dimensions prescrites&nbsp;:
-  les qualifications requises, les responsabilit\u00e9s assum\u00e9es, les efforts requis et
-  les conditions dans lesquelles le travail est effectu\u00e9.
+  L'évaluation des catégories d'emplois a été effectuée à l'aide d'une méthode par
+  points et facteurs, conformément à l'article 57 de la Loi. Cette méthode évalue
+  chaque catégorie d'emplois selon les quatre grandes dimensions prescrites&nbsp;:
+  les qualifications requises, les responsabilités assumées, les efforts requis et
+  les conditions dans lesquelles le travail est effectué.
 </div>
 """)
 
-    parts.append("<h3>Dimensions et pond\u00e9ration</h3>")
+    parts.append("<h3>Dimensions et pondération</h3>")
     parts.append("""<table>
 <tr><th>Dimension</th><th class="right">Poids</th></tr>
 """)
@@ -137,7 +130,7 @@ def generate_legacy_posting_html(
         parts.append(f"<tr><td>{_dimension_fr(dim)}</td><td class='right'>{_pct(float(w) * 100)}</td></tr>")
     parts.append("</table>")
 
-    parts.append("<h3>Sous-facteurs d'\u00e9valuation</h3>")
+    parts.append("<h3>Sous-facteurs d'évaluation</h3>")
     parts.append("""<table>
 <tr><th>Sous-facteur</th><th>Dimension</th><th class="right">Points max</th><th class="right">Niveaux</th></tr>
 """)
@@ -152,16 +145,16 @@ def generate_legacy_posting_html(
 
     # --- Section 3: Scores ---
     parts.append("""
-<h2>3. R\u00e9sultats de l'\u00e9valuation des cat\u00e9gories d'emplois</h2>
+<h2>3. Résultats de l'évaluation des catégories d'emplois</h2>
 
 <div class="explanation">
-  Le tableau suivant pr\u00e9sente le pointage total obtenu par chaque cat\u00e9gorie d'emplois
-  \u00e0 la suite de l'\u00e9valuation. Les cat\u00e9gories sont class\u00e9es par ordre d\u00e9croissant de
-  pointage. Le grade est d\u00e9termin\u00e9 par regroupement des pointages en bandes.
+  Le tableau suivant présente le pointage total obtenu par chaque catégorie d'emplois
+  à la suite de l'évaluation. Les catégories sont classées par ordre décroissant de
+  pointage. Le grade est déterminé par regroupement des pointages en bandes.
 </div>
 """)
     parts.append("""<table>
-<tr><th>Classe</th><th>Titre</th><th>Pr\u00e9dominance</th><th class="right">Score total</th><th class="right">Grade</th></tr>
+<tr><th>Classe</th><th>Titre</th><th>Prédominance</th><th class="right">Score total</th><th class="right">Grade</th></tr>
 """)
     pred_map = {c["id"]: c.get("predominance", "") for c in classes}
     for cs in class_scores_sorted:
@@ -177,28 +170,28 @@ def generate_legacy_posting_html(
 
     # --- Section 4: Compensation Comparison ---
     parts.append("""
-<h2>4. R\u00e9sultats de la comparaison de la r\u00e9mun\u00e9ration</h2>
+<h2>4. Résultats de la comparaison de la rémunération</h2>
 
 <div class="explanation">
-  La r\u00e9mun\u00e9ration de chaque cat\u00e9gorie d'emplois \u00e0 pr\u00e9dominance f\u00e9minine a \u00e9t\u00e9 compar\u00e9e
-  \u00e0 celle d'une cat\u00e9gorie d'emplois \u00e0 pr\u00e9dominance masculine de m\u00eame valeur ou de valeur
-  comparable au sein de l'entreprise. La r\u00e9mun\u00e9ration compar\u00e9e est le taux de la structure
-  salariale (maximum de l'\u00e9chelle \u00e0 \u00e9chelons ou point milieu de l'\u00e9chelle de m\u00e9rites),
-  et non le salaire individuel des personnes salari\u00e9es. L'\u00e9cart indique la diff\u00e9rence
-  entre la r\u00e9mun\u00e9ration masculine et f\u00e9minine pour des emplois de valeur \u00e9quivalente.
+  La rémunération de chaque catégorie d'emplois à prédominance féminine a été comparée
+  à celle d'une catégorie d'emplois à prédominance masculine de même valeur ou de valeur
+  comparable au sein de l'entreprise. La rémunération comparée est le taux de la structure
+  salariale (maximum de l'échelle à échelons ou point milieu de l'échelle de mérites),
+  et non le salaire individuel des personnes salariées. L'écart indique la différence
+  entre la rémunération masculine et féminine pour des emplois de valeur équivalente.
 </div>
 """)
     parts.append("""<table>
 <tr>
-  <th>Cat\u00e9gorie f\u00e9minine</th><th>Titre</th><th>Comparateur masculin</th>
-  <th>M\u00e9thode</th><th class="right">R\u00e9m. f\u00e9minine ($/h)</th>
-  <th class="right">R\u00e9m. masculine ($/h)</th><th class="right">\u00c9cart ($/h)</th>
-  <th class="right">\u00c9cart %</th>
+  <th>Catégorie féminine</th><th>Titre</th><th>Comparateur masculin</th>
+  <th>Méthode</th><th class="right">Rém. féminine ($/h)</th>
+  <th class="right">Rém. masculine ($/h)</th><th class="right">Écart ($/h)</th>
+  <th class="right">Écart %</th>
 </tr>
 """)
     for comp in comparisons:
         fid = comp.get("female_class_id", "")
-        mid = comp.get("male_comparator_id") or "\u2014"
+        mid = comp.get("male_comparator_id") or "—"
         parts.append(f"""<tr>
   <td>{escape(fid)}</td>
   <td>{escape(title_map.get(fid, ''))}</td>
@@ -216,17 +209,17 @@ def generate_legacy_posting_html(
 <h2>5. Ajustements salariaux requis</h2>
 
 <div class="explanation">
-  Lorsqu'un \u00e9cart de r\u00e9mun\u00e9ration est constat\u00e9 au d\u00e9triment d'une cat\u00e9gorie d'emplois
-  \u00e0 pr\u00e9dominance f\u00e9minine, l'employeur doit verser des ajustements salariaux pour
-  combler cet \u00e9cart. Les ajustements ci-dessous indiquent le montant horaire et annuel
-  \u00e0 verser par cat\u00e9gorie d'emplois.
+  Lorsqu'un écart de rémunération est constaté au détriment d'une catégorie d'emplois
+  à prédominance féminine, l'employeur doit verser des ajustements salariaux pour
+  combler cet écart. Les ajustements ci-dessous indiquent le montant horaire et annuel
+  à verser par catégorie d'emplois.
 </div>
 """)
     parts.append("""<table>
 <tr>
-  <th>Classe</th><th>Titre</th><th class="right">\u00c9cart ($/h)</th>
+  <th>Classe</th><th>Titre</th><th class="right">Écart ($/h)</th>
   <th class="right">Ajustement annuel par personne ($)</th>
-  <th class="right">Effectif</th><th class="right">Co\u00fbt total classe ($)</th>
+  <th class="right">Effectif</th><th class="right">Coût total classe ($)</th>
 </tr>
 """)
     for adj in class_adjustments:
@@ -243,14 +236,14 @@ def generate_legacy_posting_html(
     # --- Section 6: Payment Schedule ---
     max_installments = 4 if exercise_type == "initial" else 5
     parts.append(f"""
-<h2>6. Modalit\u00e9s de versement des ajustements</h2>
+<h2>6. Modalités de versement des ajustements</h2>
 
 <div class="explanation">
-  Conform\u00e9ment \u00e0 l'article 68 de la Loi, les ajustements salariaux peuvent \u00eatre \u00e9tal\u00e9s
-  sur un maximum de {max_installments} versements annuels \u00e9gaux. Le premier versement
-  est d\u00fb \u00e0 compter de la date \u00e0 laquelle les ajustements auraient d\u00fb \u00eatre vers\u00e9s.
-  Des int\u00e9r\u00eats au taux l\u00e9gal de 5&nbsp;% (C.c.Q., art. 1617) s'appliquent sur les
-  versements report\u00e9s.
+  Conformément à l'article 68 de la Loi, les ajustements salariaux peuvent être étalés
+  sur un maximum de {max_installments} versements annuels égaux. Le premier versement
+  est dû à compter de la date à laquelle les ajustements auraient dû être versés.
+  Des intérêts au taux légal de 5&nbsp;% (C.c.Q., art. 1617) s'appliquent sur les
+  versements reportés.
 </div>
 """)
     parts.append("""<table>
@@ -274,18 +267,18 @@ def generate_legacy_posting_html(
         parts.append(f"""
 <div class="consultation-notice">
   <h2>Avis de consultation</h2>
-  <p>Conform\u00e9ment \u00e0 l'article 76 de la Loi sur l'\u00e9quit\u00e9 salariale, les personnes
-  salari\u00e9es de l'entreprise disposent d'un d\u00e9lai de <strong>60 jours</strong>
-  suivant la date du pr\u00e9sent affichage pour formuler leurs observations \u00e0 l'employeur.</p>
+  <p>Conformément à l'article 76 de la Loi sur l'équité salariale, les personnes
+  salariées de l'entreprise disposent d'un délai de <strong>60 jours</strong>
+  suivant la date du présent affichage pour formuler leurs observations à l'employeur.</p>
   <p><strong>Date d'affichage&nbsp;:</strong> {escape(display_date)}</p>
-  <p><strong>Fin de la p\u00e9riode de consultation&nbsp;:</strong> ______________________</p>
+  <p><strong>Fin de la période de consultation&nbsp;:</strong> ______________________</p>
 </div>
 """)
 
     # --- Signature ---
     parts.append("""
 <div class="signature-block">
-  <p><strong>Signature de l'employeur ou du repr\u00e9sentant autoris\u00e9&nbsp;:</strong></p>
+  <p><strong>Signature de l'employeur ou du représentant autorisé&nbsp;:</strong></p>
   <p><span class="signature-line">&nbsp;</span></p>
   <p>Nom&nbsp;: <span class="signature-line">&nbsp;</span></p>
   <p>Date&nbsp;: <span class="signature-line">&nbsp;</span></p>
@@ -295,9 +288,9 @@ def generate_legacy_posting_html(
     # --- Disclaimer ---
     parts.append("""
 <div class="disclaimer">
-  <strong>Avis important&nbsp;:</strong> Ce document a \u00e9t\u00e9 produit \u00e0 l'aide d'un outil
-  automatis\u00e9. Il doit \u00eatre r\u00e9vis\u00e9 par une personne qualifi\u00e9e avant utilisation aux fins
-  de conformit\u00e9 \u00e0 la Loi sur l'\u00e9quit\u00e9 salariale.
+  <strong>Avis important&nbsp;:</strong> Ce document a été produit à l'aide d'un outil
+  automatisé. Il doit être révisé par une personne qualifiée avant utilisation aux fins
+  de conformité à la Loi sur l'équité salariale.
 </div>
 """)
 
