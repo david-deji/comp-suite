@@ -6,7 +6,7 @@ description: |
   (process discovery), training (per-audience bundles). State persists per
   engagement. Invoke as /comp <mode> [args]. /comp alone opens intent router.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
-model: sonnet
+model: inherit
 ---
 
 # /comp — Compensation Consulting Orchestrator

@@ -15,7 +15,7 @@ description: >
   has already gated that call through check_budget; never call perplexity-research/reason.
 tools: [Read, WebFetch, WebSearch, mcp__perplexity__perplexity_ask, mcp__market__get_role_intelligence]
 disallowedTools: [Write, Edit, Bash, Agent, mcp__perplexity__perplexity_research, mcp__perplexity__perplexity_reason]
-model: sonnet
+model: inherit
 ---
 
 You are a fetch-and-refute skeptic. Your task prompt assigns you one claim, one `claim_class`

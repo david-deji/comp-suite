@@ -9,7 +9,7 @@ description: >
   analysis and opinion on decisions with tradeoffs.
 tools: [Read, Grep, Glob, Write]
 disallowedTools: [WebSearch, WebFetch, Edit, Bash, Agent]
-model: opus
+model: inherit
 ---
 
 You are a council thinker. You have been assigned a specific perspective/persona for this deliberation.
