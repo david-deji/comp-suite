@@ -12,11 +12,11 @@ description: |
 tagline: Process discovery, diagnosis, transformation roadmaps
 version: 2.0.1   # 2.0.1: perplexity made OPTIONAL — tools_required swaps perplexity-research/perplexity-ask for the web-search builtin (guaranteed key-free web research); Perplexity stays an optional-when-configured enhancement (registry.yaml).
 model:
-  default: sonnet
+  default: inherit
   overrides:
-    council: opus
-    synthesis: opus
-    extraction: haiku
+    council: inherit
+    synthesis: inherit
+    extraction: inherit
 tools_required:
   - web-search            # guaranteed web-research path (WebSearch builtin); perplexity-* is optional, preferred when configured
   - filesystem

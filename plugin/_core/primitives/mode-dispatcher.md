@@ -147,7 +147,7 @@ def _resolve_model_routing(mode):
         routing = yaml.safe_load(f)
 
     task_defaults  = routing.get("tasks", {})
-    global_default = routing.get("default", "sonnet")
+    global_default = routing.get("default", "inherit")  # forced inherit 2026-06-26; series passes through via .get(series, series)
     mode_overrides = mode.get("model", {}).get("overrides", {})
 
     model_registry = _read_model_registry()
@@ -181,6 +181,9 @@ def _read_model_registry():
     """
     Reads $ASSET_ROOT/_core/model-registry.md and returns {series: model_id}.
     Parses the 'Latest validated per series' table.
+    NOTE (2026-06-26): routing is forced to `inherit`, so a resolved series is never
+    "opus"/"sonnet"/"haiku" — model_registry.get("inherit", "inherit") returns "inherit"
+    and this table is not consulted. The mapping below is retained for the re-enable path.
     Initial values per SPEC § 7:
       opus   → claude-opus-4-6
       sonnet → claude-sonnet-4-6
@@ -253,11 +256,12 @@ On success:
     # ...
   ],
   "model_routing": {
-    "council":      {"series": "opus",   "model_id": "claude-opus-4-6"},
-    "synthesis":    {"series": "opus",   "model_id": "claude-opus-4-6"},
-    "extraction":   {"series": "haiku",  "model_id": "claude-haiku-4-5-20251001"},
-    "draft":        {"series": "sonnet", "model_id": "claude-sonnet-4-6"},
-    "_default":     {"series": "sonnet", "model_id": "claude-sonnet-4-6"},
+    # Forced inherit (2026-06-26): every task resolves to the parent session model.
+    "council":      {"series": "inherit", "model_id": "inherit"},
+    "synthesis":    {"series": "inherit", "model_id": "inherit"},
+    "extraction":   {"series": "inherit", "model_id": "inherit"},
+    "draft":        {"series": "inherit", "model_id": "inherit"},
+    "_default":     {"series": "inherit", "model_id": "inherit"},
   }
 }
 ```

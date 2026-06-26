@@ -131,9 +131,9 @@ scratch under `$STATE_ROOT/.../council/` (non-schema artifacts, P4b D3).
 
 ## Cost shape
 
-A 6-thinker council with `model.overrides.council: opus` (per advisor mode default) is 6 opus dispatches + orchestrator synthesis. Typical cost: ~$2-5 per council. Counts toward engagement `budget_usd`. Run `budget-check` BEFORE dispatching the first thinker (estimate cost = 6 × $0.50 + synthesis $0.30 ≈ $3.30).
+A 6-thinker council now runs at `inherit` (council routing forced to inherit 2026-06-26 — thinkers dispatch on the parent session model, e.g. Opus 4.8 1M, not a fixed Opus-4.6). Cost scales with the active session model's token rate, so it is no longer a fixed Opus-4.6 estimate. Counts toward engagement `budget_usd`. Run `budget-check` BEFORE dispatching the first thinker and let it price the estimate against the active model.
 
-If budget would be exceeded, refuse cleanly and tell the founder "Council estimate $3.30 exceeds remaining budget $X. Raise via `/comp budget <id> <amount>` or accept fewer perspectives."
+If budget would be exceeded, refuse cleanly and tell the founder "Council estimate $Y exceeds remaining budget $X. Raise via `/comp budget <id> <amount>` or accept fewer perspectives." ($Y = the budget-check estimate at the active session model.)
 
 ## Anti-patterns (from `dispatch-anti-patterns.md`)
 

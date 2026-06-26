@@ -1,5 +1,7 @@
 <!-- Source: telos-machina/.claude/rules/model-registry.md @ commit af3787cb91fa793e6fcacad7fd8a7b438d9b62ee. Ported to comp-suite v2 2026-05-07 with INDEPENDENT pinning header (see below). -->
 
+> ⚠️ **Per-task routing forced to `inherit` (2026-06-26, David).** comp-suite no longer tiers models per task — every dispatch runs on the parent session model (`inherit`). `routing.yaml` and all four `mode.yaml` `model:` blocks resolve to `inherit`, and the dispatcher passes it through unchanged (`model_registry.get("inherit", "inherit")` → `"inherit"`). The series→model_id table below is **retained for reference only**; it is NOT consulted while routing is `inherit`. To re-enable cost-tiering, restore concrete series values (`opus`/`sonnet`/`haiku`) in `routing.yaml` + the `mode.yaml` blocks.
+
 > **Comp-suite v2 model registry — INDEPENDENT pin**
 >
 > This file is a copy of TM's model registry, but comp-suite reviews bumps INDEPENDENTLY. TM bumps quarterly on bake-offs; comp-suite reviews the same cadence with a one-week lag to avoid silent staleness drift.

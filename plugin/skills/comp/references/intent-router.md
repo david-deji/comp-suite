@@ -37,7 +37,7 @@ Other — Describe the task in your own words.
 
 ### 3. If founder picks `Other`
 
-Run free-text classification. Use the active model (default `sonnet`) via a self-call (you ARE the orchestrator session — just classify in-context, no subagent needed).
+Run free-text classification. Use the active session model (`inherit`) via a self-call (you ARE the orchestrator session — just classify in-context, no subagent needed).
 
 Classification prompt template (use this verbatim):
 

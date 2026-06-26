@@ -1,19 +1,23 @@
 # Per-task LLM routing for comp-suite v2.
-# Per SPEC § 7. Resolution precedence (HIGHEST WINS):
+#
+# FORCED INHERIT (2026-06-26, David): per-task cost-tiering is DISABLED — every value
+# below is `inherit`, so every dispatch runs on the parent session model (e.g. Opus 4.8
+# 1M). The dispatcher passes `inherit` straight through (model_registry.get("inherit",
+# "inherit")); the _core/model-registry.md series->model_id table is NOT consulted while
+# routing is inherit. To re-enable tiering, restore concrete series (opus/sonnet/haiku).
+#
+# Resolution precedence (HIGHEST WINS) — still applies, but every level now yields inherit:
 #   1. Mode override:  mode.yaml.model.overrides.<task>
 #   2. Task default:   routing.yaml.tasks.<task>  (this file)
 #   3. Global default: routing.yaml.default       (this file)
-#
-# After series is resolved (opus/sonnet/haiku), mode-dispatcher resolves to a specific
-# model ID via _core/model-registry.md.
 
-default: sonnet                              # fallback when no task tag
+default: inherit                              # fallback when no task tag
 
 tasks:
-  extraction: haiku                          # find facts in N files, classify
-  draft: sonnet                              # initial content writing
-  synthesis: opus                            # cross-source integration, judgment
-  council: opus                              # adversarial deliberation
-  research: sonnet                           # Perplexity-driven (model picks how to query)
-  validation: haiku                          # schema check, format check
-  long_horizon: opus                         # 50+ tool-call agentic loops
+  extraction: inherit                          # find facts in N files, classify
+  draft: inherit                              # initial content writing
+  synthesis: inherit                            # cross-source integration, judgment
+  council: inherit                              # adversarial deliberation
+  research: inherit                           # Perplexity-driven (model picks how to query)
+  validation: inherit                          # schema check, format check
+  long_horizon: inherit                         # 50+ tool-call agentic loops

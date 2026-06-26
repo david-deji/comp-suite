@@ -114,10 +114,9 @@ The dispatcher returns:
   "mode": <validated mode.yaml dict>,
   "tools": <resolved tool entries from registry.yaml>,
   "model": {
-    "default_series": "sonnet",
-    "overrides": {"council": "opus", "synthesis": "opus", "extraction": "haiku"},
-    "resolved_ids": {"opus": "claude-opus-4-6", "sonnet": "claude-sonnet-4-6",
-                     "haiku": "claude-haiku-4-5-20251001"}
+    "default_series": "inherit",
+    "overrides": {"council": "inherit", "synthesis": "inherit", "extraction": "inherit"},
+    "resolved_ids": {}   # routing forced to inherit (2026-06-26); no series->model_id lookup
   }
 }
 ```
@@ -241,20 +240,24 @@ Resolution precedence (highest wins):
 3. `$ASSET_ROOT/_core/routing.yaml.default` — global default (sonnet)
 
 After series is resolved, look up model_id from `$ASSET_ROOT/_core/model-registry.md`
-"Latest validated" table.
+"Latest validated" table. NOTE (2026-06-26): all series are forced to `inherit` — the
+registry lookup returns `inherit` unchanged (`.get("inherit", "inherit")`), so every task
+dispatches on the parent session model. Cost-tiering is disabled until concrete series are
+restored in `routing.yaml` + the `mode.yaml` blocks.
 
 Attach to assembled context:
 ```python
 context["model_routing"] = {
-  "council":      {"series": "opus",   "model_id": "claude-opus-4-6"},
-  "synthesis":    {"series": "opus",   "model_id": "claude-opus-4-6"},
-  "long_horizon": {"series": "opus",   "model_id": "claude-opus-4-6"},
-  "draft":        {"series": "sonnet", "model_id": "claude-sonnet-4-6"},
-  "research":     {"series": "sonnet", "model_id": "claude-sonnet-4-6"},
-  "extraction":   {"series": "haiku",  "model_id": "claude-haiku-4-5-20251001"},
-  "validation":   {"series": "haiku",  "model_id": "claude-haiku-4-5-20251001"},
+  # Routing forced to inherit (2026-06-26) — every task runs on the parent session model.
+  "council":      {"series": "inherit", "model_id": "inherit"},
+  "synthesis":    {"series": "inherit", "model_id": "inherit"},
+  "long_horizon": {"series": "inherit", "model_id": "inherit"},
+  "draft":        {"series": "inherit", "model_id": "inherit"},
+  "research":     {"series": "inherit", "model_id": "inherit"},
+  "extraction":   {"series": "inherit", "model_id": "inherit"},
+  "validation":   {"series": "inherit", "model_id": "inherit"},
 }
-# Mode overrides (from mode.yaml.model.overrides) win over the above.
+# Mode overrides (from mode.yaml.model.overrides) also resolve to inherit.
 ```
 
 ---
@@ -383,13 +386,10 @@ controls bound that invisible cost; apply both:
 
 - **Honor each primitive's `fan_out_max`.** It is the only spend bound the dollar gate
   cannot see. Never exceed it.
-- **Tier the critic's model per lens** (override `critic.md`'s default `sonnet` at dispatch):
-  - Mechanical lenses (exact-phrase anti-pattern match, `{{RENDERED:}}` / `{{NARRATIVE:}}`
-    placeholder presence, disclaimer presence) → **haiku**. Lexical/structural, not judgment.
-  - Judgment lenses (completeness brief-coverage, legal overstatement, FR-CA authenticity,
-    register fit) → **sonnet**.
-  - Vision lenses (visual-QA PNG inspection) → **sonnet** minimum; never **haiku**
-    (vision-weak); **opus** only on a named vision trigger.
+- **Critic model: `inherit`** (forced 2026-06-26 — per-lens tiering removed). Every critic
+  lens (mechanical, judgment, vision) dispatches on the parent session model via
+  `critic.md`'s `inherit`. `fan_out_max` (above) remains the spend bound; with model tiering
+  gone it is the only model-cost control left, so honoring it matters more, not less.
 
 ---
 
