@@ -42,9 +42,14 @@ tools:
     requires_user_confirm: false
     description: Step-by-step analytical reasoning with citations. Optional; web-search is the fallback.
 
-  # Market server — 7 live tools at mcp.dallaire-jette.com/mcp/rpc (HTTP, Bearer ${MARKET_INTEL_TOKEN}).
-  # All $0.00 (included in the MCP subscription). Keys market-data + cba-wage-scale are load-bearing
-  # (referenced by mode.yaml tools_required + prose); the other five mirror the live tool set 1:1.
+  # Market server at mcp.dallaire-jette.com/mcp/rpc (HTTP, Bearer ${MARKET_INTEL_TOKEN}).
+  # All $0.00 (included in the MCP subscription). The server's live surface is far larger than the
+  # mode-referenced read tools below: it also exposes the costing_*, engagement_*, brand_*, and
+  # payequity_* families (registered/noted further down). Keys market-data + cba-wage-scale are
+  # load-bearing (referenced by mode.yaml tools_required + prose); the other read tools mirror the
+  # live tool set 1:1. Registry accuracy matters because budget-check BLOCKS any tool not found
+  # here (budget-check.md step 1) — an unregistered $0 tool fails closed, not open.
+  # MIM-0045 / comp-suite#1: reconciled to the live surface 2026-06-27 (was "7 live tools").
   market-search-roles:
     kind: mcp
     server: market
@@ -107,6 +112,239 @@ tools:
     est_call_cost_usd: 0.00
     requires_user_confirm: false
     description: Detailed wage scales from collective agreements (unionized sectors)
+
+  # --- Additional market read tools (live but previously unregistered) -------
+  market-minimum-wage:
+    kind: mcp
+    server: market
+    entry: get_minimum_wage
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Statutory provincial minimum wage (step-floor math input for the costing engine)
+
+  market-occupation-content:
+    kind: mcp
+    server: market
+    entry: get_occupation_content
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: NOC occupation content (duties, requirements) for a role code
+
+  market-cba-lookup:
+    kind: mcp
+    server: market
+    entry: cba_lookup_by_employer_name
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Fuzzy lookup of an employer's collective agreement(s) by name
+
+  market-company-postings:
+    kind: mcp
+    server: market
+    entry: company_get_posting_history
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: A company's historical job-posting volume + role mix
+
+  market-search-companies:
+    kind: mcp
+    server: market
+    entry: search_companies
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Discover companies in the data by name/sector
+
+  # --- Costing engine (server-side; comp-suite currently computes costing INLINE per
+  #     _modes/advisor/references/costing-engine.md — these are registered for budget-check
+  #     accuracy + future server-side wiring). All $0.00. -------------------------
+  costing-compute-scenario:
+    kind: mcp
+    server: market
+    entry: costing_compute_scenario
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Pure calculator — one costing scenario per province + national aggregate (no persist)
+
+  costing-input-template:
+    kind: mcp
+    server: market
+    entry: costing_input_template
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Canonical input contract (columns + 7 config inputs) for a step or merit run
+
+  costing-get-config:
+    kind: mcp
+    server: market
+    entry: costing_get_config
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read the stored per-org costing config
+
+  costing-put-config:
+    kind: mcp
+    server: market
+    entry: costing_put_config
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write the per-org costing config
+
+  costing-get-scenarios:
+    kind: mcp
+    server: market
+    entry: costing_get_scenarios
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List stored costing scenarios for an org
+
+  costing-put-scenario:
+    kind: mcp
+    server: market
+    entry: costing_put_scenario
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Persist a costing scenario for an org
+
+  # --- Engagement store (server-side master/cycle/section persistence) ---------
+  engagement-get:
+    kind: mcp
+    server: market
+    entry: engagement_get
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read an engagement record
+
+  engagement-get-master:
+    kind: mcp
+    server: market
+    entry: engagement_get_master
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read the engagement master record
+
+  engagement-put:
+    kind: mcp
+    server: market
+    entry: engagement_put
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write an engagement record
+
+  engagement-put-section:
+    kind: mcp
+    server: market
+    entry: engagement_put_section
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write one section of an engagement record
+
+  engagement-put-cycle:
+    kind: mcp
+    server: market
+    entry: engagement_put_cycle
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write an engagement cycle
+
+  engagement-list-cycles:
+    kind: mcp
+    server: market
+    entry: engagement_list_cycles
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List cycles for an engagement
+
+  engagement-append-decision:
+    kind: mcp
+    server: market
+    entry: engagement_append_decision
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Append a decision to the engagement decision log
+
+  # --- Brand kit store (server-side brand asset persistence) -------------------
+  brand-get-kit:
+    kind: mcp
+    server: market
+    entry: brand_get_kit
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read an org's brand kit
+
+  brand-put-kit:
+    kind: mcp
+    server: market
+    entry: brand_put_kit
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write an org's brand kit
+
+  brand-list-files:
+    kind: mcp
+    server: market
+    entry: brand_list_files
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List brand files for an org
+
+  brand-get-file:
+    kind: mcp
+    server: market
+    entry: brand_get_file
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read a brand file
+
+  brand-put-file:
+    kind: mcp
+    server: market
+    entry: brand_put_file
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write a brand file
+
+  brand-put-logo:
+    kind: mcp
+    server: market
+    entry: brand_put_logo
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write an org's logo asset
+
+  # --- Pay-equity (server-side) — FAMILY NOTE, not enumerated ------------------
+  # The market server exposes ~60 payequity_* tools (payequity_put_job_class,
+  # payequity_compute_adjustments, payequity_compute_predominance, payequity_check_defensibility,
+  # …). comp-suite does NOT call them: the advisor mode runs its OWN local pay-equity
+  # implementation at _modes/advisor/scripts/pay_equity/tools/*.py (QC Loi sur l'équité salariale).
+  # They are $0.00 (subscription-included) like every market tool. They are intentionally NOT
+  # enumerated here — registering 60 unused exact names would be drift-prone noise (the very
+  # problem comp-suite#1 #7 flagged). If a mode is ever wired to call a server-side payequity_*
+  # tool, register that specific tool by name at that time so budget-check resolves it (an
+  # unregistered tool fails closed). Canonical server contract: market-intel-mcp-server v2-facade.
 
   filesystem:
     kind: builtin

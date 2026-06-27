@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Friction event",
   "description": "Comp-suite harness self-improvement loop event. One per line in <STATE_ROOT>/harness/friction.jsonl. See SPEC-learn.md § 4.",
+  "$comment": "Changelog (newest first). 2026-06-27 (comp-suite#1 / MIM-0045 #15): added target_class 'mcp-tool' (defect in an external MCP tool, e.g. the market server's costing_*/payequity_* surface) and signal_type 'tool-behavior' (tool returned wrong/implausible output). ADDITIVE only — no field removed or renamed; pre-existing friction.jsonl rows remain valid. Rationale: ~13 market-tool costing findings had to be mislabeled target_class:unspecified|schema + signal_type:operator-flagged, which weakened /comp learn grouping.",
   "type": "object",
   "additionalProperties": false,
   "required": ["ts", "source", "severity", "target_class", "description", "signal_type"],
@@ -32,9 +33,10 @@
         "persona",
         "perspective",
         "glossary",
+        "mcp-tool",
         "unspecified"
       ],
-      "description": "Class of harness target the friction touches."
+      "description": "Class of harness target the friction touches. 'mcp-tool' = a defect in an external MCP tool (e.g. the market server's costing_*/payequity_* surface), not in a comp-suite-owned asset."
     },
     "target_path": {
       "type": ["string", "null"],
@@ -64,12 +66,13 @@
         "intent-router-low-confidence",
         "schema-validation-failure",
         "repeated-clarification",
+        "tool-behavior",
         "post-session-broken-cite",
         "post-session-unused-schema-field",
         "post-session-hook-overridden",
         "post-session-council-redundancy"
       ],
-      "description": "Origin signal. Aggregator groups by signal_type within target groups."
+      "description": "Origin signal. Aggregator groups by signal_type within target groups. 'tool-behavior' = an external tool returned wrong/implausible/silently-degraded output (pairs with target_class 'mcp-tool')."
     }
   }
 }
