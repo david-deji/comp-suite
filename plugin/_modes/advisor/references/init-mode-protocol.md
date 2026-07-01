@@ -56,7 +56,7 @@ Call `read_master(org_slug)` from `master-yaml-ops.md` (which reads `engagement_
 
 ### Step 4 — Update `master.header.last_touched_*`
 
-Set `last_touched_date: <today>` and `last_touched_by_skill: compensation-advisor`. (Last-writer-wins on advisory fields — acceptable.)
+Set `last_touched_date: <today>` and `last_touched_by_skill: comp` (the header skill fields are comp-only — server CHECK IN ('comp'), `Literal["comp"]`; the legacy `compensation-advisor` token is rejected). (Last-writer-wins on advisory fields — acceptable.)
 
 ### Step 5 — Update `master.header.active_skills[]`
 
@@ -99,7 +99,7 @@ Ask operator:
 | **C. Switch primary to a different existing cycle** | Explicit choice | Use `/switch-cycle` after /init instead |
 
 - **Use existing** → load `cycle_state_pointers[]` entry for this cycle from `master.advisor`, read `_orgs/<slug>/cycles/<cycle-slug>/advisor/engagement-state.yaml`.
-- **Open new cycle** → ask for cycle slug (default: `<line>-<region>-<fiscal>`; surface pros/cons if the operator's input deviates from convention). Create the cycle via `engagement_put_cycle {org_slug, cycle_slug, status: open, primary: true}` (the server atomically demotes the prior primary). Append `engagement_append_decision {decision_type: cycle_opened, cycle_slug}`. Create the local `_orgs/<slug>/cycles/<cycle-slug>/advisor/` directory (non-schema artifact dir). Then walk the original engagement-config intake (Step 10 below) to produce the engagement body for this cycle.
+- **Open new cycle** → ask for cycle slug (default: `<line>-<region>-<fiscal>`; surface pros/cons if the operator's input deviates from convention). Create the cycle via `engagement_put_cycle {org_slug, cycle_slug, status: open, opened_date: <today>, opened_by_skill: compensation-advisor, primary: true, cycle_dir: _orgs/<slug>/cycles/<cycle-slug>/}` (the server atomically demotes the prior primary). Send the full record: `engagement_put_cycle` is a blind UPSERT with no version guard, so every server-required field (`cycle_slug`, `status`, `opened_date`, `opened_by_skill`, `primary`, `cycle_dir`) must be present or Pydantic rejects with `field required` (-32602); a partial call on a later re-drive would clobber the cycle's stored `opened_date`/`opened_by_skill`/`cycle_dir` (as `close-flow.md`/`intent-router.md` already guard against). For an existing cycle, read the current record via `engagement_get_master.cycles[]` and resend it whole rather than reconstructing it. `opened_by_skill` carries the full skill token per `cycle-entry.schema.json` (not the comp-only header enum). Append `engagement_append_decision {decision_type: cycle_opened, cycle_slug}`. Create the local `_orgs/<slug>/cycles/<cycle-slug>/advisor/` directory (non-schema artifact dir). Then walk the original engagement-config intake (Step 10 below) to produce the engagement body for this cycle.
 
 ### Step 8 — Inheritance prompts per group
 

@@ -128,7 +128,7 @@ Future engagements with matching audience archetype + scope read this log to sur
 
 ### tool_calls block
 
-Maintained per `references/persistence-and-ledger.md` § engagement-state.yaml — schema additions and `references/tools-available.md` § Container for tool_calls[]. One flat append-only array. Every Market MCP call (`mcp__market__get_role_intelligence`, `mcp__market__compare_pay_scale_to_market`, `mcp__market__get_cba_wage_scale`, etc.), every Indeed/StatCan MCP call, and every `web_search` / `web_fetch` call appends one entry. Sub-fields per entry: `tool` (full MCP-style name), `args`, `timestamp`, `result_hash` (SHA-256 of JSON response for MCP calls, SHA-256 of fetched body for `web_fetch`, null for `web_search`), `used_in` (list of slide/section IDs or deliverable surfaces). Used for cache and verified-source audit, not displayed in the deck.
+Maintained per `references/persistence-and-ledger.md` § engagement-state.yaml — schema additions and `references/tools-available.md` § Container for tool_calls[]. One flat append-only array. Every Market MCP call (`mcp__market__get_role_intelligence`, `mcp__market__compare_pay_scale_to_market`, `mcp__market__get_cba_wage_scale`, etc.), every Indeed MCP call, and every `web_search` / `web_fetch` call appends one entry (CPI/unemployment/econometric context is `web_fetch`-sourced). Sub-fields per entry: `tool` (full MCP-style name), `args`, `timestamp`, `result_hash` (SHA-256 of JSON response for MCP calls, SHA-256 of fetched body for `web_fetch`, null for `web_search`), `used_in` (list of slide/section IDs or deliverable surfaces). Used for cache and verified-source audit, not displayed in the deck.
 
 ### Presentation to user
 

@@ -84,6 +84,12 @@ def dispatch_mode(mode_name):
 
 ```python
 def _resolve_tools(tools_required):
+    # Capability-discovery note: the market server is self-describing. MCP `tools/list`
+    # surfaces every PRIVATE tool (the engagement_* lifecycle tools) with its JSON Schema,
+    # and `initialize` exposes a schema_version/build handshake (P3). The static
+    # registry.yaml read below is a DEFENSIVE MIRROR of the tool surface, not the
+    # authoritative capability list; the engagement_* lifecycle tools resolve dynamically
+    # at call time against the live server, so they need not be enumerated here.
     with open(f"{ASSET_ROOT}/_core/tools/registry.yaml") as f:
         registry = yaml.safe_load(f)
 
@@ -111,15 +117,21 @@ def _resolve_tools(tools_required):
 
     if unavailable:
         # Surface clean error for scenario 13 (mcp-server-unavailable).
-        # The one REQUIRED server is `market` (set MARKET_INTEL_TOKEN). Perplexity is
-        # optional — it is not in any mode's tools_required, so it never lands here; its
-        # absence degrades silently to the web-search builtin (registry: web-search).
+        # The one REQUIRED server is `market`. Auth is OAuth-exclusive over a headerless
+        # .mcp.json — there is no token to set. A 401/unauthenticated is NOT a transport
+        # failure: it means the colleague's Google OAuth sign-in has not been completed or
+        # has expired, and is completed via the `/mcp` sign-in flow in Claude Code. A
+        # timeout/5xx is the distinct transport-unreachable case. Perplexity is optional —
+        # it is not in any mode's tools_required, so it never lands here; its absence
+        # degrades silently to the web-search builtin (registry: web-search).
         return {
             "error": "MCP servers unavailable",
             "unavailable_tools": unavailable,
             "message": (
-                "The market MCP is not responding — its tools need MARKET_INTEL_TOKEN set "
-                "and the server reachable (401 = token unset/invalid). See INSTALL.md. "
+                "The market MCP is not usable. A 401/unauthenticated means Google OAuth "
+                "sign-in has not been completed or has expired — complete it via the `/mcp` "
+                "sign-in flow in Claude Code (there is no token to set). A timeout or 5xx "
+                "means the server is transport-unreachable — a distinct condition. "
                 "Market-dependent work (benchmarks, offer comparisons, CBA scales) is "
                 "unavailable until it is restored; web research still works via WebSearch."
             ),
@@ -132,6 +144,12 @@ def _mcp_server_available(server_name, mcp_servers):
     # Optimistic: assume available if no liveness check is defined.
     # The orchestrator's startup validation (not this primitive) does the real ping.
     # Return True here; unavailability is surfaced at the actual dispatch call.
+    #
+    # Reachability != usability. A public market tool answering 200 (e.g. the market-data
+    # probe on get_role_intelligence) only proves transport is up; it does NOT prove the
+    # PRIVATE lifecycle tools (engagement_*) are usable — those require a resolved OAuth
+    # identity (org membership) and can still 401 while the public probe succeeds. Treat
+    # "market reachable" and "lifecycle usable" as separate checks.
     return True
 ```
 

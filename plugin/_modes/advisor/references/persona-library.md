@@ -76,12 +76,12 @@ Source types are aligned with the bundled persona grounding patterns:
 | `cba-text` | Collective agreement scale | `mcp__market__get_cba_wage_scale` OR (for user-CBA) the parsed `user_provided_cba` block |
 | `survey-house-cut` | Survey-house cut for the role/geo | `survey-archive/<vendor>/<year>/<cut>.yaml` from repo (or fresh ingestion) |
 | `competitor-careers-page` | Named competitor's published wages | `web_fetch` against the competitor's careers URL |
-| `econometric-table` | StatCan econometric series (CPI, unemployment, GDP) — **NOT wages** | StatCan MCP (when available) OR `web_fetch` against `statcan.gc.ca` table page |
+| `econometric-table` | StatCan econometric series (CPI, unemployment, GDP) — **NOT wages** | `web_fetch` against a `statcan.gc.ca` table page (there is no StatCan MCP server) |
 | `internal-hris-data` | User-provided internal data | Engagement-config `current_pay` block + uploaded workforce CSV |
 | `union-bulletin` | Local union news / bargaining communications | `web_fetch` against the local's news page |
 | `government-budget` | Federal/provincial budget documents | `web_fetch` against `canada.ca`, `finances.gouv.qc.ca`, etc. |
 | `actuarial-valuation-report` | Pension/benefit plan actuarial document | User-uploaded plan valuation |
-| `indeed-company-data` | Competitor employer ratings + employer-reported salaries | `mcp__indeed__get_company_data` |
+| `indeed-company-data` | Competitor employer ratings + employer-reported salaries | `mcp__claude_ai_Indeed__get_company_data` (v2-native alternative: `mcp__market__company_get_posting_history` + `mcp__market__search_companies`, Job-Bank-sourced, in registry.yaml) |
 
 If a custom persona's `default_grounding_source_type` is none of the above, the skill treats it as `web-fetch-other` and prompts the user at council time for the specific URL/file to ground that persona.
 

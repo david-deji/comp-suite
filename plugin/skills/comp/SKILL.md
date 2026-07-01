@@ -205,11 +205,15 @@ Compute `spent` by summing `est_cost` from `cost-log.jsonl`. Display:
 
 ```
 Engagement: <org>/<id>
-Spent: $<spent> / $<budget> (<pct>% of budget)
+Perplexity spend: $<spent> / $<budget> (<pct>% of budget) — excludes Claude agent tokens
+Agent-spend control: fan_out_max caps (council thinkers, refute-claim refuters)
 Last activity: <last_active>
 ```
 
-The per-call gate runs in the Budget Gate section below.
+The `$<spent> / $<budget>` figure is Perplexity spend against the Perplexity cap only —
+`cost-log.jsonl` sums registry tool dollars and is blind to Opus agent-token fan-out
+(council, refute-claim). Agent spend is bounded separately by each primitive's `fan_out_max`,
+never rolled into this line. The per-call gate runs in the Budget Gate section below.
 
 ---
 
@@ -311,7 +315,7 @@ Before every call to a tool with `est_call_cost_usd > 0`:
    ```
    Tool: <tool_name>
    Estimated cost: $<est_cost>
-   Spent so far: $<spent> / $<budget>
+   Perplexity spend so far: $<spent> / $<budget> (excludes Claude agent tokens)
    Reason: <rationale>
 
    Proceed? [y/N]

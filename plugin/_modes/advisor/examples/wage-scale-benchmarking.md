@@ -53,7 +53,7 @@ For each role or grade in the user's scale, gather external market data:
 - Use **`compare_pay_scale_to_market`** as the primary tool — pass the full step grid (or band min/max) and it returns entry/top positioning, sub-step verdicts, and an overall competitiveness flag in one call
 - Use **`get_role_intelligence`** with `include_economic_regions=true` for the full distribution (P10/25/50/75/90), live posting rates, YoY trends, and economic-region breakdowns
 - Use **`get_cba_wage_scale`** to anchor unionized scales against negotiated rates (mandatory for UFCW grocery, construction, healthcare, public sector)
-- Use **Indeed MCP** (`search_jobs`, `get_company_data`) to validate posting matches and pull competitor pay/ratings
+- Use **Indeed MCP** (`mcp__claude_ai_Indeed__search_jobs`, `mcp__claude_ai_Indeed__get_company_data`) to validate posting matches and pull competitor pay/ratings — or the v2-native `mcp__market__company_get_posting_history` + `mcp__market__search_companies` (Job-Bank-sourced, in registry.yaml) for company/posting intel without the account connector
 - Use **web search** for fallback only — Job Bank Canada, Glassdoor, LinkedIn Salary, BLS (US roles)
 - For specialized roles, note the data source quality and any proxies used
 - Aging is built into Market MCP responses (YoY trend); apply a separate aging factor only when source data predates the live posting window or comes from an older external survey

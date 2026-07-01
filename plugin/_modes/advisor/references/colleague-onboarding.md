@@ -8,7 +8,7 @@ Loaded by SKILL.md when someone asks "how do I get started" or pastes content su
 
 ## What this skill does, in one paragraph
 
-The skill is a peer compensation consultant in Claude. It runs structured engagements end-to-end: discovery interview, market data pulls (Market MCP for wages — StatCan-published wage tables and live posting rates returned in one bundled call at all five percentiles P10/P25/P50/P75/P90; Indeed MCP secondary for company intel and posting validation; StatCan MCP for econometric context only — CPI, unemployment, never wages), Excel parsing, costed scenario modeling, narrative workshopping, and section-by-section interactive deck production. It also offers four utility commands (`/init`, `/update`, `/intake`, `/quickbench`) and a Council mode for multi-perspective deliberation on strategic comp trade-offs. The skill is cycle-aware (knows where you are in your annual wage review workback — neutral 7-stage default that you override in your config) and scope-aware (one engagement = one budget owner).
+The skill is a peer compensation consultant in Claude. It runs structured engagements end-to-end: discovery interview, market data pulls (Market MCP for wages — StatCan-published wage tables and live posting rates returned in one bundled call at all five percentiles P10/P25/P50/P75/P90; Indeed MCP secondary for company intel and posting validation; web_fetch for econometric context only — CPI, unemployment, never wages), Excel parsing, costed scenario modeling, narrative workshopping, and section-by-section interactive deck production. It also offers four utility commands (`/init`, `/update`, `/intake`, `/quickbench`) and a Council mode for multi-perspective deliberation on strategic comp trade-offs. The skill is cycle-aware (knows where you are in your annual wage review workback — neutral 7-stage default that you override in your config) and scope-aware (one engagement = one budget owner).
 
 ---
 
@@ -64,7 +64,7 @@ You paste the engagement-config YAML and write something like "We need a market 
 Skill walks the 5 beats: trigger, audience, hypothesis, constraints, then synthesizes a 3-5 sentence engagement brief and asks you to confirm. Wait for the brief — don't rush. It's the contract for the rest of the engagement.
 
 **Minute 15-25 — Phase 2 Data Gathering (autonomous).**
-Skill pulls from Market MCP, Indeed, StatCan; parses any Excel you uploaded; classifies pay structures; computes derived metrics. You see a validation summary at the end ("14 roles classified, 3 step / 11 merit, multi-province pull complete") but you don't drive this phase. This phase is silent — that's normal.
+Skill pulls from Market MCP (which wraps StatCan wage tables + live postings), the Indeed connector for company intel, and `web_fetch` for econometric context (CPI/unemployment — there is no standalone StatCan MCP); parses any Excel you uploaded; classifies pay structures; computes derived metrics. You see a validation summary at the end ("14 roles classified, 3 step / 11 merit, multi-province pull complete") but you don't drive this phase. This phase is silent — that's normal.
 
 **Minute 25-35 — Phase 3 Interpretation (conversational).**
 Skill leads with last-cycle drift detection (if `cycle.last_cycle` is populated), then 2-3 headline findings, then asks for organizational context. Push back if anything looks off — this is when you correct course cheaply.

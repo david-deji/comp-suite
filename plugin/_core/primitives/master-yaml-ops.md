@@ -78,8 +78,9 @@ on it.
 ## `write_master_section(org_slug, section_name, section_data)` — MCP-only (P4b D2)
 
 Sections are one of `advisor / comms / training / transformer`. Optimistic concurrency: read the section's
-current version, write with `expected_version`, and on a stale-reject **re-read and retry** — never force,
-never write a local copy.
+current version, write with `expected_version`, and on `data.error_code == VERSION_CONFLICT` **re-read,
+re-apply the change onto the fresh version, and retry once** — never force, never write a local copy.
+See § Error-code recovery contract.
 
 ```
 1. (defensive) validate section_data client-side against the mode's declared schema; on failure raise
@@ -90,7 +91,8 @@ never write a local copy.
      expected_version = current.version if present else 0
 3. Call engagement_put_section with {org_slug, section_name, body: section_data, expected_version}.
    - Success → done.
-   - stale-version reject → re-read (step 2) and retry ONCE; if it rejects again, escalate
+   - `data.error_code == VERSION_CONFLICT` (retryable) → re-read (step 2), re-apply the change onto the
+     fresh version, and retry ONCE; if it conflicts again, escalate
      "concurrent writer on section '<name>'; re-run after the other session finishes".
    - transport failure → ESCALATE (do NOT write local):
        "MCP unreachable — cannot write section '<name>'. Schema writes require the backend (P4b D2).
@@ -102,20 +104,37 @@ local schema writes are forbidden (they would diverge from the backend).
 
 ---
 
-## `append_decision_log(org_slug, entry)` — MCP-only, idempotent
+## `append_decision_log(org_slug, entry)` — MCP-only, idempotent on an explicit `id`
+
+The decision log is an **append-only** table (`GRANT SELECT, INSERT` only — rows can never be updated or
+deleted). Crash-safety therefore hinges entirely on the `id`, and it splits by path:
+
+- **Explicit-id path (crash-safe):** the server keys the insert `ON CONFLICT (org_id, id) DO NOTHING`, so
+  re-submitting the same `id` after an ambiguous timeout is an idempotent no-op.
+- **Default omit-id path (NOT crash-safe):** the server mints a fresh `dl-NNN` and runs an unconditional
+  INSERT with no ON CONFLICT. A retry after a timeout that hid a successful commit double-logs a second
+  identical decision that can never be cleaned up.
+
+So the write path MUST mint a deterministic `id` (or pass a client idempotency key) BEFORE the append, and
+reuse that same `id` on every retry — do not let a retryable append omit `id`.
 
 ```
 1. (defensive) validate entry client-side against decision-log-entry.schema.json.
-2. Call engagement_append_decision with:
+2. Mint a deterministic id for this decision BEFORE the call (e.g. a UUIDv5/hash over
+   {org_slug, cycle_slug, skill, decision_type, summary} + the logical event, or read the current max
+   dl-NNN and pick the next) so every retry of THIS decision carries the same id.
+3. Call engagement_append_decision with:
      {org_slug, timestamp, skill, decision_type, summary,
-      cycle_slug (or null), tags (list), id (optional), refs (optional)}.
-   - The server is append-only and idempotent on id (assigns the next monotonic dl-NNN per org when id
-     is omitted). Re-running after a crash is safe — a duplicate id is a no-op server-side.
+      cycle_slug (or null), tags (list), id (the minted id), refs (optional)}.
+   - Success → done. A retry with the same id hits `ON CONFLICT (org_id, id) DO NOTHING` and is a no-op.
    - transport failure → ESCALATE (do NOT write local): same message as write_master_section.
+     Retry with the SAME minted id; the ON CONFLICT branch makes that retry idempotent.
 ```
 
-Omit `id` to let the server assign the next `dl-NNN`; pass an explicit `id` only when re-driving a known
-entry idempotently.
+Only the explicit-id path is crash-safe. Omitting `id` lets the server assign the next `dl-NNN` via an
+unconditional INSERT — acceptable only for a guaranteed-single call that will never be retried; an
+ambiguous-timeout retry on the omit-id path double-logs permanently. Pass a minted `id` on any path that
+may be retried.
 
 ---
 
@@ -183,11 +202,35 @@ def render_tree_view(asset_walk_result):
     return "\n".join(lines)
 ```
 
+## Error-code recovery contract (server P3 taxonomy)
+
+Every private/org-scoped market tool error arrives as a JSON-RPC error whose `data` object carries a
+stable `error_code` (string) + a derived `retryable` (bool). Branch on `data.error_code` /
+`data.retryable`, NEVER on message text.
+
+| error_code | JSON-RPC | retryable | Recovery action |
+|---|---|---|---|
+| UNAUTHENTICATED | -32001 | false | Complete OAuth sign-in (/mcp), then resubmit |
+| NOT_A_MEMBER | -32602 | false | Escalate — caller is not a member of the named org; do not retry |
+| NO_DEFAULT_ORG | -32602 | false | Escalate — no org_slug + no default. `data.available_orgs[]` enumerates the caller's membership slugs; surface them, ask which, resubmit with --org |
+| INVALID_ARGS | -32602 | false | Fix the arguments, resubmit |
+| VERSION_CONFLICT | -32602 | true | Re-read the entity, re-apply the change onto the fresh version, retry ONCE; escalate if it conflicts again |
+| ORG_UNAVAILABLE | -32601 | false | Escalate — private plane not configured |
+| INTERNAL | (isError:true) | false | Escalate — generic handler failure |
+
+`RETRYABLE_CODES = {VERSION_CONFLICT}`. All four backend families (engagement/brand/costing/payequity)
+raise on conflict → uniform error_code envelope; payequity no longer returns a success-shaped
+`{error:version_conflict}` body.
+
 ## Constraints
 
 - **No schema-state write touches `$STATE_ROOT`** (P4b D2). Master, sections, decisions, cycles, brand,
   costing are MCP-only. Local schema files are a read cache (transport-failure fallback) only.
 - MCP-primary reads: a tool *not-found* is authoritative; only a *transport* failure falls back to cache.
-- Optimistic writes thread `version → expected_version`; stale-reject → re-read-retry once, then escalate.
-- `append_decision_log` is idempotent on `id` server-side — safe to re-run after a crash.
+- Optimistic writes thread `version → expected_version`; on `data.error_code == VERSION_CONFLICT`
+  (retryable) re-read, re-apply onto the fresh version, retry once, then escalate. Branch on
+  `data.error_code` / `data.retryable`, never on message text (§ Error-code recovery contract).
+- `append_decision_log` is idempotent only on an **explicit** `id` server-side (`ON CONFLICT (org_id, id)
+  DO NOTHING`). Mint a deterministic id before the append so a retry is a no-op; the default omit-id path
+  runs an unconditional INSERT and is NOT crash-safe.
 - `walk_sibling_assets` / `render_tree_view` are LOCAL and unchanged — they list non-schema artifacts.

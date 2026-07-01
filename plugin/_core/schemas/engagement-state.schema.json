@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comp-suite.telosmachina.ai/schemas/engagement-state.schema.json",
+  "title": "Engagement State",
+  "description": "The per-engagement body written by comp-suite and round-tripped through the engagement.* MCP tools. Single source of truth for the engagement-state contract; mirrors the server's EngagementBody Pydantic model 1:1 (v2-facade/src/tools/engagement_schemas.py). No field is paraphrased and no enum is extended or pruned relative to the server (charter INV-06). MIM-0041 P2; recreated in src/ during P3 after a build-plugin.sh rebuild wiped a plugin-only copy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "engagement_id", "mode", "started_at", "last_active"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "2.1.0",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semver of the engagement-state schema, pinned via const: a document MUST carry exactly this version. This is the single source of truth for the schema version; bump this const AND the server's ENGAGEMENT_SCHEMA_VERSION together (versioned-artifact-changelog rule). The pattern documents the shape for a future maintainer who relaxes the const."
+    },
+    "engagement_id": {
+      "type": "string",
+      "pattern": "^(\\d{4}-Q[1-4]|\\d{4}-\\d{2}-\\d{2})-[a-z0-9][a-z0-9-]*$",
+      "description": "Stable engagement id: a fiscal-period (YYYY-Q[1-4]) or ISO-date (YYYY-MM-DD) prefix, then a lowercase-kebab slug. Matches the server ENGAGEMENT_ID_RE and the 0073 CHECK constraint."
+    },
+    "org_slug": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Advisory only (RD-4'). The real tenancy key is org_id (RLS); the DB column is nullable."
+    },
+    "mode": {
+      "type": "string",
+      "description": "The active skill/mode for this engagement (e.g. comp, advisor, comms, training, transformer). Free string server-side (not enum-constrained) — kept as-is to mirror EngagementBody."
+    },
+    "phase": {
+      "type": "string",
+      "default": "intake",
+      "description": "Engagement phase label (free string; default 'intake')."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp (immutable)."
+    },
+    "last_active": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last-touched timestamp."
+    },
+    "budget_usd": {
+      "anyOf": [
+        { "type": "number" },
+        { "type": "string", "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$" }
+      ],
+      "default": "5.00",
+      "description": "Budget in USD as a Decimal-safe string or number (never a lossy float). Mirrors the server EngagementBody Decimal handling (INV-08)."
+    },
+    "industry_outsider": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Optional note flagging an outsider-industry engagement."
+    },
+    "working_artifacts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Paths or ids of working artifacts."
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Checkpoint markers."
+    },
+    "council_topics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Topics escalated to council."
+    },
+    "pending_decisions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "Open decisions awaiting resolution."
+    },
+    "engagement_mode": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Engagement-mode block (P2). Nullable; not enum-constrained server-side (mirrors EngagementBody and the 0073 nullable column)."
+    },
+    "state_shape_variant": {
+      "enum": ["full", "partial", "standalone", "pre_engagement", null],
+      "default": null,
+      "description": "Shape variant of the engagement state. Enum mirrors the server StateShapeVariant Literal (nullable)."
+    },
+    "pre_engagement_only": {
+      "type": ["boolean", "null"],
+      "default": null,
+      "description": "True when the engagement is pre-engagement only."
+    },
+    "engagement_status": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Close-state (P2). Nullable; not enum-constrained server-side (mirrors EngagementBody and the 0073 nullable column)."
+    },
+    "closed_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "default": null,
+      "description": "Date the engagement was closed (set together with engagement_status)."
+    },
+    "closed_by": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Who or what closed the engagement."
+    }
+  },
+  "$comment": "Changelog — 2.1.0 (P2 initial, recreated P3): first shipped engagement-state schema. Mirrors the server EngagementBody 1:1 — 5 required fields (schema_version, engagement_id, mode, started_at, last_active), the engagement-mode block (engagement_mode / state_shape_variant / pre_engagement_only) and the close-state block (engagement_status / closed_date / closed_by), the fields the 2026-06-30 audit found were silently dropped. additionalProperties:false. schema_version was const-pinned in P3 per adversarial-verify Cluster E (previously pattern-only — a convention, now machine-enforced). Lives in src/_core/schemas/ so build-plugin.sh ships it to plugin/; do not author it under plugin/ (that tree is rm -rf'd on every build)."
+}

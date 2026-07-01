@@ -104,6 +104,32 @@ Compute (server runs the math AND persists): `payequity_compute_predominance` (p
 Engagement data lives in the org-scoped backend, keyed by `engagement_id` (the client slug). The
 orchestration never writes engagement JSON to a sandbox or to Google Drive; it persists via `payequity_put_*`.
 
+### Persist round-trip contract (assert the write landed — this backend is the SOLE store)
+
+Every `payequity_put_*` / `payequity_compute_*` write is optimistic-concurrency guarded on the
+entity's `version`. Because there is no local copy of statutory data, a write that does not land is
+**silent legal-defensibility loss** — treat every persist as a round-trip you must confirm, never
+fire-and-forget.
+
+- **Success shape.** A landed write returns `{ok: true, version: <new N>}` (or the persisted entity
+  carrying its bumped `version`). Read the returned `version` and thread it into the next write of
+  the same entity.
+- **Conflict shape.** A stale write (the stored `version` moved under you, or a re-create of an
+  existing `engagement_id`) arrives as a **JSON-RPC error**, not a success payload — the server
+  raises, so it surfaces at the protocol layer with `data.error_code: "VERSION_CONFLICT"` and
+  `data.retryable: true`. (Uniform with engagement/brand/costing — payequity no longer returns a
+  success-shaped `{error: version_conflict}` body; do not scan text for `version_conflict`.)
+- **Recovery step (refetch → merge → retry once).** On `data.retryable == true`
+  (`error_code == "VERSION_CONFLICT"`): re-`payequity_get_*` the entity, re-apply your change onto the
+  fresh version, and retry the put **once**. If it conflicts again, escalate — do not loop and do not
+  proceed as though the write persisted.
+- **Never advance on an unconfirmed write.** Do not append the audit-log entry or move to the next
+  compute stage until the put returned `ok:true` (or the retry landed). An advanced exercise built on
+  a dropped write is the exact silent-data-loss failure this contract prevents.
+
+Full error-code → action taxonomy (shared across all four backend families): see
+`$ASSET_ROOT/_core/primitives/engagement-loader.md` § Error recovery (branch on `data.error_code`).
+
 ---
 
 ## Operator Mode (expert only in v1)

@@ -161,7 +161,7 @@ Final output is a single YAML code block, schema-identical to Init output. Inclu
     schema_version: 1
     created_date: YYYY-MM-DD          # original creation date preserved
     updated_date: YYYY-MM-DD          # date of this update run
-    created_by_skill: compensation-advisor
+    created_by_skill: comp
     created_via: /init
     last_updated_via: /update
     sibling_skills: [comp-comms-builder, comp-team-transformer, comp-training-designer]

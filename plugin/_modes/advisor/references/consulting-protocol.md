@@ -135,7 +135,7 @@ Pull data shaped by the engagement brief. No user interaction unless data is mis
 - Use `default_percentiles`, `default_province`, `include_economic_regions` directly — do not prompt.
 - Pre-resolve role aliases from `role_aliases` map before calling `search_roles` (skips fuzzy matching for known mappings).
 - If `cba_lookup_required_for` is populated, auto-trigger `get_cba_wage_scale` for matching role categories.
-- Pre-populate Indeed `get_company_data` calls with `peer_companies`.
+- Pre-populate Indeed `mcp__claude_ai_Indeed__get_company_data` calls with `peer_companies`.
 - Use `source_priority` to determine fallback order.
 
 ### 2a. Parse Uploaded Excel
@@ -237,10 +237,14 @@ Use the Market MCP as primary source. One call to `get_role_intelligence` return
 **Role resolution (always first):**
 
 1. Call `search_roles(query_text=<role title>, province=<2-letter code>)`.
-2. Inspect the response:
-   - **Strong match** (top result has `match_score >= 0.7` and title clearly matches): use `role_id` with `get_role_intelligence(role_id, province, ...)`. This bypasses fuzzy matching.
-   - **Weak match** (top result has `weak_match=true`, or response includes `no_strong_match` guidance): do NOT pick a role_id. Call `get_role_intelligence(role='<original title>', province=...)` directly — the 3-stage resolver (bridge → mined titles → NGRAM → posting fallback) handles it.
-   - **Ambiguous** (2+ results with similar match_score and the role title is genuinely ambiguous, e.g., "Manager" without function context): surface the options to the user. Do not guess.
+2. Inspect the response — **select on the server's per-match `coverage_status`** (`full` | `thin_data` | `no_data` | `nearest_noc`), which supersedes the older `match_score >= 0.7` / `weak_match` proxy. Read `coverage_status` first; use `match_score` / `weak_match` only as a tie-breaker on title fit:
+   - **Full coverage** (`coverage_status: "full"` and title clearly matches): use `role_id` with `get_role_intelligence(role_id, province, ...)`. This bypasses fuzzy matching.
+   - **Thin data** (`coverage_status: "thin_data"`): the `role_id` is usable but the sample is small — use it, and flag the thinness wherever its percentiles are shown downstream.
+   - **Nearest NOC** (`coverage_status: "nearest_noc"`, usually also `weak_match: true`): the match is a nearest-NOC fallback, not a direct hit. Do NOT pick the `role_id`. Call `get_role_intelligence(role='<original title>', province=...)` directly — the 3-stage resolver (bridge → mined titles → NGRAM → posting fallback) handles it.
+   - **No data** (`coverage_status: "no_data"`, or response includes `no_strong_match` guidance): no servable data for this match. Call `get_role_intelligence(role='<original title>', province=...)` directly as the resolver fallback; if that also returns nothing, flag the role as unmatched per § 2j — do not silently drop it.
+   - **Ambiguous** (2+ results with similar `coverage_status` / `match_score` and the role title is genuinely ambiguous, e.g., "Manager" without function context): surface the options to the user. Do not guess.
+
+   Carry the chosen match's `coverage_status` into the served mini-report so a `nearest_noc` or `thin_data` match is never presented identically to a `full`-coverage one.
 
 **Comprehensive intelligence (the main call):**
 
@@ -264,12 +268,18 @@ Use the Market MCP as primary source. One call to `get_role_intelligence` return
 
 7. `compare_roles(roles, provinces, top_n)` for cross-role or cross-province summary tables. `get_market_snapshot(province, top_n)` for provincial overview ("top hiring roles, fastest wage growth") to inform Phase 1 and Phase 3 framing.
 
+   **Per-row trust rendering (mandatory whenever either tool feeds a rendered comparison table).** `compare_roles` returns per-row `confidence_tier`, `salary_disclosure_rate`, and a `coverage` block; `get_market_snapshot` returns the same per top-hiring row plus, on `fastest_wage_growth` rows, `yoy_volatile` / `yoy_flag_reason`. Surface them in the table:
+   - Add a per-row confidence/coverage cell built from `confidence_tier` (+ the `coverage` block) so a `SUPPRESSED` or `LOW_THIN` row is never shown visually equal to a well-sampled one. When `salary_disclosure_rate` is low, note it in the same cell.
+   - Render `yoy_volatile: true` as a warning flag on the affected `fastest_wage_growth` row and show `yoy_flag_reason` (e.g. base-effect spike) — never present a volatile YoY figure as a clean trend.
+   - A suppressed or low-confidence cell is shown with its flag, never dropped and never silently equalized against a full-sample cell.
+
 **Indeed MCP for posting validation and competitor intel:**
 
 8. When Market MCP coverage is sparse OR you want to verify a posting match reflects the actual role scope:
-   - `search_jobs(search=<role>, location=<city, province>, country_code='CA')` — live Indeed postings for the role.
-   - `get_job_details(job_id)` — full description for any specific posting.
-   - `get_company_data(companyName, jobTitle, location, language='en' or 'fr', knowledgeCategories={metadata: true, ratings: true, salaries: true})` — pull competitor pay + culture ratings for retention narrative.
+   - `mcp__claude_ai_Indeed__search_jobs(search=<role>, location=<city, province>, country_code='CA')` — live Indeed postings for the role.
+   - `mcp__claude_ai_Indeed__get_job_details(job_id)` — full description for any specific posting.
+   - `mcp__claude_ai_Indeed__get_company_data(companyName, jobTitle, location, language='en' or 'fr', knowledgeCategories={metadata: true, ratings: true, salaries: true})` — pull competitor pay + culture ratings for retention narrative.
+   - v2-native alternative (no account connector required): `mcp__market__company_get_posting_history` + `mcp__market__search_companies` — Job-Bank-sourced company/posting intel, registered in registry.yaml.
 
 **User-provided CBA (when active — see `references/survey-house-protocol.md`):**
 
@@ -302,7 +312,7 @@ Always scope to the user-specified province. If not specified, ask.
 **Multi-province engagements** (when `benchmark.scope_provinces` has 2+ provinces):
 
 1. For each province in `scope_provinces`, run the role resolution + `get_role_intelligence` cycle independently. The skill iterates per-province; do not collapse a multi-province engagement into a single national pull.
-2. Use `compare_roles(roles=[...], provinces=[...])` for cross-province summary tables (one tool call returns the cross-cut).
+2. Use `compare_roles(roles=[...], provinces=[...])` for cross-province summary tables (one tool call returns the cross-cut). Render each province row with its per-row `confidence_tier` / `coverage` / `salary_disclosure_rate` cell per the trust-rendering rule in 2g step 7 — a thin- or suppressed-sample province must not sit visually equal to a well-sampled one.
 3. Use `get_market_snapshot(province=X)` per province for the provincial overview that feeds Phase 3 framing.
 4. For unionized roles, call `get_cba_wage_scale(role, province)` per province — CBA scales differ across UFCW Local 175 (ON) vs TUAC 501 (QC) etc.
 5. Tag every data point with its source province. Aggregations in Phase 4 use the per-province values, never a single national average.

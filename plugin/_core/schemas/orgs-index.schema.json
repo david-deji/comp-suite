@@ -33,8 +33,8 @@
           },
           "created_by_skill": {
             "type": "string",
-            "enum": ["compensation-advisor", "comp-comms-builder", "comp-training-designer", "comp-team-transformer"],
-            "description": "The skill that ran /init and first registered this org."
+            "enum": ["comp"],
+            "description": "The skill that ran /init and first registered this org. Comp-only per the v2 master-shared-header schema and the server CHECK (created_by_skill IN ('comp'))."
           },
           "status": {
             "type": "string",
@@ -62,19 +62,19 @@
         {
           "org_slug": "acme",
           "created_date": "2026-01-15",
-          "created_by_skill": "compensation-advisor",
+          "created_by_skill": "comp",
           "status": "active"
         },
         {
           "org_slug": "widgets-co",
           "created_date": "2026-03-02",
-          "created_by_skill": "comp-comms-builder",
+          "created_by_skill": "comp",
           "status": "active"
         },
         {
           "org_slug": "lab-services-intl",
           "created_date": "2025-09-10",
-          "created_by_skill": "comp-training-designer",
+          "created_by_skill": "comp",
           "status": "dormant"
         }
       ]

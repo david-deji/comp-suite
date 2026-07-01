@@ -86,7 +86,7 @@ If the user is new to the skill and config-curious, suggest Init mode at the end
 
 When the user provides a pay scale or wage grid:
 
-- Use `mcp__market__compare_pay_scale_to_market(role, province, steps, band_min, band_max, rate_type, percentiles=[10,25,50,75,90])` as the primary tool — it returns entry vs P10/P25 (entry-rate floor check), top vs P75/P90 (top-step ceiling check), middle steps vs P50, sub-step verdicts, and an overall competitiveness flag in one call. Always request all five percentiles — P10 is the effective floor (min-wage compression check) and P90 is the effective ceiling.
+- Use `mcp__market__compare_pay_scale_to_market(role, province, steps, band_min, band_max, rate_type)` as the primary tool — it returns entry vs P10/P25 (entry-rate floor check), top vs P75/P90 (top-step ceiling check), middle steps vs P50, sub-step verdicts, and an overall competitiveness flag in one call. It computes against all five percentiles internally (P10 is the effective floor for the min-wage compression check, P90 the effective ceiling) — there is **no** `percentiles` argument to pass (unlike `get_role_intelligence`, which does accept one).
 - Use `get_cba_wage_scale` to anchor unionized scales against negotiated rates (mandatory for UFCW grocery, construction, healthcare, public sector)
 - Compute compa-ratios: Internal Pay / Market P50
 - Classify each role: **Below Market** (<0.95), **At Market** (0.95-1.05), **Above Market** (>1.05)

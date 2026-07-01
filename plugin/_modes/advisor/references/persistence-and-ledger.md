@@ -57,9 +57,11 @@ no `persistence.backend` toggle.
 | `/checkpoint` | Engagement body → `engagement_put` (with `expected_version`); decisions → `engagement_append_decision`. Local `cost-log.jsonl` flushed. No Drive write. |
 | `/resume [<slug>]` | `engagement_get {org_slug, engagement_id}` for the body; `engagement_get_master` for cycles + decision log. Local cache only on transport failure (D1). |
 | `/ledger` | Read prior cycles + outcomes from `engagement_get_master.cycles[]` + the decision log; local `cost-log.jsonl` for spend. |
-| `/close-cycle` | `engagement_put_cycle {cycle_slug, status: closed, closed_date}` + `engagement_append_decision {decision_type: cycle_closed}`. No local `master.yaml` write. |
-| `/reopen-cycle` | `engagement_put_cycle {cycle_slug, status: drafting}` + `engagement_append_decision {decision_type: cycle_reopened, refs.related_decision_ids}`. |
-| `/switch-cycle` | `engagement_put_cycle {cycle_slug, primary: true}` (server demotes prior primary atomically) + `engagement_append_decision {decision_type: cycle_primary_switched}`. |
+| `/close-cycle` | Read the cycle from `engagement_get_master.cycles[]`, then resend the full record `engagement_put_cycle {org_slug, cycle_slug, status: closed, opened_date, opened_by_skill, primary, cycle_dir, closed_date}` + `engagement_append_decision {decision_type: cycle_closed}`. No local `master.yaml` write. |
+| `/reopen-cycle` | Read the cycle from `engagement_get_master.cycles[]`, then resend the full record `engagement_put_cycle {org_slug, cycle_slug, status: drafting, opened_date, opened_by_skill, primary, cycle_dir, closed_date}` + `engagement_append_decision {decision_type: cycle_reopened, refs.related_decision_ids}`. |
+| `/switch-cycle` | Read the cycle from `engagement_get_master.cycles[]`, then resend the full record `engagement_put_cycle {org_slug, cycle_slug, status, opened_date, opened_by_skill, primary: true, cycle_dir, closed_date}` (server demotes prior primary atomically) + `engagement_append_decision {decision_type: cycle_primary_switched}`. |
+
+> **`engagement_put_cycle` is a blind UPSERT — no version guard.** The server's `EngagementPutCycleParams` requires the full record (`cycle_slug, status, opened_date, opened_by_skill, primary, cycle_dir`); a partial call clobbers every stored field it omits. Always read the current cycle from `engagement_get_master.cycles[]` first, then resend every field, changing only the one the op targets (`status`, `closed_date`, or `primary`).
 
 ## Binary deliverables (unchanged)
 

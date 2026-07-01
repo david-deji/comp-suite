@@ -892,8 +892,8 @@ selection_log:
     timestamp: 2026-04-21T14:38:00
 
 tool_calls:
-  # Append-only audit array — every external tool call (Market MCP, Indeed MCP,
-  # StatCan MCP, web_search, web_fetch) leaves a trace. Sub-fields per entry:
+  # Append-only audit array — every external tool call (Market MCP, the claude.ai
+  # Indeed connector, web_search, web_fetch) leaves a trace. Sub-fields per entry:
   # `tool` (full MCP-style name), `args`, `timestamp`, `result_hash` (SHA-256
   # of JSON response for MCP calls / fetched body for web_fetch / null for
   # web_search), `used_in` (list of slide/section IDs or deliverable surfaces).

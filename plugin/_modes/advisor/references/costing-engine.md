@@ -1,8 +1,40 @@
 # Costing Engine — Phase 4 (Option Modeling)
 
-Loaded by SKILL.md when running Phase 4. Present 2-3 costed scenarios plus a do-nothing baseline. Each scenario is a distinct strategic direction, not just different dollar amounts. All costs in real dollars computed from uploaded Excel data using inline Python via code execution.
+Loaded by SKILL.md when running Phase 4. Present 2-3 costed scenarios plus a do-nothing baseline. Each scenario is a distinct strategic direction, not just different dollar amounts. All costs are in real dollars computed by the server's typed `Decimal(18,2)` calculator (`costing_compute_scenario`) from anonymized workforce rows, then persisted per scenario via `costing_put_scenario` so costed-scenario history survives between sessions.
 
-**Arithmetic discipline**: Never write a dollar figure in chat that wasn't produced by a code-execution call you can show. All scenario costs go through the Python sandbox. If code execution is unavailable, state that explicitly and present formulas only — do not compute inline.
+## Compute-and-persist flow (MCP-primary — the default)
+
+Every scenario in this phase runs through the `market` server costing tools, not an ad-hoc client sandbox. The server owns the typed-Decimal math, multi-province aggregation, and the server-side PII scan — comp-suite supplies inputs and reads results.
+
+1. **`costing_input_template(pay_structure)`** — pull the canonical column + config contract (`step` or `merit`) before parsing the upload, so the `workforce_rows` you send match what the calculator expects.
+2. **`costing_compute_scenario(...)`** — the PURE calculator: one call per scenario. Required args: `scope_provinces`, `pay_structure`, `workforce_rows`, `scenario` (a discriminated union keyed on `scenario_type` — see the mapping below); pass `provincial_minimum_wages` and `location_province_map` for the floor math, and `config_override` for a dry-run. Returns per-province results plus the national aggregate; money as strings; rejects PII columns server-side.
+3. **`costing_put_scenario(...)`** — persist each computed scenario (`scenario_label`, `scenario_type`, `pay_structure`, `inputs`, `results`, `mandatory_floor_total`, `discretionary_lift_total`, `total_cost`; optional `cycle_id`) so it is auditable and re-listable next session.
+4. **`costing_get_scenarios(org_slug)`** — re-list prior persisted scenarios at Phase 4 entry (and on `/resume`) so a returning engagement rebuilds its costed history instead of recomputing from scratch.
+
+`costing_get_config` / `costing_put_config` remain the config source (see § Phase 4 Entry and § Config-key precedence) — the calculator reads that stored config, so the 7 inputs live in one place.
+
+**Scenario-type mapping** — the `scenario.scenario_type` value to pass to `costing_compute_scenario` for each section below:
+
+| Doc scenario (section) | `scenario_type` |
+|---|---|
+| Do-Nothing Baseline (§4.1) | `do_nothing` |
+| Scale Lift % (§4.2) | `scale_lift_pct` |
+| Scale Lift $ (§4.2) | `scale_lift_dollar` |
+| Add Top Step (§4.2) | `add_top_step` |
+| Compress Steps (§4.2) | `compress_steps` |
+| Accelerate Progression (§4.2) | `accelerate_progression` |
+| Restructure Scale (§4.2) | `restructure_scale` |
+| Lump Sums / One-Time (§4.2) | `lump_sum` |
+| Move to Midpoint (§4.3) | `move_to_midpoint` |
+| Merit Matrix (§4.3) | `merit_matrix` |
+| Band Restructure (§4.3) | `band_restructure` |
+| Cost-to-Target-Percentile (§4.4) | `cost_to_percentile` |
+
+The mandatory floor (§4.0) is not a separate `scenario_type` — every `costing_compute_scenario` call returns `mandatory_floor_total` alongside the discretionary lift, computed from `provincial_minimum_wages` + the workforce rows.
+
+**Arithmetic discipline**: Never write a dollar figure in chat that wasn't produced by a `costing_compute_scenario` call you can cite. The server calculator is the source of truth for every scenario number — the Python formulas in §§ 4.0–4.7 are the canonical statement of the math the server implements (`costing_engine.py`), not a client compute path.
+
+**Transport-failure fallback only**: if the `market` backend is unreachable (connection error, timeout, 5xx, not-yet-authenticated) so `costing_compute_scenario` cannot be called — and only then — compute the §§ 4.0–4.7 formulas inline via code execution as a fallback, tag every resulting figure `[LOCAL-FALLBACK — server calculator unavailable]`, and note that the scenario was not persisted (`costing_put_scenario` is unreachable on the same failure). A tool returning empty/not-found is authoritative, not a transport failure — do not fall back on it. If code execution is also unavailable, present formulas only — do not compute inline.
 
 **Multi-province discipline**: When the engagement spans 2+ provinces (`benchmark.scope_provinces`), every scenario cost is computed per-province first using that province's `roll_up_factor`, `payroll_burden_pct`, `voluntary_turnover_pct` from config (resolving map-form values per province, falling back to the `default` key when a province is absent). Per-province subtotals are reported alongside the national aggregate. Never collapse to a single national average — the differences compound and compress to misleading totals.
 
@@ -12,7 +44,7 @@ See `references/engagement-config-template.md` § Multi-province calculation for
 
 ## Phase 4 Entry — Costing Inputs
 
-Before modeling any scenarios, confirm the 7 costing inputs.
+Before modeling any scenarios, confirm the 7 costing inputs (from `costing_get_config` — see § Config-key precedence). On a returning engagement, also call `costing_get_scenarios(org_slug)` to re-list any scenarios persisted in a prior session, so you build on that history rather than recomputing it.
 
 **Data upload — privacy and template requirements** (surface this at Phase 4 entry whenever the user has not yet uploaded workforce data):
 
@@ -22,7 +54,7 @@ Before modeling any scenarios, confirm the 7 costing inputs.
 >
 > Templates ready to use: step roles → `wage_data_template_step.csv`; salaried merit → `wage_data_template_merit.csv`; mixed workforce → both files separately."
 
-If the user has already uploaded a file by the time Phase 4 starts, run the disallowed-fields scan before computing anything. See section § Disallowed-fields scan below.
+If the user has already uploaded a file by the time Phase 4 starts, run the disallowed-fields scan before computing anything. See section § Disallowed-fields scan below. Call `costing_input_template(pay_structure)` to confirm the exact columns the calculator expects before mapping the upload into `workforce_rows`.
 
 **If `costing` section was loaded in Phase 0** (engagement-config provided):
 - Use the loaded values directly. Do not re-prompt.
@@ -417,6 +449,8 @@ Always cite the source: `[CONFIG: payroll_burden_pct, last_verified YYYY-MM-DD]`
 ## 4.7 Scenario Presentation
 
 Present all scenarios in a single message as a comparison. Use a compact format showing for each scenario: total annual cost, per-role breakdown, what it fixes, risk remaining, and narrative angle.
+
+Before presenting, confirm every scenario you computed was persisted via `costing_put_scenario` (each carrying its `mandatory_floor_total` / `discretionary_lift_total` / `total_cost`). This is what makes the costed set re-listable via `costing_get_scenarios` next session — the per-scenario persistence is distinct from the `engagement_put` auto-checkpoint below, which records only the chosen direction. Skip the persist step only under the transport-failure fallback (server unreachable), and say so in chat.
 
 After presenting, offer blending: "Which direction? Or a blend — like Scenario A for warehouse roles + Scenario C for management?"
 

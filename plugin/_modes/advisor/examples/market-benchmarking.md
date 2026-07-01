@@ -66,7 +66,7 @@ Present a color-coded summary table:
 For each role or role family, include:
 - Job title and internal job code
 - Benchmark match details (survey job code, match quality)
-- Market data by percentile (P10, P25, P50, P75, P90)
+- Market data by percentile (P10, P25, P50, P75, P90), each with its confidence/caveat. Never collapse to a national average when per-province values exist (C06). If the server returned `census_grain: national` or `postings_basis: residual_national`, label the card "national fallback" — do not present Canada-wide figures under a province header. If `postings_basis: suppressed`, render "suppressed — below reporting floor", not $0.
 - Number of incumbents and their pay range
 - Gap analysis ($ and % from target percentile)
 

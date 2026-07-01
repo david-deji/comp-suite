@@ -85,8 +85,10 @@ text and let comp-suite execute them locally.
 Scaffolds a new org brand kit in the backend.
 
 1. Resolve the org via `engagement_get_master {org_slug}` (must be provisioned — admin path, P4b D4).
-2. Confirm the org has no brand kit yet: `brand_get_kit {org_slug}` returns an empty/`found:false` theme.
-   If a kit exists → "Org kit already exists. Edit via `brand_put_*`, or reset deliberately." Abort.
+2. Confirm the org has no brand kit yet: `brand_get_kit {org_slug}` returns `{kit: null, files, logos}` on
+   no-row (there is NO `found` field — the canonical empty-kit signal is `kit is None`, from which infer
+   `expected_version: 0` for the seed writes below). If `kit` is non-null → "Org kit already exists. Edit via
+   `brand_put_*`, or reset deliberately." Abort.
 3. Seed from the bundled `_default` (`$ASSET_ROOT/_modes/advisor/templates/branding/_default/`):
    - `brand_put_kit {org_slug, palette, typography, footnotes, expected_version: 0}` from the default theme.
    - For each default render file: `brand_put_file {org_slug, file_path, content, expected_version: 0}`.

@@ -6,8 +6,8 @@ decision documents, and branded decks.
 > **Choose your language / Choisissez votre langue :**
 > **[🇫🇷 Français](#français)**  ·  **[🇬🇧 English](#english)**
 
-You set **one** thing: a market-data token that David gives you. Web research works on its own.
-It's four quick steps — about five minutes.
+There is **nothing to configure** — no token, no key. The market server signs you in with
+Google (OAuth) the first time you use it. Two quick steps.
 
 ---
 
@@ -22,50 +22,36 @@ Dans Claude Code, collez la commande d'installation que David vous envoie. Elle 
 /plugin install comp-suite@comp-suite
 ```
 
-### Étape 2 : Lancer le script de configuration
+Si les commandes `/comp-suite:*` n'apparaissent pas tout de suite, fermez puis rouvrez Claude Code.
 
-Le plugin contient un petit script qui enregistre votre jeton. Choisissez votre système :
+### Étape 2 : Se connecter au serveur « market » (Google)
 
-**Windows**
-- Faites un clic droit sur `setup.ps1` → **« Exécuter avec PowerShell »**. C'est le plus simple.
-- S'il ne se lance pas : ouvrez le dossier du plugin, faites **Maj + clic droit** dans le dossier →
-  **« Ouvrir la fenêtre PowerShell ici »**, puis tapez :
-  ```
-  powershell -ExecutionPolicy Bypass -File setup.ps1
-  ```
+Il n'y a **aucun jeton à saisir**. Le serveur « market » utilise la connexion Google (OAuth).
+La première fois que comp-suite utilise un outil « market », Claude Code vous demande d'autoriser
+le serveur : connectez-vous avec le compte Google que David a ajouté.
 
-**macOS / Linux**
-- Ouvrez le **Terminal** dans le dossier du plugin et tapez :
-  ```
-  bash setup.sh
-  ```
+- Si rien ne s'affiche, tapez **`/mcp`** dans Claude Code et autorisez le serveur **`market`**.
 
-Le script demande votre langue, puis votre jeton (la saisie reste **masquée** — c'est normal de ne
-rien voir s'afficher), puis l'enregistre.
+*(Optionnel : `setup.sh` (macOS / Linux) ou `setup.ps1` (Windows) affiche ce même rappel — aucun
+jeton, juste un guide.)*
 
-### Étape 3 : Redémarrer Claude Code
-
-**Fermez complètement Claude Code, puis rouvrez-le.** Les variables ne sont lues qu'au démarrage.
-
-- **Windows** : fermez aussi le terminal d'où vous avez lancé le script, le cas échéant.
-- **macOS** : ⚠ **lancer Claude Code depuis l'icône (Dock/Applications) ne fonctionne pas** — l'app
-  n'y voit pas la variable et vous auriez une erreur 401. Lancez-le depuis le **Terminal** en tapant
-  `claude`. (Si vous n'utilisez que le Terminal, ignorez ceci.)
-
-### Étape 4 : Vérifier que ça marche
+### Étape 3 : Vérifier que ça marche
 
 Dans Claude Code, tapez **`/comp-suite:comp`** (le nom complet du plugin — `/comp` seul peut ne pas
 fonctionner). Demandez par exemple : « *benchmark un développeur logiciel au Québec* ».
 
 - ✅ Si des données de marché reviennent, tout fonctionne.
-- ❌ Une erreur **401 / non autorisé** = le jeton est incorrect. Relancez le script de l'étape 2.
+- ❌ Une erreur d'autorisation = le serveur « market » n'est pas encore autorisé : tapez `/mcp` et
+  connectez-vous avec Google.
 
 ### En cas de problème
 
-- **`/comp-suite:comp` introuvable** → le plugin n'est pas installé : refaites l'étape 1.
-- **401 / non autorisé** → mauvais jeton ou jeton non enregistré : relancez `setup`.
-- **Rien ne change** → vous n'avez pas redémarré Claude Code (étape 3), ou (macOS) vous l'avez lancé
-  depuis le Dock au lieu du Terminal.
+- **`/comp-suite:comp` introuvable** → le plugin n'est pas installé : refaites l'étape 1, puis
+  redémarrez Claude Code.
+- **« market » ne répond pas / non autorisé** → tapez `/mcp` et autorisez le serveur `market`
+  (connexion Google).
+- **Toujours rien** → vérifiez votre connexion internet ; le serveur « market » est distant
+  (`https://mcp.dallaire-jette.com`), il n'y a aucun processus local à déboguer.
 
 ### Pour aller plus loin : Perplexity (optionnel)
 
@@ -92,50 +78,35 @@ In Claude Code, paste the install command David sends you. It looks like:
 /plugin install comp-suite@comp-suite
 ```
 
-### Step 2: Run the setup script
+If the `/comp-suite:*` commands don't appear right away, fully quit and reopen Claude Code.
 
-The plugin includes a small script that saves your token. Pick your system:
+### Step 2: Sign in to the 'market' server (Google)
 
-**Windows**
-- Right-click `setup.ps1` → **"Run with PowerShell"**. This is the easiest way.
-- If it won't start: open the plugin folder, **Shift + right-click** inside it →
-  **"Open PowerShell window here"**, then type:
-  ```
-  powershell -ExecutionPolicy Bypass -File setup.ps1
-  ```
+There is **no token to enter**. The 'market' server uses Google sign-in (OAuth). The first time
+comp-suite uses a 'market' tool, Claude Code asks you to authorize the server: sign in with the
+Google account David added.
 
-**macOS / Linux**
-- Open the **Terminal** in the plugin folder and type:
-  ```
-  bash setup.sh
-  ```
+- If you're not prompted, type **`/mcp`** in Claude Code and authorize the **`market`** server.
 
-The script asks for your language, then your token (input stays **hidden** — it's normal to see
-nothing as you type), then saves it.
+*(Optional: `setup.sh` (macOS / Linux) or `setup.ps1` (Windows) prints this same reminder — no
+token, just a guide.)*
 
-### Step 3: Restart Claude Code
-
-**Fully quit Claude Code, then reopen it.** Variables are only read at launch.
-
-- **Windows**: also close the terminal you ran the script from, if any.
-- **macOS**: ⚠ **launching Claude Code from its icon (Dock/Applications) will not work** — the app
-  won't see the variable and you'll get a 401. Start it from the **Terminal** by typing `claude`.
-  (If you only use the Terminal/CLI, ignore this.)
-
-### Step 4: Verify it works
+### Step 3: Verify it works
 
 In Claude Code, type **`/comp-suite:comp`** (the full plugin name — bare `/comp` may not work).
 Then try: "*benchmark a software developer in Quebec*".
 
 - ✅ If market data comes back, you're set.
-- ❌ A **401 / unauthorized** error = the token is wrong. Re-run the Step 2 script.
+- ❌ An authorization error = the 'market' server isn't authorized yet: type `/mcp` and sign in
+  with Google.
 
 ### Troubleshooting
 
-- **`/comp-suite:comp` not found** → the plugin isn't installed: redo Step 1.
-- **401 / unauthorized** → wrong token or token not saved: re-run `setup`.
-- **Nothing changed** → you didn't restart Claude Code (Step 3), or (macOS) you launched it from the
-  Dock instead of the Terminal.
+- **`/comp-suite:comp` not found** → the plugin isn't installed: redo Step 1, then restart Claude Code.
+- **'market' not responding / unauthorized** → type `/mcp` and authorize the `market` server
+  (Google sign-in).
+- **Still nothing** → check your internet connection; the market server is remote
+  (`https://mcp.dallaire-jette.com`) — there is no local process to debug.
 
 ### Optional power-up: Perplexity
 
@@ -151,6 +122,5 @@ search). Add Perplexity only if you want richer, multi-source research (it needs
 
 ---
 
-*Your token lives only in your own computer's user environment — it is never written into the
-plugin or sent anywhere except the market server you query. There is no personal data in
-comp-suite.*
+*The market server signs you in with Google (OAuth) — there is no token or password to store, and
+the plugin writes no credential to your computer. There is no personal data in comp-suite.*

@@ -53,7 +53,8 @@ def check_budget(engagement_state, tool_name, est_cost):
         return {
             "allow":  False,
             "reason": (
-                f"budget exceeded: spent ${spent:.2f} of ${budget:.2f} budget; "
+                f"Perplexity budget exceeded: spent ${spent:.2f} of ${budget:.2f} "
+                f"(Perplexity $ only — excludes Claude agent tokens); "
                 f"this call would add ${est_cost:.2f} (total ${would_be_total:.2f})"
             ),
         }
@@ -62,14 +63,14 @@ def check_budget(engagement_state, tool_name, est_cost):
     if tool_entry.get("requires_user_confirm", False):
         return {
             "allow":                True,
-            "reason":               f"within budget (${spent:.2f} / ${budget:.2f}); user confirmation required",
+            "reason":               f"within Perplexity budget (${spent:.2f} / ${budget:.2f}; excludes agent tokens); user confirmation required",
             "requires_user_confirm": True,
             "spent":                spent,
             "budget":               budget,
             "est_cost":             est_cost,
         }
 
-    return {"allow": True, "reason": f"within budget (${spent:.2f} / ${budget:.2f})"}
+    return {"allow": True, "reason": f"within Perplexity budget (${spent:.2f} / ${budget:.2f}; excludes agent tokens)"}
 ```
 
 ---
@@ -134,7 +135,7 @@ When this primitive returns `requires_user_confirm: true`, the orchestrator surf
 ```
 Tool: <tool_name>
 Estimated cost: $<est_cost>
-Spent so far: $<spent> / $<budget>
+Perplexity spend so far: $<spent> / $<budget> (excludes Claude agent tokens)
 Reason: <rationale provided by mode>
 
 Proceed? [y/N]
@@ -169,9 +170,18 @@ At `/comp resume` and `/comp doctor`, the orchestrator calls `_sum_cost_log` dir
 
 ```
 Engagement: <org_slug>/<engagement_id>
-Spent: $<spent> / $<budget> (<pct>% of budget)
+Perplexity spend: $<spent> / $<budget> (<pct>% of budget) — excludes Claude agent tokens
+Agent-spend control: fan_out_max caps (council thinkers, refute-claim refuters) — see below
 Last activity: <last ts from cost-log.jsonl>
 ```
+
+**Why the label reads "Perplexity spend", not "Spent".** `cost-log.jsonl` sums only
+registry tool dollars (`est_cost` per line) — effectively Perplexity cents. It is blind to
+its dominant real cost: Opus agent fan-out (council up to 8 thinkers; refute-claim up to 3
+refuters per statutory claim). So the `$X / $<budget>` figure is Perplexity spend against
+the Perplexity cap — not total engagement cost. Agent-token spend has no dollar meter here;
+its bound is the per-primitive `fan_out_max` cap (council thinkers, refute-claim refuters),
+surfaced as a **separate** control, never rolled into the `$X / $<budget>` line.
 
 ## Constraints
 

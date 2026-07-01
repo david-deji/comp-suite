@@ -1,6 +1,6 @@
 # Comp-suite v2 tool registry — final content per SPEC § 6.
 # Modes opt into tools via mode.yaml `tools_required`.
-# MCP server registration lives in v2/.claude/settings.json (per CC convention);
+# MCP server registration lives in the plugin's headerless .mcp.json (OAuth — no header);
 # this file is the mode-level surface.
 
 tools:
@@ -42,7 +42,7 @@ tools:
     requires_user_confirm: false
     description: Step-by-step analytical reasoning with citations. Optional; web-search is the fallback.
 
-  # Market server at mcp.dallaire-jette.com/mcp/rpc (HTTP, Bearer ${MARKET_INTEL_TOKEN}).
+  # Market server at mcp.dallaire-jette.com/mcp/rpc (HTTP, OAuth — headerless .mcp.json, no token).
   # All $0.00 (included in the MCP subscription). The server's live surface is far larger than the
   # mode-referenced read tools below: it also exposes the costing_*, engagement_*, brand_*, and
   # payequity_* families (registered/noted further down). Keys market-data + cba-wage-scale are
@@ -75,7 +75,7 @@ tools:
     cost_tier: low
     est_call_cost_usd: 0.00
     requires_user_confirm: false
-    description: Province-wide overview of top hiring and fastest-growing roles (available; not yet wired into a protocol)
+    description: Province-wide overview of top hiring and fastest-growing roles. Wired into the advisor consulting protocol (Phase 1/3 framing). Rows carry confidence_tier / coverage / p50_servable / tails_servable; fastest_wage_growth rows carry yoy_volatile (a base-effect spike) — surface these per TRUST-4, never present a volatile spike as a trend.
 
   market-compare-roles:
     kind: mcp
@@ -335,16 +335,378 @@ tools:
     requires_user_confirm: false
     description: Write an org's logo asset
 
-  # --- Pay-equity (server-side) — FAMILY NOTE, not enumerated ------------------
-  # The market server exposes ~60 payequity_* tools (payequity_put_job_class,
-  # payequity_compute_adjustments, payequity_compute_predominance, payequity_check_defensibility,
-  # …). comp-suite does NOT call them: the advisor mode runs its OWN local pay-equity
-  # implementation at _modes/advisor/scripts/pay_equity/tools/*.py (QC Loi sur l'équité salariale).
-  # They are $0.00 (subscription-included) like every market tool. They are intentionally NOT
-  # enumerated here — registering 60 unused exact names would be drift-prone noise (the very
-  # problem comp-suite#1 #7 flagged). If a mode is ever wired to call a server-side payequity_*
-  # tool, register that specific tool by name at that time so budget-check resolves it (an
-  # unregistered tool fails closed). Canonical server contract: market-intel-mcp-server v2-facade.
+  # --- Pay-equity (server-side) — QC Loi sur l'équité salariale --------------------
+  # PE-PERSIST-01 (MIM-0041 P5): the server IS the store (pay-equity-qc-protocol.md:24-27);
+  # the protocols call these payequity_* tools by name to fetch, persist, and run heavy math.
+  # Enumerated (not a family note) so budget-check resolves them free-tier instead of
+  # fail-closing the statutory write path. Only the tools the advisor protocols actually call
+  # AND the v2-facade server exposes are listed (protocol∩server, verified 2026-07-01) — the
+  # server's ~58 payequity tools are NOT all registered (register-what-modes-call, per #7).
+  # NOTE: there is deliberately no payequity_list_engagements (engagements are keyed by
+  # engagement_id, not enumerated) — pay-equity-qc-protocol.md:100 already documents this
+  # correctly; excluded from registration accordingly. No protocol fix needed.
+
+  payequity-append-audit-log:
+    kind: mcp
+    server: market
+    entry: payequity_append_audit_log
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Append to the pay-equity audit log
+
+  payequity-compute-adjustments:
+    kind: mcp
+    server: market
+    entry: payequity_compute_adjustments
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Compute pay-equity adjustments
+
+  payequity-compute-comparison:
+    kind: mcp
+    server: market
+    entry: payequity_compute_comparison
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Compute pay-equity comparison
+
+  payequity-compute-predominance:
+    kind: mcp
+    server: market
+    entry: payequity_compute_predominance
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Compute pay-equity predominance
+
+  payequity-compute-scoring:
+    kind: mcp
+    server: market
+    entry: payequity_compute_scoring
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Compute pay-equity scoring
+
+  payequity-get-adjustment-meta:
+    kind: mcp
+    server: market
+    entry: payequity_get_adjustment_meta
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity adjustment meta
+
+  payequity-get-compensation-meta:
+    kind: mcp
+    server: market
+    entry: payequity_get_compensation_meta
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity compensation meta
+
+  payequity-get-engagement:
+    kind: mcp
+    server: market
+    entry: payequity_get_engagement
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity engagement
+
+  payequity-get-evaluation-grid:
+    kind: mcp
+    server: market
+    entry: payequity_get_evaluation_grid
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity evaluation grid
+
+  payequity-get-global-result:
+    kind: mcp
+    server: market
+    entry: payequity_get_global_result
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity global result
+
+  payequity-get-job-class:
+    kind: mcp
+    server: market
+    entry: payequity_get_job_class
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity job class
+
+  payequity-get-maintenance-committee:
+    kind: mcp
+    server: market
+    entry: payequity_get_maintenance_committee
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity maintenance committee
+
+  payequity-get-observations:
+    kind: mcp
+    server: market
+    entry: payequity_get_observations
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity observations
+
+  payequity-get-participation-session:
+    kind: mcp
+    server: market
+    entry: payequity_get_participation_session
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity participation session
+
+  payequity-get-posting-metadata:
+    kind: mcp
+    server: market
+    entry: payequity_get_posting_metadata
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity posting metadata
+
+  payequity-get-regression-result:
+    kind: mcp
+    server: market
+    entry: payequity_get_regression_result
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity regression result
+
+  payequity-get-retention-policy:
+    kind: mcp
+    server: market
+    entry: payequity_get_retention_policy
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Read pay-equity retention policy
+
+  payequity-list-class-adjustments:
+    kind: mcp
+    server: market
+    entry: payequity_list_class_adjustments
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List pay-equity class adjustments
+
+  payequity-list-class-compensations:
+    kind: mcp
+    server: market
+    entry: payequity_list_class_compensations
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List pay-equity class compensations
+
+  payequity-list-comparison-results:
+    kind: mcp
+    server: market
+    entry: payequity_list_comparison_results
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List pay-equity comparison results
+
+  payequity-list-interest-breakdown:
+    kind: mcp
+    server: market
+    entry: payequity_list_interest_breakdown
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List pay-equity interest breakdown
+
+  payequity-list-job-classes:
+    kind: mcp
+    server: market
+    entry: payequity_list_job_classes
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List pay-equity job classes
+
+  payequity-list-payment-schedule:
+    kind: mcp
+    server: market
+    entry: payequity_list_payment_schedule
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List pay-equity payment schedule
+
+  payequity-list-retroactive-events:
+    kind: mcp
+    server: market
+    entry: payequity_list_retroactive_events
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List pay-equity retroactive events
+
+  payequity-process-deletion-request:
+    kind: mcp
+    server: market
+    entry: payequity_process_deletion_request
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Process a pay-equity data deletion request
+
+  payequity-put-class-compensation:
+    kind: mcp
+    server: market
+    entry: payequity_put_class_compensation
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity class compensation
+
+  payequity-put-cycle:
+    kind: mcp
+    server: market
+    entry: payequity_put_cycle
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity cycle
+
+  payequity-put-engagement:
+    kind: mcp
+    server: market
+    entry: payequity_put_engagement
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity engagement
+
+  payequity-put-evaluation-grid:
+    kind: mcp
+    server: market
+    entry: payequity_put_evaluation_grid
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity evaluation grid
+
+  payequity-put-job-class:
+    kind: mcp
+    server: market
+    entry: payequity_put_job_class
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity job class
+
+  payequity-put-maintenance-committee:
+    kind: mcp
+    server: market
+    entry: payequity_put_maintenance_committee
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity maintenance committee
+
+  payequity-put-observation:
+    kind: mcp
+    server: market
+    entry: payequity_put_observation
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity observation
+
+  payequity-put-participation-session:
+    kind: mcp
+    server: market
+    entry: payequity_put_participation_session
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity participation session
+
+  payequity-put-posting-metadata:
+    kind: mcp
+    server: market
+    entry: payequity_put_posting_metadata
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity posting metadata
+
+  payequity-put-retention-policy:
+    kind: mcp
+    server: market
+    entry: payequity_put_retention_policy
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity retention policy
+
+  payequity-put-retroactive-event:
+    kind: mcp
+    server: market
+    entry: payequity_put_retroactive_event
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity retroactive event
+
+  payequity-put-sub-factor:
+    kind: mcp
+    server: market
+    entry: payequity_put_sub_factor
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write pay-equity sub factor
+
+  # --- Engagement store: P3 (MIM-0041) additions -------------------------------
+  engagement-put-header:
+    kind: mcp
+    server: market
+    entry: engagement_put_header
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: Write the engagement master/shared header (UPDATE-only, optimistic-version)
+
+  engagement-list:
+    kind: mcp
+    server: market
+    entry: engagement_list
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List engagements for the caller's org (includes cycle-less engagements)
+
+  # --- Caller-scoped org discovery: P3 (MIM-0041) ------------------------------
+  list-my-orgs:
+    kind: mcp
+    server: market
+    entry: list_my_orgs
+    cost_tier: low
+    est_call_cost_usd: 0.00
+    requires_user_confirm: false
+    description: List the authenticated colleague's own org memberships (slug/org_id/name/default) for multi-org callers with no default org
 
   filesystem:
     kind: builtin
@@ -370,7 +732,7 @@ tools:
       for richer multi-source synthesis; when it is absent, web research lands here.
 
 mcp_servers:
-  # market is the one REQUIRED server (the colleague sets MARKET_INTEL_TOKEN). perplexity is
+  # market is the one REQUIRED server (OAuth — Google sign-in, no token). perplexity is
   # OPTIONAL — see INSTALL.md § Optional power-up; absence degrades to the web-search builtin.
   perplexity:
     optional: true

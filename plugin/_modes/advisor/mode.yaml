@@ -8,7 +8,7 @@ description: |
   effective date). Dispatches market intelligence and web research (Perplexity
   when configured, else the WebSearch builtin), renders branded outputs.
   Scope-aware: enforces one engagement = one budget owner.
-version: 2.1.5   # 2.1.5: perplexity made OPTIONAL — tools_required swaps perplexity-research/perplexity-ask for the web-search builtin (guaranteed key-free web research); Perplexity stays an optional-when-configured enhancement (registry.yaml). 2.1.4: tools_required aligned to live 7-tool market server (mcp.dallaire-jette.com) — added search-roles/snapshot/compare-roles/compare-offer/compare-pay-scale. 2.1.3: + refute-claim in pre_write_gates (Phase 1 pre-Write accuracy gate — SPEC-workflow-phase1.md, F9). 2.1.2: + close_gates field (Phase 3 — § 3a). 2.1.1: + pre_write_gates field (Phase 4 — § 4a)
+version: 2.1.6   # 2.1.6: tools_required now declares the write-path server tools the advisor protocols call (engagement-*/brand-*/costing-*/payequity-*/list-my-orgs) so mode-dispatcher._resolve_tools validates them and budget-check resolves them free-tier instead of fail-closing the core write path — audit finding unregistered-tool-families-bypass-dispatch-and-budget. 2.1.5: perplexity made OPTIONAL — tools_required swaps perplexity-research/perplexity-ask for the web-search builtin (guaranteed key-free web research); Perplexity stays an optional-when-configured enhancement (registry.yaml). 2.1.4: tools_required aligned to live 7-tool market server (mcp.dallaire-jette.com) — added search-roles/snapshot/compare-roles/compare-offer/compare-pay-scale. 2.1.3: + refute-claim in pre_write_gates (Phase 1 pre-Write accuracy gate — SPEC-workflow-phase1.md, F9). 2.1.2: + close_gates field (Phase 3 — § 3a). 2.1.1: + pre_write_gates field (Phase 4 — § 4a)
 
 model:
   default: inherit
@@ -27,6 +27,73 @@ tools_required:
   - market-compare-pay-scale
   - cba-wage-scale
   - filesystem
+  # --- Write-path server tools (persistence + brand + costing + pay-equity). Declared so
+  #     mode-dispatcher._resolve_tools validates them and budget-check resolves them free-tier
+  #     instead of fail-closing the core write path (audit: unregistered-tool-families-bypass-
+  #     dispatch-and-budget). All $0 on the OAuth market server; keys mirror registry.yaml.
+  # engagement store
+  - engagement-get
+  - engagement-get-master
+  - engagement-put
+  - engagement-put-section
+  - engagement-put-cycle
+  - engagement-list-cycles
+  - engagement-append-decision
+  - engagement-put-header
+  - engagement-list
+  - list-my-orgs
+  # brand kit store
+  - brand-get-kit
+  - brand-put-kit
+  - brand-get-file
+  - brand-put-file
+  - brand-list-files
+  - brand-put-logo
+  # costing engine
+  - costing-get-config
+  - costing-put-config
+  - costing-compute-scenario
+  - costing-put-scenario
+  - costing-get-scenarios
+  - costing-input-template
+  # pay-equity (QC Loi sur l'équité salariale) — protocol∩server keys, mirrors registry.yaml
+  - payequity-append-audit-log
+  - payequity-compute-adjustments
+  - payequity-compute-comparison
+  - payequity-compute-predominance
+  - payequity-compute-scoring
+  - payequity-get-adjustment-meta
+  - payequity-get-compensation-meta
+  - payequity-get-engagement
+  - payequity-get-evaluation-grid
+  - payequity-get-global-result
+  - payequity-get-job-class
+  - payequity-get-maintenance-committee
+  - payequity-get-observations
+  - payequity-get-participation-session
+  - payequity-get-posting-metadata
+  - payequity-get-regression-result
+  - payequity-get-retention-policy
+  - payequity-list-class-adjustments
+  - payequity-list-class-compensations
+  - payequity-list-comparison-results
+  - payequity-list-interest-breakdown
+  - payequity-list-job-classes
+  - payequity-list-payment-schedule
+  - payequity-list-retroactive-events
+  - payequity-process-deletion-request
+  - payequity-put-class-compensation
+  - payequity-put-cycle
+  - payequity-put-engagement
+  - payequity-put-evaluation-grid
+  - payequity-put-job-class
+  - payequity-put-maintenance-committee
+  - payequity-put-observation
+  - payequity-put-participation-session
+  - payequity-put-posting-metadata
+  - payequity-put-retention-policy
+  - payequity-put-retroactive-event
+  - payequity-put-sub-factor
 
 hooks_enabled:
   - anti-slop
