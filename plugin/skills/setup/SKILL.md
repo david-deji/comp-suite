@@ -1,11 +1,11 @@
 ---
 name: setup
 description: |
-  One-time setup helper for comp-suite. Run right after installing the plugin to
-  get the exact, copy-pasteable terminal command that registers your market-data
-  token for your operating system, with the real install path resolved for your
-  machine. Invoke as /comp-suite:setup. Use on first install or whenever comp-suite
-  returns a 401 / unauthorized error.
+  One-time setup helper for comp-suite. Use right after installing comp-suite, or
+  whenever comp-suite or the market MCP returns a 401 / unauthorized / "token not
+  set" error, or the user says they need to register or set up their market-data
+  token. Produces the exact copy-pasteable terminal command for the user's OS with
+  the real install path resolved. Also invoked as /comp-suite:setup.
 allowed-tools: Bash
 ---
 

@@ -1,10 +1,15 @@
 ---
 name: comp
 description: |
-  Compensation consulting orchestrator. Dispatches to one of four modes:
+  Compensation consulting orchestrator for Quebec/Canada, bilingual FR-CA. Use
+  when the user asks about compensation benchmarking, the market pay rate for a
+  role, salary bands or ranges, pay equity or CNESST compliance, building a comp
+  decision deck, running a post-decision compensation comms cascade, comp process
+  or team transformation, or per-audience comp training. Dispatches to four modes —
   advisor (market/equity/decks), comms (post-decision cascade), transformer
-  (process discovery), training (per-audience bundles). State persists per
-  engagement. Invoke as /comp <mode> [args]. /comp alone opens intent router.
+  (process discovery), training (per-audience bundles) — with per-engagement state.
+  Also invoked as /comp <mode> [args] or /comp-suite:comp; bare /comp opens the
+  intent router.
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent
 model: inherit
 ---
