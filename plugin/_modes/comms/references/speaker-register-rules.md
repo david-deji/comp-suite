@@ -71,8 +71,8 @@ A `null` value at any layer means "not set at this layer" — fall through to th
 **Read paths (resolution order):**
 
 ```
-template_assets/speaker-registers/<speaker>.yaml           # Layer 1: bundled defaults (read-only in Drive session)
-org-comms-profiles/<org-slug>.yaml                         # Layer 2: org-level ($STATE_ROOT local library)
+template_assets/speaker-registers/<speaker>.yaml           # Layer 1: bundled defaults (read-only)
+org-comms-profiles/<org-slug>.yaml                         # Layer 2: org-level (local $STATE_ROOT cache)
 engagement-comms-configs/<engagement-slug>.yaml            # Layer 3: engagement-level overrides
 <CLI flag or per-artifact config in engagement-comms-config>  # Layer 4: artifact-level
 ```

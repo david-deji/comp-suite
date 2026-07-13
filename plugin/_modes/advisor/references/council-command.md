@@ -115,5 +115,5 @@ Mode can be specified inline: `/council memo: ...`, `/council integrated: ...`. 
 ## Output Discipline
 
 - Output is chat text + one YAML state artifact (+ optional memo).
-- The state YAML is written to `$STATE_ROOT/_orgs/<org_slug>/engagements/<slug>/council-state-{date}.yaml` (non-schema artifact — local only; standalone runs use `$STATE_ROOT/_orgs/_council-standalone/<derived-slug>/...`) and presented as a download artifact. See `references/council-mode.md` § Step 8 and `references/persistence-and-ledger.md` § Binary deliverables.
+- The state YAML is **council scratch — a local non-schema artifact** (per `references/persistence-and-ledger.md` § Where each thing lives): it is written to `$STATE_ROOT/_orgs/<slug>/...` (or a session-tagged local path under `_orgs/_council-standalone/<derived-slug>/` for standalone runs). It is never written to the `market` backend. See `references/council-mode.md` § Step 8.
 - After delivery, the response ends without a generic next-step suggestion. If the user wants to escalate to a deck, they do.

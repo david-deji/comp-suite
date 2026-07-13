@@ -8,12 +8,12 @@ This is a closed glossary by design: an unapproved term is a friction point that
 
 ## Canonical resolution (where the glossary lives)
 
-This bundled `references/fr-ca-glossary.md` file is the **seed and fallback**. When local `$STATE_ROOT` has `vocabulary/fr-ca-glossary.yaml`, that file becomes canonical and replaces this one for every engagement on that org (per `references/library-resolution.md` § Vocabulary glossary). The bundled file remains the load-bearing default when no promoted canonical exists yet.
+This bundled `references/fr-ca-glossary.md` file is the **seed and fallback**. Once a `vocabulary/fr-ca-glossary.yaml` has been promoted, that file becomes canonical and replaces this one for every engagement on that repo (resolved per `references/library-resolution.md` § Vocabulary glossary). The bundled file remains the load-bearing default until any terms are promoted, and on transport failure when the repo copy is unreachable.
 
 Resolution order:
 
 ```
-1. vocabulary/fr-ca-glossary.yaml in local $STATE_ROOT (canonical when present)
+1. vocabulary/fr-ca-glossary.yaml in the repo (canonical when present)
 2. references/fr-ca-glossary.md (bundled seed/fallback, always present)
 ```
 
@@ -27,7 +27,7 @@ When `deck.language: fr-ca`, every audience-facing French string emitted by the 
 
 1. **Stop**. Do not improvise a translation.
 2. **Surface to user**. Pattern: "I need a French translation for `[term]`. The glossary doesn't have it. Suggested: `[suggestion 1]` or `[suggestion 2]`. Pick one, propose your own, or skip the section."
-3. **On user approval**, append the term to this glossary AND save it to local `$STATE_ROOT` at `engagements/<slug>/fr-ca-additions.yaml` so future cycles inherit it.
+3. **On user approval**, append the term to this glossary AND persist the addition to `engagements/<slug>/fr-ca-additions.yaml` (resolved per `references/library-resolution.md` § Vocabulary glossary) so future cycles inherit it.
 4. **Surface a session-end summary** of all terms added during the engagement, so the user can review the full vocabulary added.
 
 Skill never silently translates. Skill never asks the user mid-section for more than 3 unapproved terms in a row — if 4+ unapproved terms accumulate, pause and offer to either revisit the glossary in bulk or fall back to English for that section.
@@ -259,7 +259,7 @@ When the skill encounters an English term not in this glossary during a `deck.la
 >
 > Pick one, propose your own, or use the English term verbatim with a footnote."
 
-3. **On user approval**, append to this glossary in the appropriate section + write the addition to `engagements/<slug>/fr-ca-additions.yaml` in local `$STATE_ROOT` (per `references/persistence-and-ledger.md`). Format:
+3. **On user approval**, append to this glossary in the appropriate section + write the addition to `engagements/<slug>/fr-ca-additions.yaml` (resolved per `references/library-resolution.md` § Vocabulary glossary). Format:
 
 ```yaml
 fr_ca_additions:
@@ -278,7 +278,7 @@ fr_ca_additions:
 
 ## Section 8.5 — `/glossary promote` command
 
-Walks the union of all `engagements/*/fr-ca-additions.yaml` files in local `$STATE_ROOT`, presents each unique candidate term, and on user approval merges into the canonical `vocabulary/fr-ca-glossary.yaml`.
+Walks the union of all `engagements/*/fr-ca-additions.yaml` files in the repo, presents each unique candidate term, and on user approval merges into the canonical `vocabulary/fr-ca-glossary.yaml`.
 
 **Trigger conditions:**
 
@@ -287,8 +287,8 @@ Walks the union of all `engagements/*/fr-ca-additions.yaml` files in local `$STA
 
 **Procedure:**
 
-1. **Verify market backend is reachable** (authenticated). On auth failure, abort: "Glossary promotion requires the market backend. Authenticate and re-run."
-2. **Discover candidates.** Read every `fr-ca-additions.yaml` under `engagements/` in local `$STATE_ROOT`. Aggregate into a candidate list keyed by `english` term. When multiple engagements added the same term with different `fr_ca` values, surface the conflict explicitly: "Term `Total rewards committee` has two candidates: `Comité de la rémunération globale` (pharmacy-fy26), `Comité des récompenses globales` (atlantic-retail-fy26). Pick one for canonical."
+1. **Confirm repo access.** Glossary promotion reads/writes `vocabulary/fr-ca-glossary.yaml` and the per-engagement `fr-ca-additions.yaml` files, resolved per `references/library-resolution.md` § Vocabulary glossary. On a transport failure (repo unreachable), fall back to the bundled seed and surface that no promotion can be saved this session; otherwise proceed.
+2. **Discover candidates.** Enumerate every `engagements/*/fr-ca-additions.yaml` file (resolved per `references/library-resolution.md`). Read each one. Aggregate into a candidate list keyed by `english` term. When multiple engagements added the same term with different `fr_ca` values, surface the conflict explicitly: "Term `Total rewards committee` has two candidates: `Comité de la rémunération globale` (pharmacy-fy26), `Comité des récompenses globales` (atlantic-retail-fy26). Pick one for canonical."
 3. **Present each candidate** in turn:
 
 > "Candidate 1 of 14: `Total rewards committee`
@@ -333,6 +333,6 @@ Before delivering a French deck, verify:
 - [ ] All numbers, dates, currency follow Section 7 formatting (decimal comma, non-breaking thousands separator, currency symbol after, 24-hour time, ISO or French long-form dates)
 - [ ] Any statute citation quotes the verbatim French text from the source URL (not glossary paraphrase)
 - [ ] Engagement-end summary lists all glossary additions made during the engagement
-- [ ] Additions saved to `engagements/<slug>/fr-ca-additions.yaml` in local `$STATE_ROOT`
+- [ ] Additions saved to `engagements/<slug>/fr-ca-additions.yaml` (resolved per `references/library-resolution.md` § Vocabulary glossary)
 
 A QA failure on any item above blocks Phase 7 delivery. Surface the failure to the user with the offending term + slide number + suggested fix.

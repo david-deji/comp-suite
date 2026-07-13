@@ -1,6 +1,6 @@
 # Update Mode Protocol
 
-Update mode is a guided refresh of an existing engagement-config YAML block. It is the maintenance counterpart to Init — same schema (Sections 0-6), same output format, but the user pastes their current config and only stale or changed sections get walked. Update is also where the user shifts the `cycle` section as the wage review progresses week-over-week (e.g., "we're now at Options Review, week −9, this cycle's intake came back with these answers").
+Update mode is a guided refresh of an existing engagement-config YAML block. It is the maintenance counterpart to Init — same 8-section schema (Sections 0-7, including the persistence section added in Batch E.2), same output format, but the user pastes their current config and only stale or changed sections get walked. Update is also where the user shifts the `cycle` section as the wage review progresses week-over-week (e.g., "we're now at Options Review, week −9, this cycle's intake came back with these answers").
 
 Loaded by SKILL.md when the Intent Router classifies a request as Update.
 
@@ -26,7 +26,7 @@ If the user pasted a config but the YAML is malformed, surface the parse error a
 | Dimension | Init | Update |
 |---|---|---|
 | Input | Nothing (or a few facts the user types) | Full pasted YAML config |
-| Walk-through | All sections, all questions | Only sections flagged stale, conflicting, or changed (and `cycle` whenever the user signals progress) |
+| Walk-through | All 8 sections, all questions | Only sections flagged stale, conflicting, or changed (and `cycle` whenever the user signals progress) |
 | Speed | 20-35 minutes | 3-10 minutes typical, faster if only dates are stale |
 | Output | New YAML block | Merged YAML block: untouched sections preserved verbatim, refreshed sections rewritten |
 
@@ -120,9 +120,14 @@ Trigger phrases that indicate a section-level refresh request: "redo audience", 
 
 ---
 
-## Persistence config (legacy block)
+## Section 7 — Persistence (retired as a config step)
 
-Configs produced by older versions of `/init` may carry a `persistence:` block with a `backend: google-drive` or `backend: paste-mode` selector. That block is retired — persistence is now handled by the market MCP backend (OAuth identity → org membership) and is not configured per-engagement. When Update mode encounters a `persistence:` block in the pasted config, remove it from the merged output and note: "Removed legacy `persistence:` block — backend is now the market MCP backend, no per-config selector required." See `references/persistence-and-ledger.md`.
+Persistence is no longer operator-configurable. Schema state persists automatically to the `market` MCP backend, keyed to the operator's OAuth identity (org via membership) — there is no backend to select, no folder to wire up, and no `persistence` block in current configs. The old Google-Drive / paste-mode selector is retired (`references/persistence-and-ledger.md` § What is retired).
+
+Update-mode behavior:
+
+- **Config has no `persistence` block** → correct for the current schema. Do not offer to scaffold one; stay silent.
+- **Legacy config still carries a `persistence:` block** (from a pre-migration `/init`) → treat it as inert operator preference. On the merged-YAML emit, drop it and tell the user once: "Removed the legacy `persistence` block — state now persists automatically to the `market` backend by your OAuth identity; nothing to configure."
 
 ---
 
@@ -161,9 +166,10 @@ Final output is a single YAML code block, schema-identical to Init output. Inclu
     schema_version: 1
     created_date: YYYY-MM-DD          # original creation date preserved
     updated_date: YYYY-MM-DD          # date of this update run
-    created_by_skill: comp
+    created_by_skill: compensation-advisor
     created_via: /init
     last_updated_via: /update
+    org_slug: <org-slug>              # backend addressing unit; identity resolves org via OAuth membership
     sibling_skills: [comp-comms-builder, comp-team-transformer, comp-training-designer]
   ```
 - All sections that existed in the input, with refreshed `last_verified` dates **only on sections actually touched.**
@@ -202,7 +208,6 @@ This keeps Update mode out of the engagement flow and reserves it for between-en
 
 Update produces an updated `engagement-config-{slug}.yaml` **file artifact** as its END deliverable — same shape as Init's output, but reflecting the deltas applied in this session.
 
-- Update writes the new revision to `configs/<slug>.yaml` via `engagement_put` (market backend). Surfaces a chat confirmation with a one-line summary of changed fields.
-- On transport failure: deliver the updated config as a downloadable file artifact in the chat. The user pastes it back on reconnection.
+- **Delivery**: Update delivers the updated config as a downloadable file artifact in the chat; the operator saves it and pastes it into future sessions. There is no backend on/off toggle — any schema-shaped state changed during Update (costing config, engagement body, master sections) persists to the `market` backend via its tools (`costing_put_config` / `engagement_put` / `engagement_put_section`, each with `expected_version`); the config file itself is the operator's own reference copy.
 - **Mid-walkthrough turns**: chat text + YAML code-block previews of the deltas, so the user sees what's about to change.
-- After emit, do not auto-suggest a next engagement. End the session with one line confirming the artifact + commit and stop.
+- After emit, do not auto-suggest a next engagement. End the session with one line confirming the artifact and stop.

@@ -29,10 +29,10 @@ if ($L -eq "fr") {
   $T1 = "Aucun jeton a configurer. Le serveur 'market' utilise la connexion Google (OAuth) -"
   $T2 = "Claude Code s'en occupe. Rien a coller, rien a enregistrer."
   $T3 = "Etape 1 - Ouvrez Claude Code. A la premiere utilisation d'un outil 'market', Claude Code"
-  $T4 = "         vous demandera d'autoriser le serveur : connectez-vous avec le compte Google"
-  $T5 = "         que David a ajoute. Si rien ne s'affiche, tapez /mcp et autorisez 'market'."
+  $T4 = "          vous demandera d'autoriser le serveur : connectez-vous avec le compte Google"
+  $T5 = "          que David a ajoute. Si rien ne s'affiche, tapez /mcp et autorisez 'market'."
   $T6 = "Etape 2 - Verifiez : tapez /comp-suite:comp et demandez 'benchmark un developpeur au Quebec'."
-  $T7 = "         Des donnees de marche doivent revenir. Sinon, retapez /mcp pour verifier 'market'."
+  $T7 = "          Des donnees de marche doivent revenir. Sinon, retapez /mcp pour verifier 'market'."
   $T8 = "Perplexity est OPTIONNEL - la recherche web fonctionne deja sans cle. Voir INSTALL.md."
   $T9 = "Termine."
 } else {

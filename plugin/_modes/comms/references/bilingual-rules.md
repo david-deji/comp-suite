@@ -145,6 +145,6 @@ When an artifact-level language list is set, it takes precedence over the cycle-
 ### 5.9 What this file does NOT contain
 
 - Glossary promotion mechanics — those are owned by compensation-advisor's `/glossary promote`. This skill only writes to `engagements/<slug>/comms/fr-ca-additions.yaml`.
-- Full FR-CA glossary content — that lives in `vocabulary/fr-ca-glossary.yaml` (shared Drive folder).
+- Full FR-CA glossary content — that lives in `vocabulary/fr-ca-glossary.yaml`.
 - Approval-stage transitions — those live in `approval-stage-tracking.md`.
 - Per-artifact language defaults — those live in `artifact-catalog.md`.

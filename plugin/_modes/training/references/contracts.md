@@ -9,16 +9,13 @@ Contracts marked **(shared)** are byte-identical across the 4 sibling skills
 these from compensation-advisor canonical). Contracts not marked are
 comp-training-designer-specific.
 
-## C01 — Persistence: schema via backend, binaries as chat-download **(shared)**
+## C01 — Persistence: text-only Drive **(shared)**
 
-The `market` MCP backend holds schema state (yaml/json). Non-schema artifacts
-(decks, facilitator guides, council scratch) write to local `$STATE_ROOT`.
-Binary artifacts (PPTX, PDF, DOCX, images, sanitized CSV) deliver as
-chat-download only — never written to any backend or local path as schema state.
-No exceptions, no toggle.
+Drive holds metadata only (yaml/md/json). Binary artifacts (PPTX, PDF, DOCX,
+images, sanitized CSV) deliver as chat-download. No exceptions, no toggle.
 
-Enforced: `references/persistence-and-ledger.md` § Binary deliverables.
-Verified at: every Phase 7 close, every binary-artifact emit.
+Enforced: `references/persistence-and-ledger.md` § Binary artifacts never go
+through Drive. Verified at: every Phase 7 close, every binary-artifact emit.
 
 ## C02 — Differentiated depth
 
@@ -113,14 +110,15 @@ confirmation — all of them).
 Enforced: `production-and-qa.md` § Recommendation discipline. Verified at:
 every `ask_user_input` call.
 
-## C11 — Artifact visibility (private only) **(shared)**
+## C11 — Org isolation (backend-enforced) **(shared)**
 
-Backend writes are scoped to the authenticated org via OAuth identity — no
-public-link surface exists. Local `$STATE_ROOT` artifacts must not be exposed
-via public share. Hard refuse if visibility cannot be confirmed.
+Org isolation is enforced by the `market` backend via OAuth identity → org
+membership — comp-suite holds no folder to own or share-check, and a tool call
+only ever reaches the caller's own org (no "Anyone with link" surface exists).
+The v1 Drive-folder public-link check is retired.
 
-Enforced: `persistence-and-ledger.md` § Privacy. Verified at: every
-session start (Phase 0 backend check), every close-time write.
+Enforced: `persistence-and-ledger.md` § source-of-truth + § What is retired.
+Verified at: every backend call (identity → org resolution is server-side).
 
 ## C12 — Federated section ownership (master.yaml) **(shared)**
 
@@ -131,7 +129,7 @@ all other sections read-only. Appends to `master.decision_log[]` are
 append-only; no skill mutates prior entries authored by any skill (its own or
 sibling).
 
-Enforced: `master-yaml-ops.md` § Federation discipline. Verified at: every
+Enforced: `master-yaml-utils.md` § Federation discipline. Verified at: every
 master.yaml write.
 
 ---
@@ -158,6 +156,6 @@ master.yaml write.
 - [ ] C07 facilitator guide paired with PPTX
 
 ### Session close / write sequence
-- [ ] C01 no binary artifacts written to backend or local schema path
+- [ ] C01 no binary artifacts written to Drive
 - [ ] C09, C12 verified before write
 - [ ] C10 enforced for every ask_user_input in this session

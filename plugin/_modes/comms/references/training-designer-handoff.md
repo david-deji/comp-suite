@@ -36,7 +36,7 @@ training_handoff:
   message_map_path: cycles/<engagement-slug>/<cycle-slug>/message-map.yaml
 ```
 
-`message_map_path` is a path relative to the shared Drive folder root. It must point to a file written by comp-training-designer's `/ingest` Workshop synthesis.
+`message_map_path` is a path relative to the local `$STATE_ROOT` state root. It must point to a file written by comp-training-designer's `/ingest` Workshop synthesis.
 
 If `enabled: true` but `message_map_path` is null: surface a warning and fall back to standard audience-profile interview. Do not abort.
 

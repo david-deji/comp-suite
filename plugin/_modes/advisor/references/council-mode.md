@@ -57,7 +57,7 @@ memo_length_cap_words: 800
 
 ## Perspective pool
 
-Seven bundled comp-scoped personas, plus any custom personas registered in `$STATE_ROOT`'s `personas/` library. Pick 4-6 per run based on the question. Do not run all seven (or all available) by default — more personas dilute rather than add.
+Seven bundled comp-scoped personas, plus any custom personas resolved per `references/library-resolution.md` (bundled + local `personas/` library). Pick 4-6 per run based on the question. Do not run all seven (or all available) by default — more personas dilute rather than add.
 
 **Pool resolution**: bundled-7 ∪ custom personas from `personas/_index.yaml`. See `references/persona-library.md` for custom persona schema, loading procedure, and collision rules. Custom personas appear in the roster declaration tagged `(custom)`; bundled appear tagged `(bundled)`.
 
@@ -89,7 +89,7 @@ Every substantive claim in a persona block and in synthesis carries one tag. The
 | `[live-postings]` | `benchmarks.live_posting_*_rate` block from `get_role_intelligence` OR a real Indeed `search_jobs` result with job_id list. | Captured `tool_calls[]` entry with field path `benchmarks.live_posting_top_rate.<percentile>` (or `start_rate` / `midpoint`) AND retrieval timestamp. | "Live-posting P50 top rate is $24.04/h `[live-postings: mcp__market__get_role_intelligence(role_id=X, province=ON) 2026-04, benchmarks.live_posting_top_rate.p50]`" |
 | `[cba]` | A real `mcp__market__get_cba_wage_scale` return for unionized roles (UFCW grocery, construction, healthcare, public sector). | Captured `tool_calls[]` entry with agreement reference, scope, and retrieval timestamp. | "TUAC 501 Acme QC top step is $30.95/h `[cba: mcp__market__get_cba_wage_scale(union='UFCW 501', employer='Acme', province=QC) 2026-03]`" |
 | `[indeed-company]` | A real `mcp__claude_ai_Indeed__get_company_data` return — competitor intel, ratings, posting volume. | Captured `tool_calls[]` entry with company name, query, and retrieval timestamp. | "Loblaws posts ~440 grocery clerk roles QC-wide last 90 days `[indeed-company: get_company_data(company='Loblaw', province=QC) 2026-04-22]`" |
-| `[econometric]` | Grounded in a StatCan econometric series (CPI, unemployment, GDP) via `web_fetch` against `statcan.gc.ca` — **NOT wages** (there is no StatCan MCP server). | Fetched StatCan table number + URL + access date. | "QC CPI year-over-year is +2.4% `[econometric: StatCan Table 18-10-0004, retrieved 2026-04-21]`" |
+| `[econometric]` | Grounded in StatCan MCP econometric series (CPI, unemployment, GDP) **OR** `web_fetch` against `statcan.gc.ca` — **NOT wages**. | StatCan MCP table number + retrieval date OR fetched URL with access date. | "QC CPI year-over-year is +2.4% `[econometric: StatCan Table 18-10-0004, retrieved 2026-04-21]`" |
 | `[statutory]` | Grounded in named statute, regulation, or CBA article. | **Mandatory `web_fetch` URL on the statute domain + verbatim quote of the article text in the same line.** See § Statutory discipline below. | "QC Pay Equity Act requires maintenance exercise every 5 years `[statutory: legisquebec.gouv.qc.ca/fr/document/lc/E-12.001 art. 76.1, fetched 2026-05-02 — quoted: 'L'employeur doit, tous les cinq ans, évaluer le maintien de l'équité salariale dans son entreprise.']`" |
 | `[market-data]` (web fallback) | A `web_fetch` return for market data outside Market MCP coverage. **Avoid for any role/province Market MCP serves** — use `[statcan-wage]` or `[live-postings]` instead. | A real `web_fetch` return with URL + access date. | "BLS Pharmacy Tech US national P50 is $19.10/h `[market-data: bls.gov/oes/current/oes292052.htm, fetched 2026-04-15]`" |
 | `[survey-house]` | Grounded in user-uploaded third-party survey data (Mercer, WTW, Korn Ferry, etc.) — see `references/survey-house-protocol.md`. | Vendor + survey year + cut + aging note. Without all four, auto-downgrade to `[professional-judgment]`. | "Pharmacy assistant P50 in QC retail is $25.40/h `[survey-house: Mercer, 2026 Total Compensation Survey, QC retail cut, aged +1.2% to 2026-04]`" |
@@ -117,8 +117,8 @@ Every tagged claim (not just `[statutory]`) must trace to a captured tool-call o
 
 Particularly load-bearing for council quality:
 - `[market-data]` claims must name the specific Market MCP function call and field path (e.g., `benchmarks.statcan.p50` vs `benchmarks.live_posting_top_rate.p50` — these are different metrics, conflating them is a downgrade trigger).
-- `[econometric]` is for `web_fetch`-sourced StatCan econometric series only (CPI, unemployment, GDP). A wage claim tagged `[econometric]` auto-downgrades to `[professional-judgment]` — wage data is `[market-data]`, not `[econometric]`.
-- `[market-data]` claims that name "StatCan" without specifying it came from Market MCP's `benchmarks.statcan` block (vs a `web_fetch` against `statcan.gc.ca`) get flagged in synthesis as "source-conflated" and the persona is asked to disambiguate.
+- `[econometric]` is for StatCan MCP series only (CPI, unemployment, GDP). A wage claim tagged `[econometric]` auto-downgrades to `[professional-judgment]` — wage data is `[market-data]`, not `[econometric]`.
+- `[market-data]` claims that name "StatCan" without specifying it came from Market MCP's `benchmarks.statcan` block (vs a separate StatCan MCP call) get flagged in synthesis as "source-conflated" and the persona is asked to disambiguate.
 
 **Anchor list of authoritative URLs** (extend as needed; never substitute a different domain):
 - Quebec statutes: `https://www.legisquebec.gouv.qc.ca/fr/document/lc/...`
@@ -195,8 +195,6 @@ Run the fetches before writing any persona block. The fetched text + URL becomes
 
 Failed fetch (404, paywall, content unavailable) → fall back to `web_search` for an equivalent source from a different domain, then `web_fetch` that. If both fail, the persona writes its block but tags every claim it would have grounded as `[professional-judgment]` rather than `[market-data]` or `[statutory]`. Note the failed-fetch attempt in the persona block's `flags_raised` so synthesis surfaces the gap.
 
-**Carry market-data trust fields through.** When a persona grounds on Market MCP (`get_role_intelligence`, `compare_roles`, `get_market_snapshot`), each returned figure carries per-row trust fields — `confidence_tier` and `coverage` (and, on snapshot rows, `salary_disclosure_rate` / `yoy_volatile`). Carry those fields into the persona's reasoning and into any figure it cites: a `SUPPRESSED` or thin-`coverage` cell is not equal-confidence to a well-sampled one and must be flagged in-line, never ranked visually equal in a cross-role or multi-province comparison. A low-`confidence_tier`/thin-`coverage` figure that drives a persona position is itself a `flags_raised` item for synthesis.
-
 ### Step 5. Persona voice blocks
 
 One block per persona, in the order declared. **The Position line is the first content of the block** — written before any reasoning — to lock in the persona's stance up front and prevent rationalization-after-the-fact (the failure mode that produces unanimous synthesis from diverse personas). Each block:
@@ -238,11 +236,9 @@ After all persona blocks, return to orchestrator voice and produce the synthesis
 
 ### Step 8. State file
 
-After output completes, produce the `council-state-YYYY-MM-DD-{slug}.yaml` artifact. The persistence backend determines write behavior:
+After output completes, produce the `council-state-YYYY-MM-DD-{slug}.yaml` artifact. Council-state is **council scratch — a local non-schema artifact** (per `references/persistence-and-ledger.md` § Where each thing lives): write it to `$STATE_ROOT/_orgs/<slug>/...` alongside the engagement's other local scratch. For standalone council runs (no engagement slug), write to a session-tagged local path under `_orgs/_council-standalone/<derived-slug>/`. Council-state is never written to the `market` backend — only schema-shaped state (engagement bodies, cycles, the decision log) persists over the wire.
 
-Write `council-state-YYYY-MM-DD-{slug}.yaml` as a local artifact to `$STATE_ROOT/_orgs/<org_slug>/engagements/<slug>/` (non-schema artifact — local only per `references/persistence-and-ledger.md`). For standalone council runs (no engagement slug), write under `$STATE_ROOT/_orgs/_council-standalone/<derived-slug>/`. Present the file as a download artifact simultaneously.
-
-Either way, next year's R-lite can read both `engagement-state` (loaded from the market MCP backend at Phase 0) and `council-state` (pasted or loaded from `$STATE_ROOT`) for full reasoning continuity.
+Next year's R-lite reads the engagement body from the backend (`engagement_get` + `engagement_get_master`) and the `council-state` scratch from the local `$STATE_ROOT` cache for full reasoning continuity.
 
 ## Synthesis styles
 
@@ -385,6 +381,8 @@ per_persona_grounding:
   total-rewards-strategist:
     source_type: market_mcp
     tool_call: "compare_roles(roles=[meat-cutter], provinces=[QC, ON])"
+    # When a market_mcp grounding row returns SUPPRESSED or thin coverage (confidence_tier),
+    # carry that into the claim's tag so a low-coverage row down-weights the claim in synthesis.
     called_at: 2026-04-21T14:09:00
     fetch_status: success
   cfo-finance:

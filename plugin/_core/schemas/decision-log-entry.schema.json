@@ -8,12 +8,12 @@
     "id": {
       "type": "string",
       "pattern": "^dl-[0-9]{3,}$",
-      "description": "Stable per-entry identifier (conventionally monotonic dl-NNN). NOT an ordering key: the server orders decision_log by an internal dl_seq column, so a caller-supplied id decouples from true order. dl_seq (server-internal) is authoritative for ordering; id is a stable identifier only per § 6.3."
+      "description": "Monotonically incrementing ID per master.yaml. ID is authoritative; timestamp is informational per § 6.3."
     },
     "timestamp": {
       "type": "string",
       "format": "date-time",
-      "description": "ISO-8601 UTC timestamp of the decision. Informational only — the server-internal dl_seq column is the authoritative ordering, not id or timestamp."
+      "description": "ISO-8601 UTC timestamp of the decision. Informational only — ID is the authoritative ordering."
     },
     "skill": {
       "type": "string",
@@ -31,8 +31,13 @@
         "cycle_closed",
         "cycle_reopened",
         "cycle_primary_switched",
+        "cycle_gating_bypassed",
         "master_init",
         "org_metadata_updated",
+        "engagement_closed",
+        "mode_defaulted_silently",
+        "too_early_pre_engagement_mode_chosen",
+        "null_out_rules_pending_v1_1",
         "scenario_chosen",
         "council_outcome",
         "speaker_override",
@@ -46,14 +51,9 @@
         "waste_pattern_diagnosed",
         "waste_pattern_remediated",
         "glossary_term_promoted",
-        "brand_kit_extended",
-        "mode_defaulted_silently",
-        "null_out_rules_pending_v1_1",
-        "engagement_closed",
-        "cycle_gating_bypassed",
-        "too_early_pre_engagement_mode_chosen"
+        "brand_kit_extended"
       ],
-      "description": "Full enum per § 6.2. 25 values covering cycle lifecycle, org lifecycle, all 4 skill scopes, cross-skill shared events, and the 5 comp-suite v2 lifecycle events (P2): mode-default, pre-engagement null-out, engagement close, cycle-gating bypass, too-early pre-engagement mode choice. Mirrors the server VALID_DECISION_TYPES frozenset + the 0064 CHECK exactly."
+      "description": "Full enum per § 6.2. 25 values covering cycle lifecycle (incl. gating-bypass), org + engagement lifecycle (engagement_closed; mode-defaulting and pre-engagement audit types), all 4 skill scopes, and cross-skill shared events. MUST equal the server's VALID_DECISION_TYPES (v2-facade engagement_schemas.py) and the 0073 CHECK constraint — bump all three together."
     },
     "tags": {
       "type": "array",

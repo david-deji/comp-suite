@@ -35,28 +35,32 @@ Slug constraints: `^[a-z][a-z0-9-]{1,40}$`. If the operator types a slug that do
 
 ### Step 2 — Read `_orgs/index.yaml`
 
-Call `find_or_create_org(slug)` from `master-yaml-ops.md`. Three outcomes:
+Call `find_or_create_org(slug)` from `master-yaml-utils.md`. Three outcomes:
 
 - **Org exists in index** → continue to Step 3.
 - **Fuzzy match found** (Levenshtein ≤ 2 against an existing entry) → surface the near-miss pros/cons table and ask the operator to pick: use existing / pick a different existing / create new.
-- **No match at all** → the org is not provisioned. Org + master-header creation is **admin-path** (P4b D4) — comp-suite reads existing orgs via `engagement_get_master` but never creates an org the backend doesn't know. Surface:
+- **No match at all** → confirm create:
 
-  > "No org `<slug>` exists in the backend. Provisioning a new org (membership + `private.orgs` + master header) is an admin step, not something this skill does over the wire. Ask the backend admin to provision `<slug>`, then re-run `/init`."
+  > "No existing org `<slug>` found. Create it? This slug is permanent in v1."
 
-  Stop the create path here. Do not write a local `_orgs/index.yaml` entry or a local `master.yaml`.
+  On confirm: append entry to `_orgs/index.yaml` (`status: active`, `created_by_skill: compensation-advisor`, `created_date: today`). Continue to Step 3 where master.yaml will be auto-created.
 
 **Anti-pattern — do not invent comparison alternatives.** When no near-miss exists, do NOT serve a pros/cons table comparing the operator's slug against fabricated variants (e.g., `<slug>` vs `<slug>-region` vs `<slug>-line`). The operator already chose the slug; respect it. The pros/cons table is reserved for genuine fuzzy-match collisions where Levenshtein ≤ 2 surfaces a real prior entry. A single confirm-create line is the entire prompt. Adding ceremony here makes the operator decide twice for no benefit.
 
-### Step 3 — Read the master header from the backend
+### Step 3 — Read `_orgs/<slug>/master.yaml` (or auto-create)
 
-Call `read_master(org_slug)` from `master-yaml-ops.md` (which reads `engagement_get_master` MCP-primary; local `$STATE_ROOT` cache only on transport failure, P4b D1).
+Call `read_master(org_slug)` from `master-yaml-utils.md`.
 
-- **Master found** → validate post-read per `master-yaml-ops.md` → `validate_against_schema`. On validation failure: warn operator, offer (A) proceed read-only / (B) repair / (C) abort.
-- **Master not found** (org not provisioned) → this is the D4 admin-path case, not a local create. Do **not** synthesize a `master.yaml` locally. Surface the same provisioning message as Step 2 and stop. (A backend that returns a master with empty `cycles`/`decision_log` is a provisioned-but-fresh org — continue normally; "not found" specifically means the org does not exist.)
+- **File exists** → validate post-read per `master-yaml-utils.md` → `validate_against_schema`. On validation failure: warn operator, offer (A) proceed read-only / (B) repair / (C) abort.
+- **File does not exist** (first `/init` for this slug) → create `_orgs/<slug>/master.yaml` with:
+  - `header` populated (org_slug, created_date: today, created_by_skill: compensation-advisor)
+  - `cycles: []`, `decision_log: []`, federated sections with `schema_version: "1.0.0"` and empty content
+  - Append `decision_type: master_init` entry to `decision_log[]`
+  - Persist to the `market` backend: `engagement_put_header` (header) + `engagement_put_section` (each federated section) + `engagement_append_decision` (the `master_init` entry), each `expected_version: 0` to create. A brand-new org / first master-header is admin-path (D4) — comp-suite never silently creates an org the backend doesn't know. The local `_orgs/<slug>/master.yaml` is the read-cache mirror, not the write target.
 
 ### Step 4 — Update `master.header.last_touched_*`
 
-Set `last_touched_date: <today>` and `last_touched_by_skill: comp` (the header skill fields are comp-only — server CHECK IN ('comp'), `Literal["comp"]`; the legacy `compensation-advisor` token is rejected). (Last-writer-wins on advisory fields — acceptable.)
+Set `last_touched_date: <today>` and `last_touched_by_skill: compensation-advisor`. (Last-writer-wins on advisory fields — acceptable.)
 
 ### Step 5 — Update `master.header.active_skills[]`
 
@@ -64,7 +68,7 @@ If `compensation-advisor` is not yet in `active_skills[]`, append an entry (`fir
 
 ### Step 6 — Render tree view
 
-Call `render_tree_view(master, "compensation-advisor")` from `master-yaml-ops.md`. Display the inheritable groups relevant to this skill with freshness signals (🟢 <6mo / 🟡 6–18mo / 🔴 >18mo):
+Call `render_tree_view(master, "compensation-advisor")` from `master-yaml-utils.md`. Display the inheritable groups relevant to this skill with freshness signals (🟢 <6mo / 🟡 6–18mo / 🔴 >18mo):
 
 - advisor-relevant groups: org_metadata, brand_kit, scenario_archetypes, preferred_council_perspectives, glossary_terms, framing_decisions, council_outcomes
 - sibling-skill assets discovered via `walk_sibling_assets(master)` rendered under "From sibling skills" (read-only)
@@ -73,7 +77,7 @@ Groups not relevant to compensation-advisor (speaker_registers, audience_profile
 
 ### Step 6.5 — Pull-notification check
 
-Call `check_pull_notifications(master, "compensation-advisor")` from `master-yaml-ops.md`:
+Call `check_pull_notifications(master, "compensation-advisor")` from `master-yaml-utils.md`:
 
 1. Find the most recent `decision_log[]` entry where `skill == "compensation-advisor"` — that timestamp is `last-this-skill-init-timestamp`.
 2. Filter `decision_log[]` for entries where `skill != "compensation-advisor"` AND `timestamp > last-this-skill-init-timestamp`.
@@ -99,24 +103,25 @@ Ask operator:
 | **C. Switch primary to a different existing cycle** | Explicit choice | Use `/switch-cycle` after /init instead |
 
 - **Use existing** → load `cycle_state_pointers[]` entry for this cycle from `master.advisor`, read `_orgs/<slug>/cycles/<cycle-slug>/advisor/engagement-state.yaml`.
-- **Open new cycle** → ask for cycle slug (default: `<line>-<region>-<fiscal>`; surface pros/cons if the operator's input deviates from convention). Create the cycle via `engagement_put_cycle {org_slug, cycle_slug, status: open, opened_date: <today>, opened_by_skill: compensation-advisor, primary: true, cycle_dir: _orgs/<slug>/cycles/<cycle-slug>/}` (the server atomically demotes the prior primary). Send the full record: `engagement_put_cycle` is a blind UPSERT with no version guard, so every server-required field (`cycle_slug`, `status`, `opened_date`, `opened_by_skill`, `primary`, `cycle_dir`) must be present or Pydantic rejects with `field required` (-32602); a partial call on a later re-drive would clobber the cycle's stored `opened_date`/`opened_by_skill`/`cycle_dir` (as `close-flow.md`/`intent-router.md` already guard against). For an existing cycle, read the current record via `engagement_get_master.cycles[]` and resend it whole rather than reconstructing it. `opened_by_skill` carries the full skill token per `cycle-entry.schema.json` (not the comp-only header enum). Append `engagement_append_decision {decision_type: cycle_opened, cycle_slug}`. Create the local `_orgs/<slug>/cycles/<cycle-slug>/advisor/` directory (non-schema artifact dir). Then walk the original engagement-config intake (Step 10 below) to produce the engagement body for this cycle.
+- **Open new cycle** → ask for cycle slug (default: `<line>-<region>-<fiscal>`; surface pros/cons if the operator's input deviates from convention). Append new entry to `master.cycles[]` (`status: open`, `opened_by_skill: compensation-advisor`, `primary: true`, flip prior primary to `false`). Create `_orgs/<slug>/cycles/<cycle-slug>/advisor/` directory. Append `decision_type: cycle_opened` to `decision_log[]`. Then walk the original engagement-config intake (Step 10 below) to produce the engagement-state file for this cycle.
 
 ### Step 8 — Inheritance prompts per group
 
 For each advisor-relevant inheritable group (org_metadata, brand_kit, scenario_archetypes, preferred_council_perspectives, glossary_terms, framing_decisions, council_outcomes):
 
-Call `prompt_inheritance(group, items)` from `master-yaml-ops.md`. Render the pros/cons table. Apply operator choices to the per-cycle state being built. For 🔴 red (>18mo) items, render the stale-inheritance prompt before asking.
+Call `prompt_inheritance(group, items)` from `master-yaml-utils.md`. Render the pros/cons table. Apply operator choices to the per-cycle state being built. For 🔴 red (>18mo) items, render the stale-inheritance prompt before asking.
 
 If the operator picks drill-down (D), call `prompt_drill_down(group, items)` for item-by-item review with batch shortcuts.
 
-### Step 9 — Save the advisor section + per-cycle state (backend)
+### Step 9 — Save master.yaml + per-cycle state file
 
-Call `write_master_section(org_slug, "advisor", advisor_section_data)` from `master-yaml-ops.md` — which routes to `engagement_put_section {org_slug, section_name: "advisor", body, expected_version}` (MCP-only; on stale-reject re-read and retry; on transport failure escalate/halt, P4b D2):
+Call `write_master_section(org_slug, "advisor", advisor_section_data)` from `master-yaml-utils.md`:
 
-1. Validate the section against `references/master-schema/master-shared-header.schema.json` + `references/master-schema/master-advisor-section.schema.json`. Refuse to write on failure.
-2. The section write lands in the backend master — no local `master.yaml` write.
-3. Write the per-cycle engagement body via `engagement_put {org_slug, engagement_id: <cycle-slug>, body, expected_version}` (`expected_version: 0` to create the cycle's body).
-4. Each write threads `version → expected_version`; a stale-reject re-reads and retries rather than forcing.
+1. Validate updated master.yaml against `references/master-schema/master-shared-header.schema.json` + `references/master-schema/master-advisor-section.schema.json`. Refuse to write on failure.
+2. Persist the master to the `market` backend: advisor section via `engagement_put_section`, header fields (Steps 4–5) via `engagement_put_header` — each with `expected_version` (re-read + retry the read-modify-write loop on stale-reject). The local `_orgs/<slug>/master.yaml` is the read-cache mirror, not the write target.
+3. Persist per-cycle engagement state via `engagement_put` (`expected_version: 0` to create):
+   - Local read-cache mirror path: `_orgs/<slug>/cycles/<cycle-slug>/advisor/engagement-state.yaml`
+4. Each write: verify the returned `version` before proceeding to the next. On transport/write failure, escalate/halt — never write-local-and-reconcile (D2).
 
 ### Step 10 — Skill-specific intake (compensation-advisor engagement-config flow)
 
@@ -130,7 +135,7 @@ Open with a single message confirming the scope and starting Section 0:
 
 > "Now building your engagement config. I'll walk you through 8 sections. You'll get a YAML block at the end to save and paste at the start of future engagements.
 >
-> Sections: engagement_scope, cycle, org, audience, costing, benchmark, deck, persistence. Each is optional from Section 2 onward — say 'skip' for any you want to defer. **Section 0 (engagement_scope) and Section 1 (cycle) I'll push hard on, because they're what makes the rest of the skill useful.** Section 7 (persistence) is recommended but optional.
+> Sections: engagement_scope, cycle, org, audience, costing, benchmark, deck, persistence. Each is optional from Section 2 onward — say 'skip' for any you want to defer. **Section 0 (engagement_scope) and Section 1 (cycle) I'll push hard on, because they're what makes the rest of the skill useful.** Section 7 (persistence) is now just a confirmation — your state persists automatically to the `market` backend by your OAuth identity, nothing to wire up.
 >
 > A note before we start: **one engagement = one budget owner.** Pharmacy goes to the Pharmacy VP. Atlantic retail goes to the Atlantic Retail VP. Ontario retail to Ontario, Western to Western, the discount banner to its own VP. They each have their own budget envelope, their own VP Ops, and they each warrant a separate engagement and a separate config. If you find yourself trying to cover two budget owners in one config, it's almost always better to split.
 >
@@ -335,13 +340,13 @@ After answers, present the deck block.
 
 ---
 
-### Section 7 — Persistence (informational, no questions)
+### Section 7 — Persistence (automatic — no configuration)
 
-> "Section 7 of 8 — **Persistence**. Your engagement state, cycles, decision log, and brand kits persist automatically to the `market` backend, keyed to your authenticated login (org membership). There's no folder to configure and no paste-back — prior-cycle context and resumable checkpoints are always available once you're signed in. Nothing to set here; on to the last section."
+> "Section 7 of 8 — **Persistence**. Nothing to configure. Your engagement state, configs, ledger, and brand kits persist automatically to the `market` MCP backend, keyed to your OAuth identity (Google login → your org via membership). Every session resumes with prior-cycle context, resumable checkpoints, and your shared brand kit — no folder to wire up, no backend to pick."
 
-No questions in this section. The skill does not emit a `persistence` config block — persistence is not operator-configurable in v2. (A legacy config carrying a `persistence:` block is ignored as a backend selector; the backend is always `market`.)
+There is no `persistence` block in the produced config — persistence is not operator-configurable under the `market` backend. The old `persistence.backend` / folder selector is retired (there is no Google Drive and no paste-mode backend). If a pasted legacy config still carries a `persistence:` block, treat it as inert operator preference and drop it from the produced output.
 
-**Ground truth**: see `references/persistence-and-ledger.md` for what is backend vs local, the read/write semantics (D1 fallback, D2 MCP-only writes), and the retired Google-Drive backend.
+**Ground truth**: see `references/persistence-and-ledger.md` for the read/write contract (D1 local-cache fallback on transport failure, D2 MCP-only schema writes, D4 admin-path org creation).
 
 ---
 
@@ -358,7 +363,7 @@ After Section 7 (or after the user explicitly skips through to the end), generat
     created_date: YYYY-MM-DD
     created_by_skill: compensation-advisor
     created_via: /init
-    shared_folder_id: <drive-folder-id>
+    org_slug: <org-slug>       # backend addressing unit; identity resolves org via OAuth membership
     sibling_skills: [comp-comms-builder, comp-team-transformer, comp-training-designer]
   ```
   Also include a YAML comment above it: `# Paste this file's content as your first message in future engagements to skip discovery prompts.`
@@ -393,7 +398,7 @@ The legacy phrasing `/init update` continues to work as an alias for `/update` a
 
 - **Do not produce a deck during Init mode.** Init is config-only. If the user uploads a `.pptx` mid-Init, acknowledge the upload, set it aside, complete the config first.
 - **Do not ask all 30+ questions in one turn.** The 8-section structure is the user-friendly chunking.
-- **Do not require sections beyond Section 0 and Section 1.** Sections 2-7 are all optional; "skip" is always valid. Sections 0 and 1 are also technically skippable, but if the user tries, push back once: "Engagement scope and cycle context are what make the skill useful across multiple sessions — without them every engagement starts cold. Want to take 5 minutes on these two and skip the rest?" Section 7 (persistence) is informational only — there is nothing to skip or configure.
+- **Do not require sections beyond Section 0 and Section 1.** Sections 2-7 are all optional; "skip" is always valid. Sections 0 and 1 are also technically skippable, but if the user tries, push back once: "Engagement scope and cycle context are what make the skill useful across multiple sessions — without them every engagement starts cold. Want to take 5 minutes on these two and skip the rest?" Section 7 (persistence) is informational only — persistence is automatic via your OAuth identity, so there's nothing to skip or configure.
 - **Do not silently accept "two budget owners" as one engagement.** The strong-nudge protocol in Section 0 is a deliberate friction. If the user overrides, accept and proceed — but do not skip the conversation.
 - **Do not combine Init with Track C/R/D/R-lite in one session.** Init sessions are dedicated; if the user wants to start an engagement after Init, they paste the config in a fresh session.
 
@@ -403,8 +408,7 @@ The legacy phrasing `/init update` continues to work as an alias for `/update` a
 
 Init produces an `engagement-config-{slug}.yaml` **file artifact** as its END deliverable.
 
-- **Schema state**: Init persists the engagement config to the backend as the engagement body / advisor section (`engagement_put` / `engagement_put_section`, per `references/persistence-and-ledger.md`). No PPTX from Init — that's a Phase 6 product.
-- **Operator copy**: Init also delivers the config as a downloadable file artifact in the chat so the operator has a local copy. The backend remains the source of truth; the artifact is a convenience, not the persistence path.
-- **Mid-walkthrough turns** (Sections 0-7 walkthrough): chat text + YAML code-block previews so the user can see the shape coming together. The final delivery is the backend write plus the file artifact, not a re-pasted code block.
+- **Delivery**: Init delivers the config as a downloadable file artifact in the chat; the operator saves it and pastes it at the start of future sessions. There is no backend on/off toggle — schema-shaped state created during Init (master header, federated sections, engagement body, costing config) already persists to the `market` backend via its tools (`engagement_put_header` / `engagement_put_section` / `engagement_put` / `costing_put_config`); the config file itself is the operator's own reference copy. No PPTX from Init — that's a Phase 6 product.
+- **Mid-walkthrough turns** (Sections 0-7 walkthrough): chat text + YAML code-block previews so the user can see the shape coming together. The final delivery is the file artifact, not a re-pasted code block.
 
 The YAML must remain valid (one fenced code block worth of content, `yaml`-tagged) so a user can copy it from the file or from the previewable chat block interchangeably.

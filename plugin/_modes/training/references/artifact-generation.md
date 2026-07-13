@@ -8,7 +8,7 @@ Loaded by SKILL.md at any mode entry that produces a file artifact. Provides the
 
 ## Artifact catalog
 
-| Mode | END artifact | Location (in local `$STATE_ROOT` or backend) | Owning protocol | Format |
+| Mode | END artifact | Location (local `$STATE_ROOT` / `market` backend) | Owning protocol | Format |
 |------|--------------|------------------------------------|-----------------|--------|
 | `/init` | `engagement-training-config.yaml` | `engagement-training-configs/<slug>.yaml` | `init-mode-protocol.md` | YAML |
 | `/brand init <org-slug>` | brand kit scaffold | `branding/<org-slug>/` (theme/, logo placeholders, _README.md, footnotes.yaml) | `brand-mode-protocol.md` + `brand-kit-protocol.md` (mirrored) | mixed |
@@ -119,15 +119,13 @@ audience_tag: comp-team-internal
 
 ## Write discipline
 
-### Atomicity
+### Atomicity (local co-dependent artifacts)
 
-Co-dependent artifacts use the **staged-write** pattern (per `persistence-and-ledger.md`):
+Schema-state writes are MCP-only (D2) and per-tool atomic — they are not part of this pattern. The local filesystem lacks atomic multi-file saves, so co-dependent local artifacts use the **batched-folder-write** pattern (per `persistence-and-ledger.md` mirrored):
 
-1. Write all local artifacts in a session to a `_pending/` subfolder of the target `$STATE_ROOT` location.
-2. After all writes succeed, move from `_pending/<filename>` to `<filename>`.
+1. Write all artifacts in a session to a `_pending/` subfolder of the target location.
+2. After all writes succeed, atomic move (rename) from `_pending/<filename>` to `<filename>`.
 3. On failure, surface to user — leave the partial state in `_pending/` for recovery rather than half-applied across the canonical paths.
-
-For schema state written to the `market` backend, use `engagement_put_section` with `expected_version` — on stale-reject, re-read and retry the read-modify-write loop per `persistence-and-ledger.md` D (optimistic concurrency).
 
 Single-file artifacts can write directly without `_pending/`.
 
@@ -137,9 +135,9 @@ Single-file artifacts can write directly without `_pending/`.
 
 Runs before every write. Per `redaction-rules.md`. Banned-pattern detection → hard refuse, surface to user, no fallback.
 
-### Visibility check
+### Isolation (backend-enforced)
 
-Runs before every write. Per `persistence-and-ledger.md`. Local `$STATE_ROOT` artifacts must remain private (not exposed via public share). Backend writes are scoped to the authenticated org via OAuth identity — no additional visibility check required.
+Org isolation is enforced by the `market` backend via OAuth identity → org membership (per `persistence-and-ledger.md`, mirrored). There is no folder to own and no share-scope to verify; the pre-write visibility gate is retired.
 
 ### Audience tag check
 
@@ -151,15 +149,13 @@ Every rendered deck (`/generate` per audience, `/cascade`) writes a `delivery_ta
 
 ---
 
-## Transport-failure fallback
+## Transport-failure behavior
 
-When the `market` MCP backend is unreachable (connection error, timeout, 5xx), schema reads fall back to the local `$STATE_ROOT` read cache per `persistence-and-ledger.md` D1. Schema writes escalate/halt — never write-local-and-reconcile.
+There is no paste-mode backend. The `market` MCP backend is always reachable via OAuth; a transport failure (connection error, timeout, 5xx, not-yet-authenticated) is handled by reading schema state from the local `$STATE_ROOT` read cache (D1). A tool returning not-found/empty is authoritative — never fall back to local on not-found. Schema-state writes are MCP-only and never degrade to chat-paste; on write failure the skill escalates/halts (D2), leaving co-dependent local artifacts in `_pending/` for recovery.
 
-Non-schema artifact writes (decks, facilitator guides, council scratch) always target local `$STATE_ROOT` and are unaffected by backend transport failures.
+The redaction pass is unconditional — banned patterns hard-refuse on every write path. No fallback bypasses redaction.
 
-The redaction pass is never skipped under any failure mode — banned patterns still hard-refuse.
-
-PPTX artifacts are always delivered as chat-download; the operator runs `node build_template.js` locally (or in Claude.ai scratch) to render. `examples/year-end-cycle/` demonstrates this format.
+PPTX rendering is unchanged by transport state: decks always deliver as chat-download binaries. When `node` is unavailable to regenerate the template, the skill produces a markdown spec (`<audience>.pptx-spec.md`) instead of a binary .pptx; the operator renders it with `node build_template.js` (see `brand-mode-protocol.md` § Failure handling). `examples/year-end-cycle/` demonstrates this format.
 
 ---
 
@@ -167,6 +163,6 @@ PPTX artifacts are always delivered as chat-download; the operator runs `node bu
 
 - Per-template content schemas — those live in the per-template files (`message_map_template.yaml`, `facilitator_guide_template.md`, `interactive_block_templates.json`, `cascade_kit_template.md`).
 - Mode-specific generation logic — those live in the per-protocol files (`ingest-protocol.md`, `generate-protocol.md`, `cascade-protocol.md`).
-- Backend and local-cache specifics — those live in `persistence-and-ledger.md`.
+- Persistence & write-contract specifics — those live in `persistence-and-ledger.md` (mirrored from compensation-advisor).
 
 This file is the cross-cutting catalog of artifacts and the write discipline that applies to all of them.

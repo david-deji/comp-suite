@@ -114,14 +114,15 @@ This slot is intentionally unassigned in v1 for comp-comms-builder to
 keep C-numbering aligned with sibling skills. Assignment deferred to v1.1
 based on friction log.
 
-## C11 — Backend write integrity **(shared)**
+## C11 — Org isolation (backend-enforced) **(shared)**
 
-Skill verifies the `market` MCP backend is reachable and authenticated before
-any schema-state write. On transport failure, escalate/halt per D2 — never
-write-local-and-reconcile.
+Org isolation is enforced by the `market` backend via OAuth identity → org
+membership — comp-suite holds no folder to own or share-check, and a tool call
+only ever reaches the caller's own org (no "Anyone with link" surface exists).
+The v1 Drive-folder public-link check is retired.
 
-Enforced: `persistence-and-ledger.md` § Read/write contract (D2). Verified at:
-every session start (backend probe), every close-time write.
+Enforced: `persistence-and-ledger.md` § source-of-truth + § What is retired.
+Verified at: every backend call (identity → org resolution is server-side).
 
 ## C12 — Federated section ownership (master.yaml) **(shared)**
 
@@ -132,7 +133,7 @@ all other sections read-only. Appends to `master.decision_log[]` are
 append-only; no skill mutates prior entries authored by any skill (its own or
 sibling).
 
-Enforced: `master-yaml-ops.md` § Federation discipline. Verified at: every
+Enforced: `master-yaml-utils.md` § Federation discipline. Verified at: every
 master.yaml write.
 
 ---

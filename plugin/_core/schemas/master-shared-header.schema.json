@@ -142,9 +142,9 @@
       "header": {
         "org_slug": "acme",
         "created_date": "2026-01-15",
-        "created_by_skill": "comp",
+        "created_by_skill": "compensation-advisor",
         "last_touched_date": "2026-05-03",
-        "last_touched_by_skill": "comp",
+        "last_touched_by_skill": "comp-comms-builder",
         "primary_language": "fr-ca",
         "display_name": "Acme Corp",
         "industry": "retail-pharmacy",
@@ -153,13 +153,13 @@
         "notes": "",
         "active_skills": [
           {
-            "skill": "comp",
+            "skill": "compensation-advisor",
             "first_init_date": "2026-01-15",
             "last_active_date": "2026-04-10",
             "asset_pointers": ["branding/acme/brand-kit.json", "personas/acme-personas.yaml"]
           },
           {
-            "skill": "comp",
+            "skill": "comp-comms-builder",
             "first_init_date": "2026-02-20",
             "last_active_date": "2026-05-03",
             "asset_pointers": ["org-comms-profiles/acme.yaml"]

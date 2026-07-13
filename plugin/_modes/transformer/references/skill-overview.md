@@ -7,7 +7,7 @@ Phase map, Phase 0 detail, and core principles. Loaded by SKILL.md alongside `te
 ## Phase map
 
 ```
-Phase 0 — Config Loading        (every track: persistence test, team-config load, redaction scan, cycle compute, surface state)
+Phase 0 — Config Loading        (every track: identity → org resolution, team-config load, redaction scan, cycle compute, surface state)
    │
    ├─→ /init        → team-config walkthrough (no production work)
    ├─→ /discover    → Phase 1 (conversational interview: skill asks, operator answers)
@@ -30,12 +30,12 @@ Typical first-cycle workflow: `/init` → `/discover` → `/diagnose` → `/tran
 
 Runs at every track entry except `/help`, `/resume`, `/ledger` read paths. Five steps in order:
 
-### 1. Backend authentication
+### 1. Identity → org resolution
 
-Authenticate with the `market` MCP backend (OAuth). Two outcomes:
+Resolve identity via OAuth (Google login) and list the caller's orgs with `list_my_orgs`; read the org header with `engagement_get_master`. There is no Drive folder probe and no visibility check — org isolation is enforced by the backend via OAuth identity → org membership. Two outcomes:
 
-- **Authenticated** → resolve the org via `engagement_get_master`; proceed.
-- **Unreachable / transport failure** → fall back to local `$STATE_ROOT` read cache for schema reads. Surface: "Backend unreachable. Reading from local cache — schema writes are suspended until reconnected." Per `persistence-and-ledger.md` D1.
+- **Backend reachable** → proceed; the `market` backend is the source of truth for schema state.
+- **Transport failure** (connection error, timeout, 5xx, not-yet-authenticated) → read schema state from the local `$STATE_ROOT` cache for this session (D1). A tool returning not-found / empty is authoritative — never fall back to local on not-found.
 
 Runs once per session. Cache result for the session.
 
@@ -44,7 +44,7 @@ Runs once per session. Cache result for the session.
 Three paths:
 
 - User pasted YAML at session start → parse against `team-config-template.md` schema. Validate. If validation fails, surface specific rule violated and exit.
-- User referenced a `team.slug` (e.g., "/discover for `comp-team-acme`") → auto-load via `engagement_get_master {org_slug: <slug>}` from the backend (fall back to `$STATE_ROOT` cache on transport failure per D1).
+- User referenced a `team.slug` (e.g., "/discover for `comp-team-acme`") → auto-load `team-configs/<slug>.yaml` (from the `market` backend, falling back to the local `$STATE_ROOT` cache on transport failure).
 - Neither → prompt: "No team config — run `/init` first?" and exit.
 
 After load: `team-config.cycle.current_stage` and `team-config.cycle.current_week_offset` are computed from `cycle.anchor_event` + today's date. Cached for session.
@@ -73,7 +73,7 @@ If `cycle.stages == []`:
 
 One-line summary:
 
-> "Loaded team `<name>` (`<slug>`). `<N>` processes tracked. Current cycle stage: `<stage>` (week `<offset>` from anchor). Backend: `<connected/cache-fallback>`."
+> "Loaded team `<name>` (`<slug>`). `<N>` processes tracked. Current cycle stage: `<stage>` (week `<offset>` from anchor). Backend: `<market MCP | local cache (offline)>`."
 
 Then proceed to track-specific protocol.
 
@@ -119,7 +119,7 @@ Every `/diagnose` produces ≥2 Quick Wins as the FIRST content section after fr
 
 ### Transport-failure fallback
 
-When the `market` MCP backend is unreachable, the skill reads schema state from the local `$STATE_ROOT` cache (D1) and suspends schema writes until reconnected. Non-schema artifact writes to `$STATE_ROOT` are unaffected. Redaction still hard-refuses during fallback — banned patterns are never written regardless of backend state. See `persistence-and-ledger.md` for the full fallback contract.
+There is no paste-mode. Schema-state reads fall back to the local `$STATE_ROOT` cache on MCP transport failure (connection error, timeout, 5xx, not-yet-authenticated) per D1; a tool returning not-found / empty is authoritative. Schema writes never degrade to chat-paste — on write failure the skill escalates/halts (D2). Non-schema deliverables write to local `$STATE_ROOT` regardless of backend state. The redaction pre-write scan still runs on every write — banned patterns hard-refuse.
 
 ---
 
@@ -147,7 +147,7 @@ When the `market` MCP backend is unreachable, the skill reads schema state from 
 
 | Question | Answer |
 |----------|--------|
-| Where is the team config? | `master.transformer.*` section in the `market` MCP backend (local cache at `$STATE_ROOT/_orgs/<slug>/`) |
+| Where is the team config? | `team-configs/<slug>.yaml` (via the `market` backend; local `$STATE_ROOT` cache on transport failure) |
 | Where is the current state of process X? | `processes/<slug>/<process-slug>/current-state.md` |
 | Where are diagnoses? | `processes/<slug>/<process-slug>/diagnosis.md` (optional PPTX in `pptx/`) |
 | Where are transformation briefs? | `processes/<slug>/<process-slug>/transformation-brief.md` + required PPTX in `pptx/` |
@@ -156,4 +156,4 @@ When the `market` MCP backend is unreachable, the skill reads schema state from 
 | Where are checkpoints? | `checkpoints/comp-team-transformer/<slug>/<process-slug>/checkpoint.yaml` |
 | Where is the outcome ledger? | `process-ledger/<slug>/interventions-history.yaml` |
 | Where is the persistence contract? | `references/persistence-and-ledger.md` (mirrored from `david-deji/compensation-advisor`) |
-| Where is the brand kit? | `market` MCP backend via `brand_get_kit` / `brand_get_file` (per `brand-kit-protocol.md`, mirrored from `david-deji/compensation-advisor`) |
+| Where is the brand kit? | `market` backend via `brand_get_kit` / `brand_get_file` (per `brand-kit-protocol.md`, mirrored from `david-deji/compensation-advisor`) |

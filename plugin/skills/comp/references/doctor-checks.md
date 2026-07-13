@@ -5,16 +5,6 @@
 > Drift-check rationale: `$ASSET_ROOT/_core/policies/assumption-verification.md` — the trigger
 > conditions (deployment debugging, infra-dependent builds, stale issue references) generalize
 > to engagement-state drift; doctor is the operational gate.
->
-> **P4b scope (MIM-0041).** Schema state — org membership/master (Checks 1, 3), engagement body
-> (Check 4) — is now owned by the `market` backend; the local `$STATE_ROOT` copies are a read cache.
-> Checks 1/3/4 verify the **local cache's** internal consistency and are advisory: the backend is
-> authoritative (`engagement_get_master` / `engagement_get` are the source of truth). Checks 2
-> (`working_artifacts`) and 5 (`cost-log` spend) verify genuinely LOCAL artifacts and are unchanged.
-> **`--fix` must never write local schema state as if authoritative (P4b D2):** for a schema-cache
-> drift, the repair is "refresh the local cache from the backend" or "escalate", never a local
-> `master.yaml` / `engagement-state.yaml` edit. Only artifact/cost `--fix` actions (Check 2 drop a
-> missing `working_artifacts[]` entry; Check 5 recompute spend) write local files.
 
 ## Five reconciliation dimensions
 

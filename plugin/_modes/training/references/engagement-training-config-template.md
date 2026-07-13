@@ -84,11 +84,12 @@ interactive_blocks:
     - scenario_card
     - retrieval_prompt
 
-persistence:
-  visibility: private               # enforced — local artifacts kept private
-  # v2 note: schema state (config, message-maps, checkpoints, decisions) persists via
-  # the market MCP backend. Non-schema artifacts write to local $STATE_ROOT.
-  # The drive_folder_id / enabled / paste-mode selectors are retired (MIM-0041 P4b).
+# persistence: automatic — schema state (engagement config, brand kit, costing)
+#   persists to the `market` MCP backend, keyed to your OAuth identity (org
+#   resolved via membership). No folder to configure, no backend to select.
+#   Training deliverables (message-maps, decks, council states) are local
+#   `$STATE_ROOT` artifacts. Org isolation is enforced by backend membership,
+#   not by folder ownership. See references/persistence-and-ledger.md.
 
 cycles_trained:
   # Index of training runs. Updated by /generate.
@@ -154,7 +155,7 @@ Empty arrays are valid — `/ingest` accepts ad-hoc source paste at runtime.
 
 - **`tone`** — Engagement-wide tone default. `consulting-peer` is the trilogy default.
 - **`audience_voice`** — Per-audience overrides. Drives copy style in PPTX text and facilitator guides.
-- **`brand.org_slug`** — Engagement brand kit identifier. Resolves to `branding/<org_slug>/` in local `$STATE_ROOT`. `_default` fallback always available.
+- **`brand.org_slug`** — Engagement brand kit identifier. Resolves the brand kit via `brand_get_kit` / `brand_get_file`. `_default` fallback always available.
 - **`brand: neutral`** — Skip default-kit branding (rare; for external-audience artifacts).
 
 ### `redaction.*`
@@ -169,21 +170,16 @@ All keys required. Defaults match the trilogy hard rules:
 ### `personas.*`
 
 - **`bundled_pack`** — Only valid value in v1: `comp-training-v1` (5 personas). v2 will add `+nbj` opt-in.
-- **`custom`** — Additional per-engagement personas. Each entry is a path under `personas/` in local `$STATE_ROOT` (e.g., `personas/comp-team-acme-finance-partner.yaml`). Persona libraries are LOCAL — not stored in the backend.
+- **`custom`** — Additional per-engagement personas. Each entry is a persona registered under `personas/`, resolved per `library-resolution.md` (e.g., `personas/comp-team-acme-finance-partner.yaml`).
 
 ### `interactive_blocks.*`
 
 - **`embedded_or_separate`** — `embedded` (interactive blocks rendered as PPTX slides inline) or `separate` (rendered as standalone markdown cards alongside the deck).
 - **`block_types_enabled`** — Subset of {poll, quiz, scenario_card, retrieval_prompt}. Defaults to all four.
 
-### `persistence.*`
+### `persistence` (retired)
 
-- **`visibility`** — Must be `private`. Skill verifies before any local write.
-
-The v1 `drive_folder_id` and `enabled` (paste-mode) fields are retired (MIM-0041 P4b).
-Schema state (training config, sections, checkpoints, decisions) persists via the `market`
-MCP backend. Non-schema artifacts (decks, facilitator guides, council scratch) write to
-local `$STATE_ROOT`. See `references/persistence-and-ledger.md` for the full v2 contract.
+Persistence is automatic via the `market` MCP backend, keyed to your OAuth identity (org resolved via membership) — there is no `drive_folder_id` to set, no `visibility` gate, and no paste-mode toggle. Schema state (engagement config, brand kit, costing) persists to the backend; training deliverables are local `$STATE_ROOT` artifacts. Org isolation is enforced by backend org membership, not by folder ownership. See `references/persistence-and-ledger.md`.
 
 ### `cycles_trained` (auto-managed)
 
@@ -219,7 +215,7 @@ Enforced at parse time (every mode that loads the config):
 - `audiences.enabled` non-empty, all values ∈ {employees, managers, hrbps, execs}
 - `depth_layers.<audience>` ∈ {1, 2, 3, 4} for every audience in `audiences.enabled`
 - `redaction.*` keys all present (no missing — hard fail)
-- `persistence.visibility == private` (always; field is still validated when present)
+- `persistence`: no fields to validate — persistence is automatic via MCP identity (block retired)
 - `personas.bundled_pack == comp-training-v1` (only valid value in v1)
 - `cycle.stages[].gating` ∈ {`live`, `prep`, `slack`} when populated
 - `interactive_blocks.embedded_or_separate` ∈ {`embedded`, `separate`}

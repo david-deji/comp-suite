@@ -12,21 +12,28 @@ LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cat >/dev/null 2>&1 || true
 
 # State dir resolves via lib.sh ($STATE_ROOT — dev: <repo>/v2/state, plugin:
-# <cwd>/comp-state). State is on-disk only and is NOT a git repo
-# (close-flow.md:238), so session-modified deliverables are enumerated by
-# mtime rather than git status.
+# <cwd>/comp-state). It is itself git-tracked (per-engagement archive flow in
+# close-flow.md).
 STATE_DIR="$STATE_ROOT"
-[ -d "$STATE_DIR/_orgs" ] || exit 0  # no engagements yet, nothing to check
-
-# Minutes-back window that counts a deliverable as "session-modified".
-# Overridable via COMP_FACTCHECK_WINDOW_MIN; default 120 covers a working session.
-window_min="${COMP_FACTCHECK_WINDOW_MIN:-120}"
+[ -d "$STATE_DIR/.git" ] || exit 0  # state not yet a sub-repo, nothing to check
 
 issues=()
 
-# Enumerate session-modified deliverables by mtime (no git dependency).
-while IFS= read -r fpath; do
-  [ -z "$fpath" ] && continue
+# Enumerate session-modified deliverables via git status in the state sub-repo.
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  status="${line:0:2}"
+  file="${line:3}"
+  case "$status" in
+    " M"|"M "|"MM"|"A "|"AM"|"??") ;;
+    *) continue ;;
+  esac
+  case "$file" in
+    _orgs/*/engagements/*/deliverables/*.md) ;;
+    *) continue ;;
+  esac
+
+  fpath="$STATE_DIR/$file"
   [ -f "$fpath" ] || continue
 
   # Source-citation heuristic: scan claim-shape lines, look for citation within ±5 lines
@@ -49,10 +56,9 @@ while IFS= read -r fpath; do
   done < <(grep -n '' "$fpath" 2>/dev/null)
 
   if [ "${#uncited_lines[@]}" -gt 0 ]; then
-    rel="${fpath#"$STATE_DIR"/}"
-    issues+=("$rel: uncited claims at ${uncited_lines[*]}")
+    issues+=("$file: uncited claims at ${uncited_lines[*]}")
   fi
-done < <(find "$STATE_DIR/_orgs" -type f -path '*/engagements/*/deliverables/*.md' -mmin "-${window_min}" 2>/dev/null)
+done < <(git -C "$STATE_DIR" status --porcelain 2>/dev/null)
 
 if [ "${#issues[@]}" -gt 0 ]; then
   echo "WARN: fact-check found uncited claims in deliverables:" >&2

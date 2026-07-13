@@ -117,8 +117,8 @@ fire-and-forget.
 - **Conflict shape.** A stale write (the stored `version` moved under you, or a re-create of an
   existing `engagement_id`) arrives as a **JSON-RPC error**, not a success payload — the server
   raises, so it surfaces at the protocol layer with `data.error_code: "VERSION_CONFLICT"` and
-  `data.retryable: true`. (Uniform with engagement/brand/costing — payequity no longer returns a
-  success-shaped `{error: version_conflict}` body; do not scan text for `version_conflict`.)
+  `data.retryable: true`. (This is uniform with engagement/brand/costing — payequity no longer
+  returns a success-shaped `{error: version_conflict}` body; do not scan text for `version_conflict`.)
 - **Recovery step (refetch → merge → retry once).** On `data.retryable == true`
   (`error_code == "VERSION_CONFLICT"`): re-`payequity_get_*` the entity, re-apply your change onto the
   fresh version, and retry the put **once**. If it conflicts again, escalate — do not loop and do not

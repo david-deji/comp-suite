@@ -60,7 +60,7 @@ voice_prompt: |
 At `/council` entry:
 
 1. Load the bundled pack from `template_assets/persona_pack_comp-team-v1.yaml`.
-2. For each path in `team-config.personas.custom`, attempt to load the persona file from `$STATE_ROOT/_orgs/<slug>/personas/<filename>`.
+2. For each path in `team-config.personas.custom`, attempt to load the persona file from the persistence folder at `personas/<filename>`.
 3. **Collision rule:** if a custom persona has the same `slug` as a bundled persona, **the custom overrides**. Surface to user: "Custom persona `<slug>` overrides bundled persona — using custom voice_prompt."
 4. **Validation:** every loaded persona must have all five fields (`slug`, `name`, `lens`, `grounding`, `voice_prompt`). Reject malformed personas with a specific error; do not silently skip.
 

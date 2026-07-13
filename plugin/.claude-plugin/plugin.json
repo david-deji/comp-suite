@@ -1,6 +1,6 @@
 {
   "name": "comp-suite",
-  "version": "2.2.1",
+  "version": "2.2.0",
   "description": "Compensation consulting orchestrator — advisor, comms, training, transformer modes. Quebec CNESST pay-equity tooling, bilingual FR-CA.",
   "author": {
     "name": "David",

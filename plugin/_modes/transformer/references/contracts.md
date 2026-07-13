@@ -9,11 +9,13 @@ Contracts marked **(shared)** are byte-identical across the 4 sibling skills
 these from compensation-advisor canonical). Contracts not marked are
 comp-team-transformer-specific.
 
-## C01 — Persistence: backend for schema, chat-download for binaries **(shared)**
+## C01 — Persistence: text-only Drive **(shared)**
 
-Schema state (yaml/md/json) persists via the `market` MCP backend or local `$STATE_ROOT`. Binary artifacts (PPTX, PDF, DOCX, images, sanitized CSV) deliver as chat-download — never through any backend. No exceptions, no toggle.
+Drive holds metadata only (yaml/md/json). Binary artifacts (PPTX, PDF, DOCX,
+images, sanitized CSV) deliver as chat-download. No exceptions, no toggle.
 
-Enforced: `references/persistence-and-ledger.md` § Binary deliverables. Verified at: every Phase 7 close, every binary-artifact emit.
+Enforced: `references/persistence-and-ledger.md` § Binary artifacts never go
+through Drive. Verified at: every Phase 7 close, every binary-artifact emit.
 
 ## C02 — Redaction: hard rule
 
@@ -102,14 +104,15 @@ slide-count, audience selection, mode selection — all of them).
 Enforced: `production-and-qa.md` § Recommendation discipline. Verified at:
 every `ask_user_input` call.
 
-## C11 — Drive folder visibility (private only) **(shared)**
+## C11 — Org isolation (backend-enforced) **(shared)**
 
-Skill verifies the persistence folder is owned by the user and not publicly
-shared (no "Anyone with link") before any write. Public-link sharing → hard
-refuse with a setup pointer.
+Org isolation is enforced by the `market` backend via OAuth identity → org
+membership — comp-suite holds no folder to own or share-check, and a tool call
+only ever reaches the caller's own org (no "Anyone with link" surface exists).
+The v1 Drive-folder public-link check is retired.
 
-Enforced: `persistence-and-ledger.md` § Privacy & cleanup. Verified at: every
-session start (Phase 0 backend probe), every close-time write.
+Enforced: `persistence-and-ledger.md` § source-of-truth + § What is retired.
+Verified at: every backend call (identity → org resolution is server-side).
 
 ## C12 — Federated section ownership (master.yaml) **(shared)**
 
@@ -120,7 +123,7 @@ all other sections read-only. Appends to `master.decision_log[]` are
 append-only; no skill mutates prior entries authored by any skill (its own or
 sibling).
 
-Enforced: `master-yaml-ops.md` § Federation discipline. Verified at: every
+Enforced: `master-yaml-utils.md` § Federation discipline. Verified at: every
 master.yaml write.
 
 ---

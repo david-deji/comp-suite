@@ -51,9 +51,9 @@ and log `decision_type: mode_defaulted_silently` before proceeding.
 
 Before dispatching any individual artifact render, run these checks:
 
-1. **Config exists** — `engagement-comms-configs/<engagement-slug>.yaml` loadable from Drive. If not, surface: "No engagement config for `<engagement-slug>`. Run `/init` first." Abort.
+1. **Config exists** — `engagement-comms-configs/<engagement-slug>.yaml` resolvable from persistence (backend-first; local `$STATE_ROOT` cache only on transport failure — D1) per `persistence-and-ledger.md`. If not-found, surface: "No engagement config for `<engagement-slug>`. Run `/init` first." Abort.
 2. **Source recommendation accessible** — read-test the recommendation source (same as draft-protocol Step 4). If required fields are missing, list them all at once and abort. Do not start the cascade and fail mid-run.
-3. **Backend reachability** — verify the `market` MCP backend is authenticated and reachable (per `persistence-and-ledger.md` D1/D2). Rendered artifacts deliver as chat-download; bytes never round-trip through a backend.
+3. **Backend reachable** — confirm the persistence backend is reachable (identity resolved by OAuth membership; schema/state writes are MCP-only and escalate on failure — D2, per `persistence-and-ledger.md`). Rendered artifacts (PPTX/DOCX/PDF/HTML) always deliver as chat-download — there is no paste-mode branch.
 4. **Artifacts enabled** — surface the planned artifact list with expected languages and formats:
 
 ```
@@ -188,7 +188,7 @@ The table below shows the maximum expected output for a FR-CA + EN cascade with 
 | hrbp-enablement-memo | fr-ca | pdf | `engagements/<slug>/comms/hrbp-enablement-memo-fr-ca-v<N>.pdf` |
 | hrbp-enablement-memo | en | pdf | `engagements/<slug>/comms/hrbp-enablement-memo-en-v<N>.pdf` |
 
-Maximum total with full PDF path: 11 artifact files + 1 config update = 12 Drive writes. Without PDF path: 8 + 1 = 9.
+Maximum total with full PDF path: 11 artifact files (chat-download deliverables) + 1 config/state update (backend write) = 12 outputs. Without PDF path: 8 + 1 = 9.
 
 The "up to 16" figure from SPEC.md § 6.5 is the theoretical maximum (4 artifacts × 2 languages × 2 formats). Actual count depends on which languages and formats are enabled per engagement.
 

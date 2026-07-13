@@ -52,12 +52,12 @@ No write. Useful before `/draft` or `/cascade` to confirm the renderer has what 
 
 ### 2.2 `/brand init <org-slug>`
 
-Scaffolds `comms-templates/` inside an existing (or new) `branding/<org-slug>/` folder under local `$STATE_ROOT`. Non-destructive.
+Scaffolds the `comms-templates/` extension of an existing (or new) org brand kit, persisted via the `brand_*` MCP tools (`brand_get_kit` / `brand_put_file` / `brand_put_logo`). Non-destructive.
 
 **Sequence:**
 
-1. Verify the `market` backend is reachable (Phase 0 check passed). Abort if in transport-failure cache-fallback mode.
-2. Verify `branding/<org-slug>/` exists under `$STATE_ROOT` OR is safe to create. Surface if it does not exist: "No brand kit folder found for `<org-slug>`. I'll create the folder and seed comms-templates. The base brand kit (theme, logo, masters) must be set up separately via compensation-advisor's `/brand-kit init`."
+1. Confirm the org brand kit is reachable via `brand_get_kit` — identity resolves the org by OAuth membership; there is no backend to select. On transport failure, fall back to the local `$STATE_ROOT` read cache (D1); a not-found result means no kit yet (proceed to seed), never a fallback trigger.
+2. Verify `branding/<org-slug>/` exists OR is safe to create. Surface if it does not exist: "No brand kit folder found for `<org-slug>`. I'll create the folder and seed comms-templates. The base brand kit (theme, logo, masters) must be set up separately via compensation-advisor's `/brand-kit init`."
 3. Verify `branding/<org-slug>/comms-templates/` does NOT already exist. If it does, surface: "comms-templates already initialized for `<org-slug>`. Run `/brand show` to inspect, or delete the subdirectory manually to re-initialize."
 4. Copy all files from `template_assets/branding/_default/comms-templates/` to `branding/<org-slug>/comms-templates/`. Files to copy:
    - `docx-master.docx`
@@ -69,7 +69,7 @@ Scaffolds `comms-templates/` inside an existing (or new) `branding/<org-slug>/` 
    - `email-signature/manager.txt`
    - `pptx-master/` (directory with contents)
 5. Run the comms-templates overrides interview (see § 2.3 below).
-6. Write to `branding/<org-slug>/comms-templates/` under `$STATE_ROOT` per `persistence-and-ledger.md`.
+6. Write the comms-templates files to the org brand kit via `brand_put_file` (logos via `brand_put_logo`), each with `expected_version`, per `persistence-and-ledger.md`.
 7. Surface: "comms-templates initialized for `<org-slug>` at `branding/<org-slug>/comms-templates/`. Base brand kit files (theme, logo, masters) are untouched."
 
 ### 2.3 Comms-templates overrides interview (runs after step 4 above)
@@ -115,9 +115,9 @@ This ensures cold-start drafts produce usable output. The override interview is 
 
 ## 5. Failure handling
 
-- **Backend unreachable during init** — surface each file body in chat with explicit save-to-`$STATE_ROOT` instructions per file path. No silent failure.
+- **Brand backend unreachable during init** — init is a write path; on transport failure, escalate/halt rather than write-local-and-reconcile (D2). Surface the failure with the affected file paths. No silent failure, no chat-paste fallback.
 - **`template_assets/branding/_default/comms-templates/` missing from bundle** — hard error: "Bundle is corrupt — `_default/comms-templates/` not found. Re-download the skill bundle."
-- **`docx-master.docx` write failure** — surface: "DOCX master write failed. Check `$STATE_ROOT` write permissions. Proceeding without DOCX master — `/draft` will fall back to unbranded DOCX output."
+- **`docx-master.docx` rejected by `brand_put_file`** — surface: "DOCX master upload failed. Check the backend response (e.g. stale `expected_version` — re-read and retry). Proceeding without DOCX master — `/draft` will fall back to unbranded DOCX output."
 - **Org slug collision with sibling-owned file** — refuse write if the target path is inside `theme/`, `logo.*`, `masters/`, or `footnotes.yaml`. Surface the refusal with exact path.
 
 ---

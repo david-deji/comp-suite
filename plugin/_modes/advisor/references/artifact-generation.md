@@ -15,8 +15,8 @@ Every track and every utility command produces an END deliverable file artifact 
 | **Engagement-config + state** | | | |
 | `engagement-config-{slug}.yaml` | End of Init mode; optionally at Phase 0 if user added inline answers | Always (Init mode) | `references/init-mode-protocol.md` |
 | `engagement-state.yaml` | End of Phase 7 (after user accepts deck) | Always (all non-Init engagement tracks: C, D, R, R-lite) | `references/production-and-qa.md` § Phase 7 + `references/persistence-and-ledger.md` § Session end |
-| `checkpoint.yaml` | Mid-engagement at every checkpoint (auto + manual `/checkpoint`) | Always (market MCP backend via `engagement_put`) | `references/persistence-and-ledger.md` § /checkpoint |
-| `outcome-history.yaml` ledger entry | End of Phase 7 (close-time write sequence) — append a stub with `outcome_observed_*` null | Always (backend via `engagement_append_decision`) | `references/persistence-and-ledger.md` § /ledger |
+| `checkpoint.yaml` (local cache mirror) | Mid-engagement at every checkpoint (auto + manual `/checkpoint`) | Always (mid-engagement); the checkpoint write itself is `engagement_put` to the `market` backend | `references/persistence-and-ledger.md` § /checkpoint |
+| Cycle outcome stub (`engagement_put_cycle` + `engagement_append_decision`) | End of Phase 7 (close-time write sequence) — append a stub with `outcome_observed_*` null | Always (all engagement tracks, close-time) | `references/persistence-and-ledger.md` § /ledger |
 | **Phase 6 deck companions** | | | |
 | `cost-scenarios.xlsx` | Phase 6 (alongside PPTX) | `deck.artifacts` includes `xlsx` | `references/artifact-generation.md` § cost-scenarios.xlsx (this file) |
 | `market-data.csv` | Phase 6 (alongside PPTX) | `deck.artifacts` includes `csv` | `references/artifact-generation.md` § market-data.csv (this file) |
@@ -28,13 +28,13 @@ Every track and every utility command produces an END deliverable file artifact 
 | **Council** | | | |
 | `council-state-{date}-{slug}.yaml` | End of Council track (standalone or integrated) — captures full reasoning trace, perspectives, votes, synthesis | Always (Council track) | `references/council-mode.md` |
 | `council-memo-{date}-{slug}.md` | Council track in `memo` mode | `council.default_mode: memo` OR `mode: memo` flag at council invocation | `references/council-mode.md` § Memo mode |
-| **Persistence repo writes (utility commands)** | | | |
-| Brand-kit scaffold (`branding/<org-slug>/*`) | `/brand-kit init <org-slug>` — multi-file write of theme JSONs + masters skeleton + logo placeholders | `/brand-kit init` invocation | `references/brand-kit-protocol.md` |
+| **Library & backend writes (utility commands)** | | | |
+| Brand-kit (org-slug) via `brand_put_kit` / `brand_put_file` / `brand_put_logo` | `/brand-kit init <org-slug>` — writes theme kit + master skeleton files + logo placeholders to the `market` backend | `/brand-kit init` invocation | `references/brand-kit-protocol.md` |
 | Custom persona file (`personas/<persona-id>.yaml`) + index update | `/persona add` (or `/persona init` for first-time setup) | `/persona add` invocation | `references/persona-library.md` |
 | CBA library entry (`cba-library/<agreement-id>.yaml`) | `/cba ingest` — user pastes a CBA, skill normalizes + writes; prior version moves to `cba-library/_history/` on overwrite | `/cba ingest` invocation | `references/cba-library-protocol.md` (or persistence-and-ledger.md § cba-library) |
 | Survey archive entry (`survey-archive/<vendor>/<year>/<cut>.yaml`) | `/survey ingest` — user pastes a survey block, skill normalizes; prior version moves to `_history/` on overwrite | `/survey ingest` invocation | `references/survey-house-protocol.md` § Auto-save to survey archive |
-| Vocabulary promotion (`vocabulary/fr-ca-glossary.yaml`) | `/glossary promote` — promote N user-confirmed FR-CA terms from session memory to canonical | `/glossary promote` invocation | `references/fr-ca-glossary.md` |
-| Quickbench archive (`quickbench-archive/{date}-{role-slug}-{province}.md`) | End of `/quickbench` track (the same MD as the user-facing artifact, archived locally for ledger queries) | `/quickbench` track; written to `$STATE_ROOT` | `references/persistence-and-ledger.md` § quickbench-archive |
+| FR-CA glossary promotion (`fr-ca-glossary.yaml`; persists per `references/library-resolution.md` — see U1) | `/glossary promote` — promote N user-confirmed FR-CA terms from session memory to canonical | `/glossary promote` invocation | `references/fr-ca-glossary.md` |
+| Quickbench archive (`quickbench-archive/{date}-{role-slug}-{province}.md`) | End of `/quickbench` track — the same MD as the user-facing artifact, archived to the local `$STATE_ROOT` cache for ledger queries | `/quickbench` track (local archive per `references/library-resolution.md` — see U2) | `references/library-resolution.md` |
 
 **PPTX is always generated** in Phase 6 of engagement tracks (C, D) — that's the primary deliverable, not an optional artifact. The PPTX is built per `template_assets/branding/<active-kit>/build_template.js` and styled per the active brand kit; per-deck variation is added on top of the regenerated template. Secondary artifacts above are the focus of the discipline rules in this file.
 
@@ -70,7 +70,6 @@ In claude.ai, use the file artifact primitive directly. Output the YAML content 
     created_date: YYYY-MM-DD
     created_by_skill: compensation-advisor
     created_via: /init
-    shared_folder_id: <drive-folder-id>
     sibling_skills: [comp-comms-builder, comp-team-transformer, comp-training-designer]
   ```
 - Include a usage hint at the top as a YAML comment: `# Paste this file's content as your first message in future engagements to skip discovery prompts.`
@@ -97,7 +96,7 @@ YAML file matching the engagement-state schema in `engagement-config-template.md
 
 ### Filename pattern
 
-The file is written to the market MCP backend via `engagement_put` (engagement body — schema state) and simultaneously delivered as a download artifact. The canonical path for local reference is `$STATE_ROOT/_orgs/<org_slug>/engagements/<engagement_slug>/engagement-state.yaml` (local read cache, not a write target). One canonical state file per engagement, no date in filename — the engagement slug already encodes the cycle.
+The engagement body persists to the `market` backend via `engagement_put`, addressed by `(org_slug, engagement_id)` — one canonical record per engagement, no date in the key (the engagement slug already encodes the cycle). A local `engagement-state.yaml` under `$STATE_ROOT/_orgs/<slug>/…`, if written, is a read-cache mirror for transport-failure fallback, never the source of truth.
 
 ### Required fields at generation time
 
@@ -128,32 +127,30 @@ Future engagements with matching audience archetype + scope read this log to sur
 
 ### tool_calls block
 
-Maintained per `references/persistence-and-ledger.md` § engagement-state.yaml — schema additions and `references/tools-available.md` § Container for tool_calls[]. One flat append-only array. Every Market MCP call (`mcp__market__get_role_intelligence`, `mcp__market__compare_pay_scale_to_market`, `mcp__market__get_cba_wage_scale`, etc.), every Indeed MCP call, and every `web_search` / `web_fetch` call appends one entry (CPI/unemployment/econometric context is `web_fetch`-sourced). Sub-fields per entry: `tool` (full MCP-style name), `args`, `timestamp`, `result_hash` (SHA-256 of JSON response for MCP calls, SHA-256 of fetched body for `web_fetch`, null for `web_search`), `used_in` (list of slide/section IDs or deliverable surfaces). Used for cache and verified-source audit, not displayed in the deck.
+Maintained per `references/persistence-and-ledger.md` § engagement-state.yaml — schema additions and `references/tools-available.md` § Container for tool_calls[]. One flat append-only array. Every Market MCP call (`mcp__market__get_role_intelligence`, `mcp__market__compare_pay_scale_to_market`, `mcp__market__get_cba_wage_scale`, etc.), every Indeed/StatCan MCP call, and every `web_search` / `web_fetch` call appends one entry. Sub-fields per entry: `tool` (full MCP-style name), `args`, `timestamp`, `result_hash` (SHA-256 of JSON response for MCP calls, SHA-256 of fetched body for `web_fetch`, null for `web_search`), `used_in` (list of slide/section IDs or deliverable surfaces). Used for cache and verified-source audit, not displayed in the deck.
 
 ### Presentation to user
 
-After generating the PPTX (and any xlsx/csv), produce the state file via the close-time close-time write sequence (see § Close-time write below). Surface the close confirmation:
+After generating the PPTX (and any xlsx/csv), persist the state via the close-time write sequence (see § Close-time write below). Surface the close confirmation:
 
-> "Engagement saved (commit `a3f2c91`).
-> - State: `engagements/pharmacy-fy26/engagement-state.yaml`
-> - Deck: `engagements/pharmacy-fy26/deliverables/deck-v3-final-2026-04-29.pptx`
-> - Ledger entry appended (slug: pharmacy-fy26).
-> - Repo: `comp-advisor-state`
+> "Engagement saved to the `market` backend (org: acme, engagement: pharmacy-fy26).
+> - State: engagement body persisted via `engagement_put`.
+> - Cycle outcome stub appended via `engagement_put_cycle`.
+> - Deck: `deliverables/deck-v3-final-2026-04-29.pptx` (local, chat-download).
 >
 > After the meeting: run `/ledger update pharmacy-fy26` to fill the 30/90/180/365-day outcome windows."
 
-In paste/download mode, deliver the state file as a download with the same instruction adapted: "Save this alongside the deck. After the meeting, fill the `outcome` block manually or paste both files back when running `/ledger update` in a future session."
-
 ### Close-time write (close-time write sequence)
 
-Sequenced MCP backend writes — order matters; binary deliverables are chat-downloaded first:
+Sequence the close-time writes through the `market` backend (each schema write is its own MCP call; deliverables stay local non-schema):
 
-1. `engagement_put` — write engagement body with `engagement_status: closed`, `closed_date: today`, `closed_by: user_acceptance` (pass `expected_version`; retry read-modify-write on stale-reject per D optimistic-concurrency).
-2. Deliver PPTX (and PDF when available), any `council-state-*.yaml`, cost-scenarios.xlsx, market-data.csv as chat-download artifacts. Sanitized workforce data CSV also delivered as download. Binaries never go through any backend.
-3. `engagement_append_decision` — append a stub entry with `decision_type: engagement_closed` and all `outcome_observed_*` fields null (idempotent on `id`).
-4. Locally, delete `checkpoint.yaml` from `$STATE_ROOT` if present — engagement is closed.
+1. Persist the engagement body via `engagement_put {org_slug, engagement_id, …}` (with `expected_version`). Set `engagement_status: closed`, `closed_date: today`, `closed_by: user_acceptance`.
+2. Deliverables stay local non-schema: the Phase 6c PPTX, the PDF (when item 1.5 lands), any `council-state-*.yaml` produced during the engagement (council scratch), the cost-scenarios.xlsx and market-data.csv (if generated) land under `$STATE_ROOT/_orgs/<slug>/…/deliverables/`; sanitized workforce data CSV under `inputs/`. Binaries deliver as chat-download artifacts.
+3. Append the close-time cycle outcome stub: read the current cycle from `engagement_get_master.cycles[]`, then resend the full record via `engagement_put_cycle` with `outcome_observed_*` null, and record `engagement_append_decision {decision_type: cycle_closed}`.
+4. Delete the local `checkpoint.yaml` cache mirror if present — engagement is closed.
+5. Close-note text: `engagement: <slug> closed — <headline_decision>` (carried on the `cycle_closed` decision).
 
-**Failure handling:** if any MCP write fails, do NOT report success. Surface the error, offer retry. Never declare close without a confirmed backend response. Per `references/persistence-and-ledger.md` § D2: on write failure, escalate/halt — never write-local-and-reconcile.
+**Failure handling:** schema writes are MCP-only (D2). If an `engagement_put` / `engagement_put_cycle` / `engagement_append_decision` call fails (transport error, auth), the skill must NOT report success — surface the error and escalate/halt; do not degrade to a local write or chat-paste. On an `expected_version` stale-reject, re-read the record and retry the read-modify-write loop. Never declare close without confirmed backend writes.
 
 ### engagement_mode block
 
@@ -181,7 +178,7 @@ state_shape_variant: full                               # full | partial | stand
 - `engagement_mode` MUST be present. If absent, skill defaults to `full-engagement` AND emits a `decision_log` entry of `decision_type: mode_defaulted_silently`.
 - `state_shape_variant` enum: `full | partial | standalone | pre_engagement`.
 - `mode_phases_run`, `mode_phases_partial`, `mode_phases_skipped` are populated from the mode taxonomy in `references/engagement-modes.md`. Do not fabricate values — read the taxonomy.
-- When `state_shape_variant` is `pre_engagement`, the artifact routes to `master.advisor.pre_engagement_artifacts[]` in master.yaml, NOT to `cycle_state_pointers[]`. The ledger treatment must be set accordingly.
+- When `state_shape_variant` is `pre_engagement`, the artifact routes to `master.advisor.pre_engagement_artifacts[]` in the backend master header (via `engagement_put_header` / `engagement_put_section`; no local `master.yaml` write), NOT to `cycle_state_pointers[]`. The ledger treatment must be set accordingly.
 - Field-level null-out rules for all modes are in `references/engagement-modes.md`. The `narrative-frame-only` mode null-outs are the reference implementation for v1; all other partial modes emit `decision_log: null_out_rules_pending_v1_1` when partial-flow state is written.
 
 ### Discipline
@@ -278,15 +275,13 @@ When any non-PPTX artifact fails generation:
 
 After deck acceptance:
 
-**Close sequence:**
-1. Deliver binary artifacts as chat-downloads (PPTX, xlsx, csv, council-state files, sanitized CSV).
-2. `engagement_put` — write engagement body closed (see § Close-time write).
-3. `engagement_append_decision` — append closed stub with outcome fields null.
-4. Delete local `checkpoint.yaml` from `$STATE_ROOT` if present.
-5. Surface close confirmation: backend confirmation + local paths + `/ledger update <slug>` instruction.
+**Close-time sequence (Phase 7):**
+1. Build the close-time writes: the engagement body (for `engagement_put`, `engagement_status: closed`) plus local deliverables (PPTX + any xlsx/csv), council-state scratch, sanitized inputs CSV.
+2. Read the current cycle from `engagement_get_master.cycles[]`; prepare the outcome stub (outcome fields null) for `engagement_put_cycle`.
+3. Sequence the backend writes: `engagement_put` (body), `engagement_put_cycle` (outcome stub), `engagement_append_decision {decision_type: cycle_closed}`; delete the local `checkpoint.yaml` cache mirror if present. Close note: `engagement: <slug> closed — <headline_decision>`.
+4. Verify each backend write succeeded. On failure, escalate/halt per § Close-time write (D2 — no local fallback).
+5. Surface the close confirmation message with the engagement path + `/ledger update <slug>` instruction.
 6. Engagement complete.
-
-**On backend transport failure:** deliver binary artifacts as chat-downloads unchanged; surface the schema-write error; offer retry. Do not silently fall back to a local-only write — per D2 in `references/persistence-and-ledger.md`, halt on write failure.
 
 ---
 

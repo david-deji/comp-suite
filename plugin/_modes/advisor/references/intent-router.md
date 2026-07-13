@@ -73,7 +73,7 @@ Extract these four signals from the first user message:
 |----------------|-------|
 | Explicit init intent (`/init`, "init", "set up config", "configure", "build me a config", "starter config") | **Init** (Config Setup) |
 | Deliberation signal present + no deliverable-production intent | **Council** (Strategic Deliberation) |
-| (`.pptx` uploaded **OR** prior `engagement-state.yaml` auto-loaded for this scope from the persistence folder **OR** structured prior-cycle paste matching the R-lite extraction shape) + explicit refresh intent ("just update the numbers", "same deck new data", "refresh with current numbers", "same thing new numbers", "just swap the numbers", "update for this year", "new numbers same story") | **R-lite** (Quick Refresh) |
+| (`.pptx` uploaded **OR** prior `engagement-state.yaml` auto-loaded for this scope from the `market` backend **OR** structured prior-cycle paste matching the R-lite extraction shape) + explicit refresh intent ("just update the numbers", "same deck new data", "refresh with current numbers", "same thing new numbers", "just swap the numbers", "update for this year", "new numbers same story") | **R-lite** (Quick Refresh) |
 | `.pptx` uploaded **OR** prior `engagement-state.yaml` auto-loaded for this scope, no explicit refresh or override signal | **R** (Full Refresh) |
 | **Stage-specific deliverable named** (e.g., "Strategy Kickoff pre-read", "Options Review scenarios", "decision brief for Final Approval", "Manager cascade deck") | **D** (Direct Build) — stage-aware Phase 6a will pick the matching spine |
 | All three specificity markers present (deliverable + audience + decision) | **D** (Direct Build) |
@@ -136,7 +136,7 @@ Opening action: read `references/council-mode.md` and follow its session flow.
 4. Run persona voice blocks sequentially in a single response.
 5. Synthesize (consensus / tensions / unresolved / recommended path).
 6. Produce mode-specific output: reasoning stops at synthesis; memo adds decision memo block; integrated adds Phase 4/5 handoff block.
-7. Generate `council-state-YYYY-MM-DD-{client-slug}.yaml`. Council state is a non-schema artifact (council scratch, P4b D3) — it writes to the local `$STATE_ROOT` council dir and is also offered to the user as a file artifact via the file primitive. The resulting council *decision* is logged to the backend separately via `engagement_append_decision` (per `references/council-mode.md` § Step 8).
+7. Generate `council-state-YYYY-MM-DD-{client-slug}.yaml` — council scratch written to the local `$STATE_ROOT` (per `references/council-mode.md` § Step 8); never a backend write.
 
 No deck is produced by Council track. Council output is chat text + one YAML state artifact (+ optional memo markdown). If the user wants the council output turned into a deck, the user escalates to Track D or Track C after council completes — council-state is read as input.
 
@@ -284,31 +284,43 @@ Reads `engagement_get_master {org_slug}`; locates the cycle in `master.cycles[]`
 
 ---
 
-## Phase 0 — Context Load (autonomous, all engagement tracks)
+## Phase 0 — Identity & Prior-State Resolution (autonomous, all engagement tracks)
 
-For tracks C, D, R, R-lite, and Council, run this context load before track opening behavior begins. Skip for `/help`, `/init`, `/update`, `/intake`, `/quickbench` (these don't read prior state). `/resume` and `/ledger` go straight into the `persistence-and-ledger.md` flow.
+For tracks C, D, R, R-lite, and Council, run this resolution step before track opening behavior begins. Skip for `/help`, `/init`, `/update`, `/intake`, `/quickbench` (these don't read prior state). `/resume` and `/ledger` go straight into the persistence-and-ledger.md flow.
 
-Schema state lives in the `market` MCP backend (OAuth identity → org membership). The backend is always reachable once authenticated — there is no Drive probe and no paste-mode branch. On MCP **transport failure** (not not-found), fall back to the local `$STATE_ROOT` read cache and mark the load **degraded** (P4b D1). The retired Google-Drive backend is documented in `references/persistence-and-ledger.md`.
+The `market` MCP backend is the source of truth and is always reachable via OAuth (Google login → verified email → org via membership). There is no backend probe and no paste-mode branch — transport failure is handled by the D1 local-cache fallback (per `references/persistence-and-ledger.md` § Read / write contract), never by asking the user to paste. A tool returning *not-found / empty* is authoritative — it is NOT a transport failure and does NOT fall back to local.
 
-### Step 1 — Resolve org + master context
+### Step 1 — Resolve identity → org
 
-`engagement_get_master {org_slug}` returns the org's master header, cycles, and decision log. `org_slug` resolves from the named scope (or the caller's default org via membership when omitted). A not-found master for a named slug means the org is not provisioned — provisioning is admin-path (P4b D4), surface "org `<slug>` is not set up in the backend" and stop, do not create locally.
+Call `list_my_orgs` to resolve the authenticated identity's org membership, then read the org header via `engagement_get_master {org_slug}`. Three outcomes:
 
-### Step 2 — Load engagement body (when a scope/slug is named)
+| Outcome | Behavior |
+|---|---|
+| Org resolved, master header read | Continue Steps 2-5 |
+| `list_my_orgs` returns no org for this identity | The identity is not yet a member of any org — surface a setup pointer (org creation is the admin path, D4) and continue in a stateless session. |
+| Transport failure (connection error, timeout, 5xx, not-yet-authenticated) | Fall back to the local `$STATE_ROOT` read cache for prior state (D1). |
 
-If the user's first message names a scope or slug ("starting Pharmacy FY26 engagement", "open atlantic-retail-fy26"), call `engagement_get {org_slug, engagement_id}` for the body. A returned body is authoritative; `found: false` means no such engagement (offer to open a new cycle, do not resurrect a local copy).
+### Step 2 — Load engagement config
+
+If the user's first message names a scope or slug ("starting Pharmacy FY26 engagement", "open atlantic-retail-fy26"), and no inline YAML config was pasted, load the engagement body via `engagement_get {org_slug, engagement_id}` (costing config via `costing_get_config`). If found, load it as the engagement config.
+
+If the user pasted a YAML config inline, the inline paste takes precedence — log it as the active config and skip the backend load.
 
 ### Step 3 — Detect resume opportunity
 
-From `engagement_get_master.cycles[]`, surface any cycle with an open/in-progress status BEFORE track classification:
+Read the engagement body via `engagement_get` + the org header via `engagement_get_master`. If an in-progress engagement exists for the named scope:
 
-> "Cycle `pharmacy-fy26` is at Phase 4 (last touched 2 days ago). `/resume pharmacy-fy26` to continue, or `/restart` to open a fresh cycle on this scope."
+1. Surface a "resume available" line BEFORE proceeding to track classification:
 
-`/resume` hands off to the `persistence-and-ledger.md` `/resume` flow (`engagement_get` for the body). Any other input proceeds with the new request — the cycle is left untouched.
+> "Found in-progress `pharmacy-fy26` at Phase 4. `/resume pharmacy-fy26` to continue, or `/restart` to start a fresh engagement on this scope."
 
-### Step 4 — Prior-cycle ledger + drift
+2. If the user types `/resume`, hand off to the persistence-and-ledger.md `/resume` flow. If the user provides any other input, proceed with the new request (do NOT overwrite the in-progress state).
 
-Read prior cycles from `engagement_get_master.cycles[]` and the decision log; filter to the active `scope_slug`. Compute drift trajectory across cycles (gap-to-target percentile delta, envelope delta, council-followed pattern):
+### Step 4 — Read prior cycles from the master header
+
+Read prior cycles + outcomes from `engagement_get_master.cycles[]` + the decision log. Filter cycles where `scope_slug` matches the active engagement's `scope_slug`. Compute drift trajectory across cycles (gap-to-target percentile delta, envelope delta, council-followed pattern).
+
+Surface in the Phase 0 loaded-config summary:
 
 > "Prior engagement context (scope = pharmacy):
 > - pharmacy-fy25 (closed 2025-05-15): Deferred — committed to look at it FY26.
@@ -317,23 +329,26 @@ Read prior cycles from `engagement_get_master.cycles[]` and the decision log; fi
 >   Recommendation followed in full.
 > - Drift: gap to P50 went from 2% (FY24) → 4% (FY25) → projected 8% (FY26 Phase 2 pull)."
 
-Auto-populate `prior_engagement_refs` in the new in-memory engagement-state. Phase 1 Beat 1 references this when grounding "what's different this cycle."
+Auto-populate `prior_engagement_refs` in the new in-memory engagement-state from the master header's cycles + decision log. Phase 1 Beat 1 references this when grounding "what's different this cycle."
+
+**Read efficiency:** `engagement_get_master` returns the cycles + decision log in one call — don't call `engagement_get` for every prior engagement body at session start. The master header's cycle summary alone is enough context. Full state is fetched only on `/resume` or explicit reference.
 
 ### Step 5 — Resolve shared assets
 
-Resolve the asset classes the active engagement may consume, by source:
+After the cycle read, resolve shared assets that the active engagement may consume, per `references/library-resolution.md` (bundled assets + backend where a tool exists + local read-cache). This is a single batched resolution, not five separate probes:
 
-- **Brand kit** — backend: `brand_get_kit {org_slug}` + `brand_list_files`. Falls back to bundled `_default` when the org has no kit.
-- **CBA / survey / vocabulary / personas** — local libraries under `$STATE_ROOT` (no backend entity in v1, P4b stays-local). Resolve per `references/library-resolution.md`; vendor-scoped survey archives load only for vendors named in the config.
+- Brand kit → `brand_get_kit` / `brand_list_files` / `brand_get_file` (`branding/_default` + per-org overrides)
+- CBA library → `cba_lookup_by_employer_name` / `get_cba_wage_scale` for backend-served agreements; user-saved CBAs resolve per `library-resolution.md`
+- Survey archive, `vocabulary/fr-ca-glossary.yaml`, `personas/_index.yaml`, quickbench-archive → resolve per `library-resolution.md` (bundled + local; no backend write tool)
 
-Compute match-strength per `references/library-resolution.md` (taxonomy: `exact`, `aged`, `geo-adjusted`, `default-fallback`, `bundled-fallback`, `none`) and surface in the loaded-config summary.
+For each asset class, compute match-strength per `references/library-resolution.md` rules and surface in the Phase 0 loaded-config summary. Match-strength taxonomy: `exact`, `aged`, `geo-adjusted`, `default-fallback`, `bundled-fallback`, `none`.
 
 ### Step 6 — Surface loaded-config summary
 
-After Steps 1-5, surface a compact loaded-config block before track classification proceeds:
+After Steps 1-5 complete, surface a compact loaded-config block to the user before track classification proceeds:
 
 > "Loaded config summary:
-> - Backend: `market` (org `<slug>` via membership)  [degraded: local cache — only if transport failed]
+> - Org: `<org_slug>` (resolved via your login) — state persists to the `market` backend
 > - Brand kit: `<org_slug or _default>` [3 master overrides: 01-title, 09-cost-analysis, 14-methodology]
 > - CBA auto-loaded: `tuac-501-acme-qc-retail-2024-2028` (meat-cutter@QC) [exact]
 > - Survey archive: Mercer 2026 QC retail [exact]; WTW 2024 ON [aged: 16 months]
@@ -343,11 +358,11 @@ After Steps 1-5, surface a compact loaded-config block before track classificati
 
 Each line is OMITTED when the asset class has no content. The summary is non-blocking; track classification continues immediately after.
 
-### Degraded-load behavior
+### Transport-failure fallback
 
-When Step 1's `engagement_get_master` fails on **transport** (not not-found), load schema context from the local `$STATE_ROOT` read cache and tag the summary `degraded: local cache`. Brand kit falls back to bundled `_default`. Local CBA/survey/vocabulary/persona libraries are unaffected (they were never backend-resident). Surface the degraded tag so the operator knows schema context may be stale until the backend is reachable.
+On transport failure (connection error, timeout, 5xx, not-yet-authenticated), Steps 2-5 fall back to the local `$STATE_ROOT` read cache (D1). The prior-cycle summary appears from the cached master header when present; brand kit falls back to the bundled `_default`; CBA, survey, vocabulary, and persona libraries resolve to their bundled/local copies per `references/library-resolution.md`. Surface any unavailable asset class as `unavailable — backend unreachable, using local cache` in the loaded-config summary so the user knows the gap. A tool returning *not-found / empty* is authoritative and is NOT a transport failure — do not fall back to local on not-found (per D1).
 
-Full persistence contract and write paths in `references/persistence-and-ledger.md`. Full library-resolution rules in `references/library-resolution.md`. Brand-kit-specific structure and lifecycle in `references/brand-kit-protocol.md`.
+Full backend behavior, schema, and write paths in `references/persistence-and-ledger.md`. Full library-resolution rules in `references/library-resolution.md`. Brand-kit-specific structure and lifecycle in `references/brand-kit-protocol.md`.
 
 ---
 
@@ -360,8 +375,8 @@ Track R-lite handles "just swap the numbers" requests. It skips the consulting c
 All three conditions must be true:
 
 1. **Prior-cycle context is available** via one of three input modes (see § Input Modes below):
-   - `.pptx` upload (legacy / no-persistence path)
-   - Prior `engagement-state.yaml` auto-loaded for the same `scope_slug` from the persistence folder (preferred when persistence is configured)
+   - `.pptx` upload (legacy upload path — no prior-state read needed)
+   - Prior `engagement-state.yaml` auto-loaded for the same `scope_slug` from the `market` backend via `engagement_get` (preferred — the backend is the source of truth)
    - Structured prior-cycle paste (fallback when neither of the above is available)
 2. The user explicitly signaled a data-only refresh ("just update the numbers", "same deck new data", "refresh with current numbers", "update for this year", "new numbers same story", or equivalent).
 3. The user did not signal any strategic changes (no new audience, no changed scope, no rethinking the approach).
@@ -372,7 +387,7 @@ R-lite accepts prior-cycle context in three shapes. Phase 0 detection picks the 
 
 | Priority | Mode | Trigger | Strength |
 |----------|------|---------|----------|
-| 1 | **engagement-state.yaml from repo** | Phase 0 backend detection found `engagements/<scope_slug>/<prior_cycle_id>/engagement-state.yaml` in the persistence folder | Strongest — full structured data including `tool_calls[]` audit, narrative frame, scenario picks, outcome block |
+| 1 | **engagement-state.yaml from backend** | Phase 0 identity resolution loaded the engagement body via `engagement_get {org_slug, engagement_id}` | Strongest — full structured data including `tool_calls[]` audit, narrative frame, scenario picks, outcome block |
 | 2 | **`.pptx` upload** | User attached a `.pptx` file in this turn | Medium — extraction via markitdown, narrative arc inferred from slide titles + body |
 | 3 | **structured prior-cycle paste** | User pasted a YAML or markdown block matching the R-lite extraction shape (roles, percentiles, narrative bullets, recommendations) | Workable — relies on user to format correctly; skill validates and surfaces gaps |
 

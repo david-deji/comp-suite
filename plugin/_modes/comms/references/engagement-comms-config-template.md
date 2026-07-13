@@ -11,7 +11,7 @@ Schema version: 1.
 ```yaml
 # engagement-comms-configs/<engagement-slug>.yaml
 # Created by: /init
-# Persisted to: market MCP backend via engagement_put_section (comms section)
+# Persisted to: the `market` MCP backend (via OAuth identity — see references/persistence-and-ledger.md)
 
 schema_version: 1                          # required; must be 1
 
@@ -37,17 +37,34 @@ cycle_name: "<free text>"                  # required; human-readable cycle name
 
 created: YYYY-MM-DD                        # required; ISO date; set by /init; do not edit
 
+# ─── Persistence ──────────────────────────────────────────────────────────────
+# Persistence is automatic. Schema state persists to the `market` MCP backend by
+# your OAuth identity (org resolved by membership) — there is no backend selector,
+# no folder to configure, and no `visibility` gate. On transport failure the skill
+# reads from the local $STATE_ROOT cache (D1); schema writes are MCP-only (D2).
+# See references/persistence-and-ledger.md. The block below is retained only for
+# operator preferences that do NOT choose where state persists (optional).
+
+persistence:
+  enabled: true                            # optional; retained for backward-compat.
+                                           # Persistence is always on via MCP identity;
+                                           # this flag no longer selects a backend or
+                                           # toggles paste-mode (both retired). On transport
+                                           # failure the skill reads the local cache, never
+                                           # chat-paste.
+
 # ─── Source recommendation ────────────────────────────────────────────────────
 
 recommendation_source:
   type: compensation-advisor               # required
-                                           # compensation-advisor — reads checkpoint.yaml or engagement-state.yaml
+                                           # compensation-advisor — reads the advisor engagement body via engagement_get
                                            # manual-paste — reads pasted_summary field below
 
   engagement_slug: <kebab-case>            # required if type=compensation-advisor
                                            # The compensation-advisor engagement slug
-                                           # Reads: engagements/<slug>/checkpoint.yaml (preferred)
-                                           #     or engagements/<slug>/engagement-state.yaml (if closed)
+                                           # Reads the advisor engagement body via engagement_get
+                                           #   (engagement_get_master for cycle/decision context);
+                                           #   local $STATE_ROOT cache only on transport failure (D1)
                                            # null if type=manual-paste
 
   scenario_locked: false                   # required; boolean
@@ -84,7 +101,8 @@ languages:
                                            # fr-ca — French secondary (rare; EN-primary employer with QC operations)
 
   glossary_source: vocabulary/fr-ca-glossary.yaml
-                                           # path within the local $STATE_ROOT library; LOCAL — not backend
+                                           # glossary library reference; resolved per the
+                                           #   library/persistence contract, not a Drive path
                                            # default shown; do not modify unless maintaining a fork
 
 # ─── Artifacts ────────────────────────────────────────────────────────────────
@@ -208,11 +226,11 @@ speaker_register_overrides: {}             # optional; empty map = no overrides
 
 branding:
   org_slug: <client_slug>                  # required
-                                           # Resolves branding/<org_slug>/comms-templates/ under $STATE_ROOT
+                                           # Resolves the org brand kit's comms-templates via the `brand_*` tools
                                            # Typically same as client_slug
 
   regenerate_at_draft: true                # required; boolean
-                                           # true — read fresh branding from $STATE_ROOT on every /draft (default)
+                                           # true — read fresh branding via brand_get_kit / brand_get_file on every /draft (default)
                                            # false — use cached brand templates within the session
 
 # ─── Optional: training-designer handoff ────────────────────────────────────
@@ -223,7 +241,8 @@ training_handoff:
                                            # false — no handoff; standard /ingest interview
 
   message_map_path: null                   # required if enabled=true; null otherwise
-                                           # Path relative to $STATE_ROOT
+                                           # path to the training-designer message-map (resolved per
+                                           #   persistence-and-ledger.md; not a Drive path)
                                            # Example: cycles/pharmacy-fy26/year-end-2026/message-map.yaml
                                            # See training-designer-handoff.md for details
 ```
@@ -232,7 +251,7 @@ training_handoff:
 
 ## Field validation at `/init`
 
-The `/init` walkthrough validates the following before persisting the config via `engagement_put_section`:
+The `/init` walkthrough validates the following before persisting the config to the backend:
 
 | Check | Rule |
 |---|---|

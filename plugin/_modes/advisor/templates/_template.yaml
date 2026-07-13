@@ -1,7 +1,9 @@
-# engagement-config — persistence-repo starter template
+# engagement-config — starter template
 #
-# Commit this to `configs/_template.yaml` in your `comp-advisor-state` repo on
-# first run. Copy + rename for each new engagement (e.g., `configs/pharmacy-fy26.yaml`).
+# Fill this in per engagement; on `/init` the skill persists these values to the
+# `market` MCP backend (engagement body via `engagement_put`, costing config via
+# `costing_put_config`), keyed by your OAuth identity's org + the engagement id.
+# There is no Drive folder or config repo to commit to.
 #
 # All sections are optional. Skill prompts only when a phase needs data the
 # config did not provide. Full schema reference and field-level guidance:
@@ -14,15 +16,19 @@
 _meta:
   schema_version: 1
   created_date: YYYY-MM-DD
-  created_by_skill: comp
+  created_by_skill: compensation-advisor
   created_via: /init
-  shared_folder_id: <drive-folder-id>
   sibling_skills: [comp-comms-builder, comp-team-transformer, comp-training-designer]
 
 persistence:
   last_verified: YYYY-MM-DD
-  # Schema state (engagements, cycles, brand, costing) → market MCP backend (automatic; no operator config needed).
-  # Non-schema artifacts (deliverables, personas, vocabulary) → local $STATE_ROOT/_orgs/<slug>/.
+  # State persists automatically to the `market` MCP backend
+  # (https://mcp.dallaire-jette.com/mcp/rpc) by your OAuth (Google-login) identity —
+  # the verified email resolves to an org via membership. There is no backend to
+  # select and no folder to configure. Local $STATE_ROOT holds only non-schema
+  # artifacts (deliverables, council scratch, rendered decks, cost-log.jsonl) plus a
+  # read cache of schema state for transport-failure fallback.
+  # Contract: references/persistence-and-ledger.md.
 
 engagement_scope:
   last_verified: YYYY-MM-DD

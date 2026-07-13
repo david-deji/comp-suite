@@ -1,40 +1,8 @@
 # Costing Engine — Phase 4 (Option Modeling)
 
-Loaded by SKILL.md when running Phase 4. Present 2-3 costed scenarios plus a do-nothing baseline. Each scenario is a distinct strategic direction, not just different dollar amounts. All costs are in real dollars computed by the server's typed `Decimal(18,2)` calculator (`costing_compute_scenario`) from anonymized workforce rows, then persisted per scenario via `costing_put_scenario` so costed-scenario history survives between sessions.
+Loaded by SKILL.md when running Phase 4. Present 2-3 costed scenarios plus a do-nothing baseline. Each scenario is a distinct strategic direction, not just different dollar amounts. All costs in real dollars computed from uploaded Excel data using inline Python via code execution.
 
-## Compute-and-persist flow (MCP-primary — the default)
-
-Every scenario in this phase runs through the `market` server costing tools, not an ad-hoc client sandbox. The server owns the typed-Decimal math, multi-province aggregation, and the server-side PII scan — comp-suite supplies inputs and reads results.
-
-1. **`costing_input_template(pay_structure)`** — pull the canonical column + config contract (`step` or `merit`) before parsing the upload, so the `workforce_rows` you send match what the calculator expects.
-2. **`costing_compute_scenario(...)`** — the PURE calculator: one call per scenario. Required args: `scope_provinces`, `pay_structure`, `workforce_rows`, `scenario` (a discriminated union keyed on `scenario_type` — see the mapping below); pass `provincial_minimum_wages` and `location_province_map` for the floor math, and `config_override` for a dry-run. Returns per-province results plus the national aggregate; money as strings; rejects PII columns server-side.
-3. **`costing_put_scenario(...)`** — persist each computed scenario (`scenario_label`, `scenario_type`, `pay_structure`, `inputs`, `results`, `mandatory_floor_total`, `discretionary_lift_total`, `total_cost`; optional `cycle_id`) so it is auditable and re-listable next session.
-4. **`costing_get_scenarios(org_slug)`** — re-list prior persisted scenarios at Phase 4 entry (and on `/resume`) so a returning engagement rebuilds its costed history instead of recomputing from scratch.
-
-`costing_get_config` / `costing_put_config` remain the config source (see § Phase 4 Entry and § Config-key precedence) — the calculator reads that stored config, so the 7 inputs live in one place.
-
-**Scenario-type mapping** — the `scenario.scenario_type` value to pass to `costing_compute_scenario` for each section below:
-
-| Doc scenario (section) | `scenario_type` |
-|---|---|
-| Do-Nothing Baseline (§4.1) | `do_nothing` |
-| Scale Lift % (§4.2) | `scale_lift_pct` |
-| Scale Lift $ (§4.2) | `scale_lift_dollar` |
-| Add Top Step (§4.2) | `add_top_step` |
-| Compress Steps (§4.2) | `compress_steps` |
-| Accelerate Progression (§4.2) | `accelerate_progression` |
-| Restructure Scale (§4.2) | `restructure_scale` |
-| Lump Sums / One-Time (§4.2) | `lump_sum` |
-| Move to Midpoint (§4.3) | `move_to_midpoint` |
-| Merit Matrix (§4.3) | `merit_matrix` |
-| Band Restructure (§4.3) | `band_restructure` |
-| Cost-to-Target-Percentile (§4.4) | `cost_to_percentile` |
-
-The mandatory floor (§4.0) is not a separate `scenario_type` — every `costing_compute_scenario` call returns `mandatory_floor_total` alongside the discretionary lift, computed from `provincial_minimum_wages` + the workforce rows.
-
-**Arithmetic discipline**: Never write a dollar figure in chat that wasn't produced by a `costing_compute_scenario` call you can cite. The server calculator is the source of truth for every scenario number — the Python formulas in §§ 4.0–4.7 are the canonical statement of the math the server implements (`costing_engine.py`), not a client compute path.
-
-**Transport-failure fallback only**: if the `market` backend is unreachable (connection error, timeout, 5xx, not-yet-authenticated) so `costing_compute_scenario` cannot be called — and only then — compute the §§ 4.0–4.7 formulas inline via code execution as a fallback, tag every resulting figure `[LOCAL-FALLBACK — server calculator unavailable]`, and note that the scenario was not persisted (`costing_put_scenario` is unreachable on the same failure). A tool returning empty/not-found is authoritative, not a transport failure — do not fall back on it. If code execution is also unavailable, present formulas only — do not compute inline.
+**Arithmetic discipline**: Never write a dollar figure in chat that wasn't produced by a code-execution call you can show. All scenario costs go through the Python sandbox. If code execution is unavailable, state that explicitly and present formulas only — do not compute inline.
 
 **Multi-province discipline**: When the engagement spans 2+ provinces (`benchmark.scope_provinces`), every scenario cost is computed per-province first using that province's `roll_up_factor`, `payroll_burden_pct`, `voluntary_turnover_pct` from config (resolving map-form values per province, falling back to the `default` key when a province is absent). Per-province subtotals are reported alongside the national aggregate. Never collapse to a single national average — the differences compound and compress to misleading totals.
 
@@ -44,7 +12,7 @@ See `references/engagement-config-template.md` § Multi-province calculation for
 
 ## Phase 4 Entry — Costing Inputs
 
-Before modeling any scenarios, confirm the 7 costing inputs (from `costing_get_config` — see § Config-key precedence). On a returning engagement, also call `costing_get_scenarios(org_slug)` to re-list any scenarios persisted in a prior session, so you build on that history rather than recomputing it.
+Before modeling any scenarios, confirm the 7 costing inputs.
 
 **Data upload — privacy and template requirements** (surface this at Phase 4 entry whenever the user has not yet uploaded workforce data):
 
@@ -54,7 +22,7 @@ Before modeling any scenarios, confirm the 7 costing inputs (from `costing_get_c
 >
 > Templates ready to use: step roles → `wage_data_template_step.csv`; salaried merit → `wage_data_template_merit.csv`; mixed workforce → both files separately."
 
-If the user has already uploaded a file by the time Phase 4 starts, run the disallowed-fields scan before computing anything. See section § Disallowed-fields scan below. Call `costing_input_template(pay_structure)` to confirm the exact columns the calculator expects before mapping the upload into `workforce_rows`.
+If the user has already uploaded a file by the time Phase 4 starts, run the disallowed-fields scan before computing anything. See section § Disallowed-fields scan below.
 
 **If `costing` section was loaded in Phase 0** (engagement-config provided):
 - Use the loaded values directly. Do not re-prompt.
@@ -293,13 +261,6 @@ If turnover data unavailable and no role-level classification: present qualitati
 
 When the workforce (or segment) has `pay_structure = step`, present scenarios from this menu. **Every scenario cost is computed as a discretionary lift on top of the mandatory floor from section 4.0** — not as a standalone total. Skill computes both numbers, surfaces the total in chat as a single aggregated figure, but separates floor and lift on the side-by-side comparison (4.7) and the deck cost slides.
 
-**Effective-rate basis (ruling — friction #24, 2026-06-27).** Every discretionary lift is charged on the delta of **effective** rates, where `effective_rate = max(scale_rate, statutory_minimum_wage)` — never on the raw pre-floor scale rate. So for each employee the discretionary cost is `effective_after − effective_before` (the min-wage floor clamps both ends). Consequences, which the skill must honour:
-- A lift applied to a **sub-minimum** scale rate that stays *below* the new minimum wage costs **$0** discretionary — it is fully absorbed by the mandatory min-wage floor (§4.0), which already moved the employee to the floor. Charging the raw lift on top would be a phantom cost double-counted against the floor.
-- When a lift pushes a sub-minimum rate *above* the floor, only the **portion above the floor** is discretionary (e.g. scale rate \$12, min wage \$15.75, +40% → \$16.80: the discretionary lift is \$16.80 − \$15.75 = \$1.05/hr, not 40% of \$12).
-- A genuine wage **cut** above the floor stays negative (a real saving); the floor only prevents cutting *below* statutory minimum. The rule is a signed effective-rate delta, not a one-sided clamp.
-
-This applies to all rate-moving lifts below (scale lift %/\$, add top step, compress/restructure). It is implemented in the costing engine (`market-intel-mcp-server` `costing_engine.py`); this section is the canonical statement of the intent.
-
 **Config-key precedence applies throughout this section.** Roll-up factor → `costing.roll_up_factor` (single OR per-province map per `references/engagement-config-template.md` § costing); payroll burden for the side-by-side and the cost-slide caveat → `costing.payroll_burden_pct` (per-province map); target percentile for the compa-ratio readout → `costing.target_percentile`; rounding for chat figures and per-row deck values → `costing.rounding`. Do not prompt for any of these when the engagement-config provides them; only prompt for the per-scenario lift parameters (lift %, lift $, top-step increment, etc.) — those are decision inputs, not calibration constants.
 
 In Phase 4 chat presentation, the pattern is:
@@ -345,9 +306,7 @@ discretionary_lift_year_1 = sum(
 ```
 Also model structural cost: fewer steps = faster progression to top = permanently higher mandatory floor at years 2, 3, 5. Show year 1 and structural cost separately on the deck cost slide.
 
-**Accelerate Progression** (semantics ruling — friction #25, 2026-06-27): Reduce the **hours** required per step advance (most CBA scales are hours-based — UFCW grocery typically 1,040 hrs/step; PT workers affected more than FT). This scenario does **not** add a lift on top of the floor; it **inflates the floor's normal-progression component** by speeding up advancement. The cost is **incremental and always ≥ 0**: `progression(new_hours_per_step) − progression(current_hours_per_step)`, computed by walking each employee up the per-step hours thresholds from their `experience_hours` plus projected accrual over the horizon. Faster schedule = more thresholds crossed in the period = **higher** cost; an identical schedule = \$0; a *slower* schedule is clamped to \$0 (decelerating is not modeled here as a saving). Inputs are `current_hours_per_step` + `new_hours_per_step` per classification — **not** a raw "fraction advancing" (the prior `fraction_advancing` field was inverted: a value < 1.0 made acceleration cost *less* than normal progression, contradicting the name; it is retired). Model immediate cost (employees who cross a threshold at once under the faster schedule) and structural cost at years 1, 3, 5.
-
-**Restructure Scale** (new capability — 2026-06-27): change the **structure** of the scale (number of steps and the hours-to-advance per step) **and** the **rate** of each step, in one move. Input is the full new scale per classification — an ordered list of steps, each carrying its `rate` and its `hours_to_advance`. Employees are re-slotted onto the new grid (by current step, or by `experience_hours` against the new hours thresholds), and the cost is: min-wage compliance + the immediate **re-slot lift** (effective-rate delta per §4.2 effective-rate basis) + **hours-based progression** under the new grid over the horizon. This is the general hours-based primitive — *accelerate progression* is the special case where only `hours_to_advance` changes; a *scale lift* is the special case where only `rate` changes. Implemented in `costing_engine.py` as the `restructure_scale` scenario.
+**Accelerate Progression**: Reduce hours or months required per step advance. This scenario is unusual — it doesn't add a discretionary lift on top of the floor; it inflates the floor itself by speeding up the normal-progression component. Model immediate cost (employees who now qualify for advance) and structural cost at years 1, 3, 5. For UFCW grocery, hours-worked thresholds (typically 1,040 hrs/step) control progression velocity — PT workers affected more than FT.
 
 **Lump Sums and One-Time Payments** (added scenario type — purely discretionary, no floor interaction):
 ```python
@@ -450,8 +409,6 @@ Always cite the source: `[CONFIG: payroll_burden_pct, last_verified YYYY-MM-DD]`
 
 Present all scenarios in a single message as a comparison. Use a compact format showing for each scenario: total annual cost, per-role breakdown, what it fixes, risk remaining, and narrative angle.
 
-Before presenting, confirm every scenario you computed was persisted via `costing_put_scenario` (each carrying its `mandatory_floor_total` / `discretionary_lift_total` / `total_cost`). This is what makes the costed set re-listable via `costing_get_scenarios` next session — the per-scenario persistence is distinct from the `engagement_put` auto-checkpoint below, which records only the chosen direction. Skip the persist step only under the transport-failure fallback (server unreachable), and say so in chat.
-
 After presenting, offer blending: "Which direction? Or a blend — like Scenario A for warehouse roles + Scenario C for management?"
 
 **Side-by-side comparison table** — this is where the mandatory-floor vs. discretionary-lift split becomes visible. In chat (Phase 4), the totals stay aggregated; the split only appears here and on cost slides.
@@ -479,6 +436,6 @@ The "% of total that is discretionary" row is the most important callout for the
 
 **On user pick**: append a `selection_log` entry to the in-memory engagement state with `phase: 4`, `type: scenario`, the options presented (e.g., `[A, B, C]`), the audience archetype, the pick (or blend specification), and the timestamp. Phase 7 emits the full `selection_log` in the engagement-state YAML. See `references/engagement-config-template.md` § Output: end-of-engagement state file for the schema.
 
-**Auto-checkpoint on Checkpoint C confirmation**: call `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 4`, capture `scenario_chosen` (with mandatory floor + discretionary lift breakdown), the running `tool_calls[]` array (canonical container per `references/tools-available.md` § Container for tool_calls[]), and the freshly-appended `selection_log` array. Silent unless write fails.
+**Auto-checkpoint on Checkpoint C confirmation**: persist the engagement body via `engagement_put` to the `market` backend (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command; a local `checkpoint.yaml` cache mirror may be refreshed for transport-failure fallback. Set `saved_at_phase: 4`, capture `scenario_chosen` (with mandatory floor + discretionary lift breakdown), the running `tool_calls[]` array (canonical container per `references/tools-available.md` § Container for tool_calls[]), and the freshly-appended `selection_log` array. Silent unless the write fails (escalate/halt).
 
 **Phase 4 output**: User's chosen scenario direction (or blend specification), with mandatory floor and discretionary lift computed separately for downstream slide generation.

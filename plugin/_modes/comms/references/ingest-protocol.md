@@ -294,7 +294,7 @@ Auto-checkpoint writes are silent — surface only on write failure.
 - **Raw capture:** `org-comms-profiles/_raw-capture/<org-slug>-YYYY-MM-DD.md` — append-only record. Contains scripted_opening, full Q&A, scripted_close.
 - **Optional brand seed:** `branding/<org-slug>/comms-templates/` — seeded during Sub-phase 6 if brand data surfaced and operator confirmed. Only `comms-templates/` subdirectory; never sibling-owned files.
 
-All schema-state writes go through the `market` MCP backend per `persistence-and-ledger.md` (mirrored); non-schema artifacts write to local `$STATE_ROOT`. Redaction pass runs before every write per `redaction-rules.md`.
+All writes go through the persistence backend per `persistence-and-ledger.md` (mirrored). Redaction pass runs before every write per `redaction-rules.md`.
 
 ---
 

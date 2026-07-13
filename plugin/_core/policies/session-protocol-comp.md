@@ -146,7 +146,5 @@ below) is a pointer; workflow state (`checkpoint.yaml`) is the durable checkpoin
 - `$ASSET_ROOT/_core/policies/session-protocol.md` — verbatim TM raw (review baseline)
 - `$ASSET_ROOT/_core/policies/cost-discipline.md` — drives the cost-log surfacing rule
 - `$ASSET_ROOT/_core/policies/verify-engagement-state-before-mode.md` — drives the stale-state nudge
-- `$ASSET_ROOT/_core/policies/multi-terminal-git-safety.md` — drives the concurrent-session check
-- `$ASSET_ROOT/_core/policies/compaction-template.md` — drives the post-compaction recovery
-- `$ASSET_ROOT/_core/primitives/engagement-loader.md` — reads engagement-state at dispatch time
+- `$ASSET_ROOT/_core/policies/multi-terminal-git-safety.md` — drives the concurrent-session check- `$ASSET_ROOT/_core/primitives/engagement-loader.md` — reads engagement-state at dispatch time
 - `v2/.claude/skills/comp/SKILL.md` § 3 — the orchestrator entry that consumes this policy

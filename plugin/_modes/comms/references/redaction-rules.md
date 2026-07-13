@@ -74,7 +74,7 @@ Runs immediately before any artifact write:
 1. Read the artifact body (markdown + frontmatter).
 2. Scan for banned patterns.
 3. If `audience_tag` is `external`, additionally scan for company name (anywhere in body), unwhitelisted person names (any), and band/grade references that imply internal structure.
-4. On detection: refuse to write, surface warning naming the pattern + offending line. No alternate write path — the user must fix the source content and retry.
+4. On detection: refuse to write, surface warning naming the pattern + offending line, do not fall back to paste-mode (user must fix the source content).
 
 ---
 

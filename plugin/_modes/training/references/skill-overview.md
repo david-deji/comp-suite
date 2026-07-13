@@ -8,11 +8,11 @@ Phase map, Phase 0 detail, and core principles for `comp-training-designer`. Loa
 
 | Phase | Mode(s) | Purpose | Output |
 |---|---|---|---|
-| **Phase 0** | every mode except `/help`, `/resume` | Config loading, persistence test, redaction input scan, cycle awareness load, surface state | (no artifact — readiness gate) |
+| **Phase 0** | every mode except `/help`, `/resume` | Config loading, identity + org resolution, redaction input scan, cycle awareness load, surface state | (no artifact — readiness gate) |
 | **Phase 1** | `/ingest` | Source extraction → message-map (conversational interview) | `cycles/<engagement>/<cycle-slug>/message-map.yaml` |
 | **Phase 2** | `/generate` | Per-audience render (audience-design interview → council auto-fire → bundle render) | per-audience PPTX + facilitator guide + interactive blocks |
 | **Phase 3** | `/cascade` | Manager deck → 30-min team-meeting variant (mechanical derivation) | `managers-cascade-kit.pptx` + `managers-cascade-facilitator.md` |
-| **Phase 4** | `/brand` | Read/write engagement brand kit (shared with siblings) | `branding/<org-slug>/` in local `$STATE_ROOT` |
+| **Phase 4** | `/brand` | Read/write engagement brand kit (shared with siblings) | brand kit for `<org-slug>` (`brand_get_kit` / `brand_put_kit`) |
 
 `/init`, `/council`, `/checkpoint`, `/resume`, `/help` are utility/control modes — they don't sit in the phase progression.
 
@@ -22,9 +22,9 @@ Phase map, Phase 0 detail, and core principles for `comp-training-designer`. Loa
 
 Sequence (silent unless something fails):
 
-1. **Backend availability check.** Confirm the `market` MCP backend is reachable (OAuth identity resolved). If transport fails, fall back to the local `$STATE_ROOT` read cache per `persistence-and-ledger.md` D1. Surface error if both are unavailable.
+1. **Identity + org resolution.** Resolve the operator's OAuth identity → org via `list_my_orgs`; read the org header via `engagement_get_master`. The `market` backend is always reachable via OAuth; transport failure (connection error, timeout, 5xx, not-yet-authenticated) falls back to the local `$STATE_ROOT` read cache (D1) — not to a paste-mode branch. A tool returning not-found/empty is authoritative.
 
-2. **Engagement-training-config load.** If user pasted YAML, parse against schema (per `engagement-training-config-template.md`). If a `engagement.slug` was referenced, auto-load `engagement-training-configs/<slug>.yaml`. If neither: prompt "No engagement-training-config — run `/init` first?" and exit.
+2. **Engagement-training-config load.** If user pasted YAML, parse against schema (per `engagement-training-config-template.md`). If a `engagement.slug` was referenced, load the engagement config from the backend via `engagement_get` (local cache on transport failure, D1). If neither: prompt "No engagement-training-config — run `/init` first?" and exit.
 
 3. **Cross-skill cycle load.** If `engagement.slug` matches a sibling `comp-team-transformer/team-configs/<slug>.yaml`, copy `cycle.stages` from there into in-memory state. Sibling skills share cycles — never duplicate cycle definitions across skills.
 

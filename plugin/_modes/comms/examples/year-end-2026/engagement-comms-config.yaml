@@ -8,6 +8,9 @@ client_slug: acme
 cycle_name: "FY26 Annual Wage Review"
 created: 2026-05-03
 
+persistence:
+  enabled: true       # inert — no longer selects a backend or toggles paste-mode (both retired); persistence is automatic via OAuth identity
+
 recommendation_source:
   type: compensation-advisor
   engagement_slug: pharmacy-fy26

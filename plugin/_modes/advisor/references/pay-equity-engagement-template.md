@@ -9,8 +9,11 @@ This file is INPUT. The 22 in-skill tools own all generated state files
 
 ## File location
 
-Lives at `engagements/<client-slug>/pay-equity/pay-equity-engagement.yaml`, persisted via the
-pay-equity tooling's own persistence layer (`scripts/pay_equity/persistence_gdrive.py`; migration to the v2 model tracked as MIM-0042).
+Lives at `engagements/<client-slug>/pay-equity/pay-equity-engagement.yaml` — an
+operator-authored input file read at `/init pay-equity-qc`. It is a local seed, not a
+backend entity; the engagement state it seeds persists to the `market` MCP backend via
+`payequity_put_*` (see `references/pay-equity-qc-protocol.md` § Persistence model and
+`references/persistence-and-ledger.md`).
 
 ## Full schema
 
@@ -64,11 +67,10 @@ operator:
   entry_mode: paste                  # paste | csv | guided  (Phase 3 job-class entry preference)
 
 # --- Persistence ---
-# Pay-equity working data persists via the pay-equity tooling's own layer
-# (scripts/pay_equity/persistence_gdrive.py). Migrating that layer to the v2 model
-# (local $STATE_ROOT or backend entities) is tracked as MIM-0042 — no persistence
-# block to configure here. comp-advisor schema state (master/engagement/cycle/
-# decision) persists automatically to the market MCP backend, not via this file.
+# State persists automatically to the `market` MCP backend, keyed by your OAuth identity
+# (org resolved via membership). There is no backend selector, folder path, or visibility
+# toggle to author — org isolation is enforced by the backend, not by folder ownership.
+# See `references/persistence-and-ledger.md`.
 
 # --- Side deliverables (optional) ---
 # When the operator wants non-statutory output (executive deck, board memo,
@@ -133,12 +135,12 @@ the earliest year on record.
   - `csv` — paste a CSV-only block; orchestration parses
   - `guided` — class-by-class collection (used by Path C in maintenance Phase M1 too)
 
-### `persistence.*`
+### `persistence`
 
-Inherits the comp-advisor `engagement-config.persistence` block (see
-`references/persistence-and-ledger.md` § Backend detection). Per-engagement override
-may point to a different repo, but `folder_visibility` must be `private` — the skill
-refuses to write to a publicly shared folder.
+State persists automatically to the `market` MCP backend by your OAuth identity (org
+resolved via membership) — see `references/persistence-and-ledger.md`. There is no backend
+selector, folder path, or visibility field to author; org isolation is enforced by the
+backend via identity + membership, not by folder ownership.
 
 ### `side_deliverables[]` (optional)
 
@@ -157,9 +159,10 @@ output.
 ## Why this is separate from `engagement-config.yaml`
 
 Comp-advisor's main `engagement-config.yaml` covers the brand-and-deck cycle
-(audience archetypes, persistence backend, deck production mode). The pay equity
+(audience archetypes, deck production mode). The pay equity
 exercise is a parallel top-level workflow with a different shape — different
 phases, different deliverables, different statutory constraints. Combining the
 two would either bloat `engagement-config.yaml` with pay-equity-only fields or
-strip pay-equity of clarity. They share the persistence backend and brand kit
-references but otherwise stand alone.
+strip pay-equity of clarity. Both persist to the `market` MCP backend
+(automatic, by OAuth identity — no selector or toggle) and share the brand kit
+references, but otherwise stand alone.

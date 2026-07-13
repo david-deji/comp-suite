@@ -255,9 +255,9 @@ weighing of a defined choice.
 ## Tier 2 Detail — /checkpoint
 
 ```
-**/checkpoint** — Save engagement state to the market backend
+**/checkpoint** — Save engagement state to the `market` backend
 
-**What it produces:** A `checkpoint.yaml` written via the market backend
+**What it produces:** The engagement body persisted to the `market` backend via `engagement_put` (+ decisions via `engagement_append_decision`)
 **Time:** Instant
 **Input needed:** None (operates on current in-flight engagement)
 
@@ -276,7 +276,8 @@ weighing of a defined choice.
 **What happens:**
   1. Captures current state (phase, section in progress, all confirmed
      outputs so far, accumulated selection_log) into checkpoint.yaml
-  2. Writes to engagements/<slug>/checkpoint.yaml via `engagement_put` (market backend)
+  2. Writes the engagement body via engagement_put (with expected_version),
+     appends decisions via engagement_append_decision, flushes cost-log.jsonl
   3. Surfaces "Checkpoint saved at Phase X — Y. Resume with /resume <slug>."
 
 **When NOT to use it:** No reason to skip — auto-checkpoint runs at every
@@ -305,7 +306,8 @@ between automatic ones.
   /resume <slug>           # resume specific engagement
 
 **What happens:**
-  1. Reads engagements/<slug>/checkpoint.yaml via `engagement_get` (market backend; local cache on transport failure)
+  1. Reads the engagement body via engagement_get + cycles/decision log via
+     engagement_get_master (local $STATE_ROOT cache only on transport failure)
   2. Validates freshness — warns if checkpoint > 30 days old or if config
      has changed since checkpoint was saved
   3. Restores engagement brief, narrative frame, sections built so far,
@@ -330,7 +332,7 @@ surfaces the closed status and offers next-cycle, deliverables, or
 ```
 **/ledger** — Read prior-cycle outcomes; update outcome windows
 
-**What it produces:** Chat output (read modes) or single ledger commit (update)
+**What it produces:** Chat output (read modes) or a cycle-outcome write via `engagement_put_cycle` (update)
 **Time:** Instant (read) / 2-5 min (update walk)
 **Input needed:** None (read modes); engagement slug + outcome data (update)
 
@@ -341,10 +343,12 @@ surfaces the closed status and offers next-cycle, deliverables, or
                                 # accept free text, commit only the ledger file
 
 **What happens:**
-  1. Read modes: `engagement_get_master` for cycles + decision log; local `cost-log.jsonl` for spend;
-     filter and format
-  2. Update mode: walks outcome windows in order, accepts user input,
-     writes back via `engagement_put_cycle` + `engagement_append_decision` (per `references/persistence-and-ledger.md`)
+  1. Read modes: engagement_get_master.cycles[] + the decision log for prior
+     cycles + outcomes; local cost-log.jsonl for spend
+  2. Update mode: walks outcome windows in order, accepts user input, writes
+     the outcome fields back via engagement_put_cycle (blind full-record
+     upsert — re-read the cycle from engagement_get_master.cycles[] first,
+     then resend every field) and/or engagement_append_decision
 
 **When NOT to use it:** If you want to start a new cycle (not update an
 existing closed one), use the normal track entry — Phase 0 surfaces
@@ -366,8 +370,9 @@ prior-cycle ledger context automatically.
 ```
 **/brand-kit init <org-slug>** — Scaffold a per-org brand kit from _default
 
-**What it produces:** A new branding/<org-slug>/ kit written to the market backend via `brand_put_*`
-                      with placeholder palette + logo instructions + footnotes
+**What it produces:** A new <org-slug> brand kit persisted to the market backend
+                      via brand_put_kit / brand_put_file / brand_put_logo, with
+                      placeholder palette + logo instructions + footnotes
 **Time:** ~30 seconds (scaffold + commit)
 **Input needed:** org-slug (kebab-case identifier for the org)
 
@@ -376,21 +381,23 @@ prior-cycle ledger context automatically.
   /brand-kit init <client-org-slug>
 
 **What happens:**
-  1. Verifies market backend is reachable (aborts on auth failure)
-  2. Auto-seeds branding/_default/ in repo from bundle if not present
-  3. Verifies branding/<org-slug>/ does NOT already exist (aborts if it does)
+  1. Resolves the org via list_my_orgs (backend always reachable via OAuth —
+     no paste-mode gate)
+  2. Auto-seeds the _default kit from the bundle via brand_put_kit if not present
+  3. Verifies the <org-slug> kit does NOT already exist via brand_get_kit
+     (aborts if it does)
   4. Scaffolds divergence-points only:
        - theme/palette.json (placeholder with override semantics comment)
        - theme/logo-placeholder.txt (instructions for 5 logo variants)
        - footnotes.yaml (placeholder showing schema)
        - _README.md (override pattern explanation)
-  5. Commits as: `branding: init <org-slug> kit`
+  5. Persists the kit files to the backend via brand_put_file / brand_put_logo
   6. Surfaces edit instructions to user
 
-**When NOT to use it:** When the org already has a kit (use direct file edit
-instead). When you only want to override one slide master across all orgs (edit
-branding/_default/masters/<file>.js directly — but be aware the bundled _default
-will diverge from your repo _default).
+**When NOT to use it:** When the org already has a kit (update it directly via
+brand_put_file instead). When you only want to override one slide master across
+all orgs (update the _default kit's masters/<file>.js via brand_put_file — but be
+aware the bundled _default will diverge from your backend _default).
 
 **Example:**
   > /brand-kit init acme
@@ -407,8 +414,10 @@ will diverge from your repo _default).
 ```
 **/cba save <agreement-id>** — Manually save a user-CBA to the library
 
-**What it produces:** A cba-library/<agreement-id-slug>.yaml file + updated
-                      cba-library/_index.yaml mapping in local `$STATE_ROOT`
+**What it produces:** A <agreement-id-slug>.yaml file + updated _index.yaml
+                      mapping in the CBA library (persists per
+                      references/library-resolution.md — no backend write tool
+                      for user-CBAs)
 **Time:** ~15 seconds (slug derivation + commit)
 **Input needed:** Agreement-id, OR none (re-uses the current engagement's
                   active user-CBA if one is loaded)
@@ -425,8 +434,8 @@ will diverge from your repo _default).
   3. Idempotency check: if file exists, prompts to overwrite or keep
   4. Cross-check vs Market MCP `get_cba_wage_scale` (>5% delta surfaces warning)
   5. Auto-runs disallowed-fields scan
-  6. Commits via close-time close-time write sequence (or immediately if invoked
-     standalone outside an active engagement)
+  6. Persists per references/library-resolution.md at close-time (or immediately
+     if invoked standalone outside an active engagement)
 
 **When NOT to use it:** When the auto-save path already saved (post-extraction
 auto-save runs at close-time by default). Use this only to force a save mid-
@@ -447,9 +456,10 @@ engagement or to save a CBA loaded in a non-engagement context.
 ```
 **/glossary promote** — Review and merge engagement-level FR-CA additions
 
-**What it produces:** A canonical vocabulary/fr-ca-glossary.yaml in the
-                      local `$STATE_ROOT` (created from bundled seed if first run)
-                      + updated vocabulary/_rejected.yaml for declined terms
+**What it produces:** A canonical fr-ca-glossary.yaml (created from bundled seed
+                      if first run) + updated _rejected.yaml for declined terms —
+                      persists per references/library-resolution.md (no backend
+                      glossary tool)
 **Time:** ~30 sec to 5 min depending on candidate count (interactive review)
 **Input needed:** None (walks all engagements/*/fr-ca-additions.yaml files)
 
@@ -457,15 +467,16 @@ engagement or to save a CBA loaded in a non-engagement context.
   /glossary promote
 
 **What happens:**
-  1. Verifies market backend is reachable (aborts on auth failure)
-  2. Discovers candidates: lists every fr-ca-additions.yaml across engagements in local `$STATE_ROOT`
+  1. Resolves the glossary library per references/library-resolution.md (no
+     paste-mode gate)
+  2. Discovers candidates: lists every fr-ca-additions.yaml across engagements
   3. Aggregates by english term, surfaces conflicts (multiple FR-CA candidates)
   4. Walks each candidate one at a time:
        - Approve  → adds to vocabulary/fr-ca-glossary.yaml
        - Edit     → prompts revised FR-CA, then adds
        - Reject   → logs to vocabulary/_rejected.yaml (won't re-prompt)
        - Skip     → leaves for next promotion run
-  5. Single close-time write sequence at end: `vocabulary: promote N terms (<engagements>)`
+  5. Persists the merged glossary per references/library-resolution.md at end
   6. Marks each promoted term in source fr-ca-additions.yaml with promoted_at
 
 **When NOT to use it:** When working on an active engagement (run between
@@ -479,8 +490,8 @@ and exits).
   → "Candidate 1 of 14: 'Total rewards committee' → 'Comité de la rémunération
      globale' (pharmacy-fy26). Approve, edit, reject, or skip?"
   → ... [interactive] ...
-  → "Promoted 11, rejected 2, skipped 1. Committing as `vocabulary: promote
-     11 terms (pharmacy-fy26, atlantic-retail-fy26, qc-pharmacy-fy26)`."
+  → "Promoted 11, rejected 2, skipped 1. Persisting 11 terms per
+     library-resolution.md (pharmacy-fy26, atlantic-retail-fy26, qc-pharmacy-fy26)."
 ```
 
 ---

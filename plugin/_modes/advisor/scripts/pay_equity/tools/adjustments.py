@@ -17,8 +17,13 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from scripts.pay_equity.app import tool as mcp_tool
-from scripts.pay_equity.computation.schedule import MAX_INSTALLMENT_YEARS
 from scripts.pay_equity.errors import ValidationError
+
+# Art. 76.5.1 — 4-year installment cap. Inlined from the retired computation/schedule.py:
+# build_payment_schedule + the whole computation/ package are server-side now
+# (payequity_compute_adjustments); only this statutory guard constant survives client-side,
+# used by validate_adjustment_inputs below as a pre-call refusal.
+MAX_INSTALLMENT_YEARS = 4
 
 
 @mcp_tool

@@ -43,9 +43,12 @@ This file lives at the top of the load order — read it first, every session.
 
 Before producing any deliverable:
 
-1. **Drive backend probe** (per `persistence-and-ledger.md` § Backend detection
-   — procedural three-probe check). ~10 seconds.
-2. **Load matching config + master.yaml** if a slug is referenced or implied.
+1. **Resolve identity → org** via `list_my_orgs` (OAuth Google login; verified
+   email → org via membership). No backend probe — the `market` MCP backend is
+   always the source of truth; transport failure falls back to the local read
+   cache (D1) per `persistence-and-ledger.md`.
+2. **Load the org header + engagement body** if a slug is referenced or implied
+   — org header via `engagement_get_master`, engagement body via `engagement_get`.
 3. **Compute current_week_offset** = today − config.cycle.effective_date.
 4. **Cycle-stage check** (symmetric — both directions):
    - If `week_offset > 0` (post-launch) AND new strategy work requested
@@ -53,4 +56,5 @@ Before producing any deliverable:
    - If `week_offset < target_stage_offset − 4` (more than 4 weeks early)
      → too-early protocol per `consulting-protocol.md` § Too-early. Surface a
      pre-engagement mode menu before proceeding.
-5. **If config or master.yaml is missing** → run `/init` flow, do NOT improvise.
+5. **If the org header or engagement body is missing** (`engagement_get_master` /
+   `engagement_get` returns not-found) → run `/init` flow, do NOT improvise.

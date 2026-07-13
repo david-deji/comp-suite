@@ -2,11 +2,11 @@
 
 The engagement config is a single YAML block users paste at session start (or build via Init mode). It captures durable inputs the skill reuses across phases — org context, audience archetypes, costing parameters, benchmark defaults, deck preferences, and council defaults.
 
-All eight sections (`engagement_scope`, `cycle`, `org`, `audience`, `costing`, `benchmark`, `deck`, `council`) are **optional**. Skill prompts for any section's data only when its phase needs that data and no config was provided. Persistence is **not** a config section in v2 — schema state persists automatically to the `market` backend (keyed to your authenticated login via org membership); there is no backend to select and no folder to name. See `references/persistence-and-ledger.md`.
+All nine sections (`persistence`, `engagement_scope`, `cycle`, `org`, `audience`, `costing`, `benchmark`, `deck`, `council`) are **optional**. Skill prompts for any section's data only when its phase needs that data and no config was provided. The `persistence` block is now **vestigial** — persistence is automatic: schema state lives in the `market` MCP backend, resolved by OAuth identity (Google login → verified email → org via membership). There is no backend to select, no folder to name, and no paste mode. Full contract: `references/persistence-and-ledger.md`.
 
 ### `engagement_mode` — Entry-time work-shape declaration
 
-The engagement config accepts an optional `engagement_mode` field at the top level (alongside the eight sections). Setting it at `/init` time declares the intended work shape upfront so partial-flow engagements do not have to retrofit their mode at Phase 5 or later.
+The engagement config accepts an optional `engagement_mode` field at the top level (alongside the nine sections). Setting it at `/init` time declares the intended work shape upfront so partial-flow engagements do not have to retrofit their mode at Phase 5 or later.
 
 ```yaml
 engagement_mode: full-engagement   # default when absent
@@ -28,8 +28,14 @@ Copy this block, fill the sections you want, paste at session start. Delete sect
 
 ```yaml
 # engagement-config — paste at session start
-# (persistence is automatic via the `market` backend in v2 — there is no persistence
-#  block to configure; see references/persistence-and-ledger.md)
+
+# persistence is retired as a backend selector. Schema state (orgs, master header,
+# engagement bodies, cycles, decision log, brand kits, costing configs/scenarios)
+# lives in the `market` MCP backend, resolved by OAuth identity (Google login →
+# verified email → org via membership). No backend to choose, no folder, no paste mode.
+# Full contract: references/persistence-and-ledger.md.
+# persistence:                    # no fields required — persistence is automatic
+#   last_verified: 2026-04-21
 
 # engagement_scope defines the boundary of THIS engagement.
 # Rule of thumb: one engagement = one budget owner = one VP Ops (or equivalent).
@@ -440,9 +446,13 @@ Used by Track Council (strategic-decision deliberation mode). When absent, skill
 | `persona_voice_profiles` | map of persona-id → string | (none) | Framing overrides per persona |
 | `artifacts` | list of enum | `[council-state-yaml, council-memo-md]` | `council-state-yaml` always produced; `council-memo-md` only in memo mode |
 
-### `persistence` — retired (v2)
+### `persistence` — Retired backend selector (persistence is automatic)
 
-There is no `persistence` config section in v2. Schema state — orgs, master sections, engagement bodies, cycles, the decision log, brand kits, costing — persists to the `market` MCP backend automatically, keyed to the authenticated login via org membership. There is no backend to select, no repo to name, no folder-visibility gate, and no paste-mode branch. Non-schema artifacts (deliverables, council scratch, `cost-log.jsonl`) stay under local `$STATE_ROOT`. On MCP transport failure, schema reads fall back to the local cache (degraded) and schema writes escalate/halt (P4b D1/D2). A legacy config carrying a `persistence:` block is ignored as a backend selector. Full contract: `references/persistence-and-ledger.md`.
+Persistence no longer needs configuration. Schema state — orgs, the per-org `master` header + federated sections, engagement bodies, cycles, the decision log, brand kits, and costing configs/scenarios — lives in the **`market` MCP backend**, resolved by OAuth identity (Google login → verified email → org via membership). There is no backend selector (`google-drive` vs `paste`), no folder to name, and no paste mode. Local `$STATE_ROOT` holds only non-schema artifacts (deliverables, council scratch, rendered decks, `cost-log.jsonl`) plus a read cache for transport-failure fallback.
+
+Every track (Init, /update, C, D, R, R-lite, Council, Quickbench) and every persistence-aware slash command (`/checkpoint`, `/resume`, `/ledger`, `/brand-kit`, `/persona`, `/glossary promote`, `/cba ingest`, `/survey ingest`) reads and writes schema state through the MCP tools named in `references/persistence-and-ledger.md` (`engagement_get` / `engagement_put`, `engagement_get_master` / `engagement_put_section`, `engagement_put_cycle`, `engagement_append_decision`, `brand_*`, `costing_*`). Full read/write contract, optimistic-concurrency and fallback rules: that file. Library lookups (`cba-library`, `survey-archive`, `vocabulary`, `personas`, `quickbench-archive`) resolve per `references/library-resolution.md`, not through this section.
+
+Surface persistence in the Phase 0 loaded-config summary as one line (e.g., "Persistence: `market` MCP backend, org `acme` — 3 prior pharmacy cycles in the ledger.").
 
 ---
 
@@ -774,7 +784,7 @@ User should update the config OR the skill should web-search the current value a
 
 When parsing a pasted config:
 
-1. **Required keys per section**: `engagement_scope` requires `budget_owner_role` and `scope_label`. `cycle` requires `cycle_name`, `effective_date`, and `current_stage`. `org` requires `name`. `costing` requires nothing (all defaults). `audience` requires at least one archetype with all 6 fields populated. `benchmark` requires nothing. `deck` requires nothing. `council` requires nothing — all defaults documented in `references/council-mode.md`. (Persistence is not a config section in v2 — see § `persistence` — retired.)
+1. **Required keys per section**: `persistence` requires nothing — persistence is automatic via MCP identity (no backend, folder, or repo to configure). `engagement_scope` requires `budget_owner_role` and `scope_label`. `cycle` requires `cycle_name`, `effective_date`, and `current_stage`. `org` requires `name`. `costing` requires nothing (all defaults). `audience` requires at least one archetype with all 6 fields populated. `benchmark` requires nothing. `deck` requires nothing. `council` requires nothing — all defaults documented in `references/council-mode.md`.
 2. **Stale check**: If `last_verified` is more than 180 days old, surface a warning before using that section. For `cycle`, a stale `last_verified` is more concerning than other sections — surface even at 60+ days.
 3. **Type check**: numeric fields must parse as float/int. Date fields (`cycle.effective_date`, `cycle.last_cycle.effective_date`) must parse as ISO dates. Enum fields (preferred_framing, brand, council.default_mode, council.synthesis_style) must match allowed values. Persona names in `council.default_perspectives` must be drawn from the 7-persona pool in `council-mode.md`. **`cycle.current_stage` must match either the `name` field (canonical: Discovery / Market Analysis / Scenario Modeling / Approval / Cascade / Implementation / Live) OR the `label` field (user-overridden display name) of one item in `cycle.stages`.** When a user has renamed stages via the `label:` override pattern (e.g., `name: "Discovery"`, `label: "Strategy Kickoff & Market Review"`), `current_stage` may use either form — the skill resolves both to the canonical key for behavior gating.
 4. **Cross-section coherence**:
@@ -789,6 +799,7 @@ Report parsed sections and gaps:
 
 ```
 Loaded engagement config:
+- persistence: ✓ `market` MCP backend, org acme (automatic via OAuth identity)
 - engagement_scope: ✓ (Pharmacy FY26, owner: VP Ops Pharmacy)
 - cycle: ✓ (FY26 May cohort, currently at "Strategy Kickoff & Market Review", week -10)  # canonical stage: Discovery — labelled per cycle.stages override
 - org: ✓ (verified 2026-04-21, 0 days old)
@@ -892,8 +903,8 @@ selection_log:
     timestamp: 2026-04-21T14:38:00
 
 tool_calls:
-  # Append-only audit array — every external tool call (Market MCP, the claude.ai
-  # Indeed connector, web_search, web_fetch) leaves a trace. Sub-fields per entry:
+  # Append-only audit array — every external tool call (Market MCP, Indeed MCP,
+  # StatCan MCP, web_search, web_fetch) leaves a trace. Sub-fields per entry:
   # `tool` (full MCP-style name), `args`, `timestamp`, `result_hash` (SHA-256
   # of JSON response for MCP calls / fetched body for web_fetch / null for
   # web_search), `used_in` (list of slide/section IDs or deliverable surfaces).

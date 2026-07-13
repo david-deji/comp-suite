@@ -84,12 +84,6 @@ def dispatch_mode(mode_name):
 
 ```python
 def _resolve_tools(tools_required):
-    # Capability-discovery note: the market server is self-describing. MCP `tools/list`
-    # surfaces every PRIVATE tool (the engagement_* lifecycle tools) with its JSON Schema,
-    # and `initialize` exposes a schema_version/build handshake (P3). The static
-    # registry.yaml read below is a DEFENSIVE MIRROR of the tool surface, not the
-    # authoritative capability list; the engagement_* lifecycle tools resolve dynamically
-    # at call time against the live server, so they need not be enumerated here.
     with open(f"{ASSET_ROOT}/_core/tools/registry.yaml") as f:
         registry = yaml.safe_load(f)
 
@@ -117,23 +111,19 @@ def _resolve_tools(tools_required):
 
     if unavailable:
         # Surface clean error for scenario 13 (mcp-server-unavailable).
-        # The one REQUIRED server is `market`. Auth is OAuth-exclusive over a headerless
-        # .mcp.json — there is no token to set. A 401/unauthenticated is NOT a transport
-        # failure: it means the colleague's Google OAuth sign-in has not been completed or
-        # has expired, and is completed via the `/mcp` sign-in flow in Claude Code. A
-        # timeout/5xx is the distinct transport-unreachable case. Perplexity is optional —
-        # it is not in any mode's tools_required, so it never lands here; its absence
-        # degrades silently to the web-search builtin (registry: web-search).
+        # The one REQUIRED server is `market` (OAuth — Google sign-in, no token). Perplexity is
+        # optional — it is not in any mode's tools_required, so it never lands here; its
+        # absence degrades silently to the web-search builtin (registry: web-search).
         return {
             "error": "MCP servers unavailable",
             "unavailable_tools": unavailable,
             "message": (
-                "The market MCP is not usable. A 401/unauthenticated means Google OAuth "
-                "sign-in has not been completed or has expired — complete it via the `/mcp` "
-                "sign-in flow in Claude Code (there is no token to set). A timeout or 5xx "
-                "means the server is transport-unreachable — a distinct condition. "
-                "Market-dependent work (benchmarks, offer comparisons, CBA scales) is "
-                "unavailable until it is restored; web research still works via WebSearch."
+                "The market MCP is not responding. It authenticates via OAuth (Google "
+                "sign-in — no token); run /mcp in Claude Code to confirm the `market` server "
+                "is connected and authorized, and check https://mcp.dallaire-jette.com is "
+                "reachable. See INSTALL.md. Market-dependent work (benchmarks, offer "
+                "comparisons, CBA scales) is unavailable until it is restored; web research "
+                "still works via WebSearch."
             ),
         }
 
@@ -144,12 +134,6 @@ def _mcp_server_available(server_name, mcp_servers):
     # Optimistic: assume available if no liveness check is defined.
     # The orchestrator's startup validation (not this primitive) does the real ping.
     # Return True here; unavailability is surfaced at the actual dispatch call.
-    #
-    # Reachability != usability. A public market tool answering 200 (e.g. the market-data
-    # probe on get_role_intelligence) only proves transport is up; it does NOT prove the
-    # PRIVATE lifecycle tools (engagement_*) are usable — those require a resolved OAuth
-    # identity (org membership) and can still 401 while the public probe succeeds. Treat
-    # "market reachable" and "lifecycle usable" as separate checks.
     return True
 ```
 
@@ -165,7 +149,7 @@ def _resolve_model_routing(mode):
         routing = yaml.safe_load(f)
 
     task_defaults  = routing.get("tasks", {})
-    global_default = routing.get("default", "inherit")  # forced inherit 2026-06-26; series passes through via .get(series, series)
+    global_default = routing.get("default", "sonnet")
     mode_overrides = mode.get("model", {}).get("overrides", {})
 
     model_registry = _read_model_registry()
@@ -199,9 +183,6 @@ def _read_model_registry():
     """
     Reads $ASSET_ROOT/_core/model-registry.md and returns {series: model_id}.
     Parses the 'Latest validated per series' table.
-    NOTE (2026-06-26): routing is forced to `inherit`, so a resolved series is never
-    "opus"/"sonnet"/"haiku" — model_registry.get("inherit", "inherit") returns "inherit"
-    and this table is not consulted. The mapping below is retained for the re-enable path.
     Initial values per SPEC § 7:
       opus   → claude-opus-4-6
       sonnet → claude-sonnet-4-6
@@ -274,12 +255,11 @@ On success:
     # ...
   ],
   "model_routing": {
-    # Forced inherit (2026-06-26): every task resolves to the parent session model.
-    "council":      {"series": "inherit", "model_id": "inherit"},
-    "synthesis":    {"series": "inherit", "model_id": "inherit"},
-    "extraction":   {"series": "inherit", "model_id": "inherit"},
-    "draft":        {"series": "inherit", "model_id": "inherit"},
-    "_default":     {"series": "inherit", "model_id": "inherit"},
+    "council":      {"series": "opus",   "model_id": "claude-opus-4-6"},
+    "synthesis":    {"series": "opus",   "model_id": "claude-opus-4-6"},
+    "extraction":   {"series": "haiku",  "model_id": "claude-haiku-4-5-20251001"},
+    "draft":        {"series": "sonnet", "model_id": "claude-sonnet-4-6"},
+    "_default":     {"series": "sonnet", "model_id": "claude-sonnet-4-6"},
   }
 }
 ```

@@ -34,13 +34,13 @@ No write. Useful before `/generate` to confirm what the renderer will produce.
 
 ### `/brand init <org-slug>`
 
-Scaffolds a new brand kit under `branding/<org-slug>/` in local `$STATE_ROOT`. **Delegates to canonical `brand-kit-protocol.md` § `/brand-kit init <org-slug>`**. Same behavior:
+Scaffolds a new brand kit for `<org-slug>`, persisted via `brand_put_kit` / `brand_put_file` / `brand_put_logo`. **Delegates to canonical `brand-kit-protocol.md` § `/brand-kit init <org-slug>`**. Same behavior:
 
-1. Verify the `market` MCP backend is reachable and the org is authenticated. Abort if unauthenticated or misconfigured.
+1. Resolve org membership via `list_my_orgs` (the `market` backend is the brand-kit source of truth). Abort if `<org-slug>` is not a known org.
 2. Verify `branding/_default/` exists in the repo. Seed from bundle if not (one-time).
-3. Verify `branding/<org-slug>/` does NOT exist. Abort with friendly message if it does.
+3. Verify no brand kit exists for `<org-slug>` (`brand_get_kit` returns not-found). Abort with friendly message if it does.
 4. Scaffold divergence-points only: `theme/palette.json` placeholder, logo placeholder instructions, `footnotes.yaml` placeholder, `_README.md`.
-5. Commit via batched-write as `branding: init <org-slug> kit`.
+5. Persist via `brand_put_kit` / `brand_put_file` (+ `brand_put_logo` when logos are provided).
 6. Surface to user with edit instructions.
 7. Do NOT regenerate any deck — that happens on next `/generate` or `/cascade`.
 

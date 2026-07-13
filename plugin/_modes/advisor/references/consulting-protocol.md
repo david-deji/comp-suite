@@ -62,7 +62,7 @@ too_early_pre_engagement_mode_chosen`.
 If the user selects A, B, or E (anything that produces a pre-engagement
 artifact rather than a canonical engagement), set `pre_engagement_only: true`
 in engagement-state and route the artifact to
-`master.advisor.pre_engagement_artifacts[]` per `references/master-yaml-ops.md`,
+`master.advisor.pre_engagement_artifacts[]` per `references/master-yaml-utils.md`,
 NOT to `cycle_state_pointers[]`. Drift-trajectory queries on the closed-
 engagement ledger ignore `pre_engagement_artifacts[]` entries.
 
@@ -112,7 +112,7 @@ Synthesize beats 1-4 into a 3-5 sentence engagement brief. Pattern: "So the enga
 
 **Checkpoint A**: "Here's my understanding of the engagement. Correct?" Block Phase 2 until confirmed.
 
-**Auto-checkpoint on confirmation**: when the user confirms the engagement brief, call `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 1`, capture the confirmed `engagement_brief`, all populated `prior_engagement_refs` from Phase 0, and any `selection_log` entries (typically empty at this point). Silent unless write fails.
+**Auto-checkpoint on confirmation**: when the user confirms the engagement brief, persist the engagement body via `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command; a local `checkpoint.yaml` cache mirror may be refreshed for transport-failure fallback. Set `saved_at_phase: 1`, capture the confirmed `engagement_brief`, all populated `prior_engagement_refs` from Phase 0, and any `selection_log` entries (typically empty at this point). Silent unless the write fails (escalate/halt — no local write-and-reconcile).
 
 ### Track R Adaptation (Prior Deck Uploaded)
 
@@ -135,7 +135,7 @@ Pull data shaped by the engagement brief. No user interaction unless data is mis
 - Use `default_percentiles`, `default_province`, `include_economic_regions` directly — do not prompt.
 - Pre-resolve role aliases from `role_aliases` map before calling `search_roles` (skips fuzzy matching for known mappings).
 - If `cba_lookup_required_for` is populated, auto-trigger `get_cba_wage_scale` for matching role categories.
-- Pre-populate Indeed `mcp__claude_ai_Indeed__get_company_data` calls with `peer_companies`.
+- Pre-populate Indeed `get_company_data` calls with `peer_companies`.
 - Use `source_priority` to determine fallback order.
 
 ### 2a. Parse Uploaded Excel
@@ -237,14 +237,10 @@ Use the Market MCP as primary source. One call to `get_role_intelligence` return
 **Role resolution (always first):**
 
 1. Call `search_roles(query_text=<role title>, province=<2-letter code>)`.
-2. Inspect the response — **select on the server's per-match `coverage_status`** (`full` | `thin_data` | `no_data` | `nearest_noc`), which supersedes the older `match_score >= 0.7` / `weak_match` proxy. Read `coverage_status` first; use `match_score` / `weak_match` only as a tie-breaker on title fit:
-   - **Full coverage** (`coverage_status: "full"` and title clearly matches): use `role_id` with `get_role_intelligence(role_id, province, ...)`. This bypasses fuzzy matching.
-   - **Thin data** (`coverage_status: "thin_data"`): the `role_id` is usable but the sample is small — use it, and flag the thinness wherever its percentiles are shown downstream.
-   - **Nearest NOC** (`coverage_status: "nearest_noc"`, usually also `weak_match: true`): the match is a nearest-NOC fallback, not a direct hit. Do NOT pick the `role_id`. Call `get_role_intelligence(role='<original title>', province=...)` directly — the 3-stage resolver (bridge → mined titles → NGRAM → posting fallback) handles it.
-   - **No data** (`coverage_status: "no_data"`, or response includes `no_strong_match` guidance): no servable data for this match. Call `get_role_intelligence(role='<original title>', province=...)` directly as the resolver fallback; if that also returns nothing, flag the role as unmatched per § 2j — do not silently drop it.
-   - **Ambiguous** (2+ results with similar `coverage_status` / `match_score` and the role title is genuinely ambiguous, e.g., "Manager" without function context): surface the options to the user. Do not guess.
-
-   Carry the chosen match's `coverage_status` into the served mini-report so a `nearest_noc` or `thin_data` match is never presented identically to a `full`-coverage one.
+2. Inspect the response:
+   - **Strong match** (top result has `weak_match=false` AND `coverage_status` is `full` or `thin_data`): use `role_id` with `get_role_intelligence(role_id, province, ...)`. This bypasses fuzzy matching. Read `coverage_status` (`full` | `thin_data` | `no_data` | `nearest_noc`) — not `match_score` alone; the server superseded the `score >= 0.7` proxy with `coverage_status` (plus an `abstain` verdict once the deployed facade carries it). Carry the coverage label downstream so a `thin_data` match is never rendered as `full`.
+   - **Weak / nearest-NOC match** (top result has `weak_match=true`, `coverage_status` in {`nearest_noc`, `no_data`}, or the response includes `no_strong_match` guidance): do NOT pick a role_id, and do NOT silently serve a neighbouring occupation as the asked-for role. Call `get_role_intelligence(role='<original title>', province=...)` directly — the 3-stage resolver (bridge → mined titles → NGRAM → posting fallback) handles it — and flag the coverage to the user when it is `nearest_noc` / `no_data`.
+   - **Ambiguous** (2+ results with similar coverage and the role title is genuinely ambiguous, e.g., "Manager" without function context): surface the options to the user. Do not guess.
 
 **Comprehensive intelligence (the main call):**
 
@@ -266,20 +262,14 @@ Use the Market MCP as primary source. One call to `get_role_intelligence` return
 
 **Cross-cuts:**
 
-7. `compare_roles(roles, provinces, top_n)` for cross-role or cross-province summary tables. `get_market_snapshot(province, top_n)` for provincial overview ("top hiring roles, fastest wage growth") to inform Phase 1 and Phase 3 framing.
-
-   **Per-row trust rendering (mandatory whenever either tool feeds a rendered comparison table).** `compare_roles` returns per-row `confidence_tier`, `salary_disclosure_rate`, and a `coverage` block; `get_market_snapshot` returns the same per top-hiring row plus, on `fastest_wage_growth` rows, `yoy_volatile` / `yoy_flag_reason`. Surface them in the table:
-   - Add a per-row confidence/coverage cell built from `confidence_tier` (+ the `coverage` block) so a `SUPPRESSED` or `LOW_THIN` row is never shown visually equal to a well-sampled one. When `salary_disclosure_rate` is low, note it in the same cell.
-   - Render `yoy_volatile: true` as a warning flag on the affected `fastest_wage_growth` row and show `yoy_flag_reason` (e.g. base-effect spike) — never present a volatile YoY figure as a clean trend.
-   - A suppressed or low-confidence cell is shown with its flag, never dropped and never silently equalized against a full-sample cell.
+7. `compare_roles(roles, provinces, top_n)` for cross-role or cross-province summary tables. **Each returned row carries per-row trust fields** — `confidence_tier`, `salary_disclosure_rate`, and a `coverage` block. Render them (a trust column or per-row flag): a SUPPRESSED / thin-coverage cell must never rank visually equal to a well-sampled one — that is the apples-to-oranges error cross-cuts are most prone to. `get_market_snapshot(province, top_n)` for provincial overview ("top hiring roles, fastest wage growth") to inform Phase 1 and Phase 3 framing — its top-hiring rows carry `confidence_tier` / `coverage` / `p50_servable` / `tails_servable`, and its `fastest_wage_growth` rows carry a `yoy_volatile` flag (a base-effect spike the server computes specifically to warn against). Surface `yoy_volatile` wherever you cite a wage-growth figure — never present a volatile spike as a trend.
 
 **Indeed MCP for posting validation and competitor intel:**
 
 8. When Market MCP coverage is sparse OR you want to verify a posting match reflects the actual role scope:
-   - `mcp__claude_ai_Indeed__search_jobs(search=<role>, location=<city, province>, country_code='CA')` — live Indeed postings for the role.
-   - `mcp__claude_ai_Indeed__get_job_details(job_id)` — full description for any specific posting.
-   - `mcp__claude_ai_Indeed__get_company_data(companyName, jobTitle, location, language='en' or 'fr', knowledgeCategories={metadata: true, ratings: true, salaries: true})` — pull competitor pay + culture ratings for retention narrative.
-   - v2-native alternative (no account connector required): `mcp__market__company_get_posting_history` + `mcp__market__search_companies` — Job-Bank-sourced company/posting intel, registered in registry.yaml.
+   - `search_jobs(search=<role>, location=<city, province>, country_code='CA')` — live Indeed postings for the role.
+   - `get_job_details(job_id)` — full description for any specific posting.
+   - `get_company_data(companyName, jobTitle, location, language='en' or 'fr', knowledgeCategories={metadata: true, ratings: true, salaries: true})` — pull competitor pay + culture ratings for retention narrative.
 
 **User-provided CBA (when active — see `references/survey-house-protocol.md`):**
 
@@ -312,7 +302,7 @@ Always scope to the user-specified province. If not specified, ask.
 **Multi-province engagements** (when `benchmark.scope_provinces` has 2+ provinces):
 
 1. For each province in `scope_provinces`, run the role resolution + `get_role_intelligence` cycle independently. The skill iterates per-province; do not collapse a multi-province engagement into a single national pull.
-2. Use `compare_roles(roles=[...], provinces=[...])` for cross-province summary tables (one tool call returns the cross-cut). Render each province row with its per-row `confidence_tier` / `coverage` / `salary_disclosure_rate` cell per the trust-rendering rule in 2g step 7 — a thin- or suppressed-sample province must not sit visually equal to a well-sampled one.
+2. Use `compare_roles(roles=[...], provinces=[...])` for cross-province summary tables (one tool call returns the cross-cut).
 3. Use `get_market_snapshot(province=X)` per province for the provincial overview that feeds Phase 3 framing.
 4. For unionized roles, call `get_cba_wage_scale(role, province)` per province — CBA scales differ across UFCW Local 175 (ON) vs TUAC 501 (QC) etc.
 5. Tag every data point with its source province. Aggregations in Phase 4 use the per-province values, never a single national average.
@@ -367,7 +357,7 @@ Parse the uploaded PPTX via `markitdown`. Extract:
 - When individual data unavailable for merit roles: assume normal distribution centered at CR=1.0, sigma=0.09. Flag as modeled assumption.
 - Missing geography: ask (this blocks meaningful market comparison).
 
-**Phase 2 output**: Structured data set held in conversation context. Includes matched roles with market data and pay_structure tags, unmatched roles, computed metrics, economic context, prior-year comparisons (Track R). Every Market MCP / Indeed MCP / `web_fetch` call made during Phase 2 also appends a `tool_calls[]` entry to the engagement-state per `references/tools-available.md` § Container for tool_calls[] — this is the audit trail for verified-source tags in the deck. Auto-checkpoint at the end of Phase 2 (transition to Checkpoint B) commits the running `tool_calls[]` via `engagement_put` per `references/persistence-and-ledger.md` § /checkpoint command.
+**Phase 2 output**: Structured data set held in conversation context. Includes matched roles with market data and pay_structure tags, unmatched roles, computed metrics, economic context, prior-year comparisons (Track R). Every Market MCP / Indeed MCP / `web_fetch` call made during Phase 2 also appends a `tool_calls[]` entry to the engagement-state per `references/tools-available.md` § Container for tool_calls[] — this is the audit trail for verified-source tags in the deck. Auto-checkpoint at the end of Phase 2 (transition to Checkpoint B) persists the running `tool_calls[]` via `engagement_put` to the `market` backend (a local `checkpoint.yaml` cache mirror may be refreshed for transport-failure fallback).
 
 ---
 
@@ -426,7 +416,7 @@ Synthesize: "So the picture is: [2-3 sentence summary of what the data means for
 
 **Checkpoint B**: "Before I model scenarios — anything else I should factor in?" Block Phase 4 until confirmed.
 
-**Auto-checkpoint on confirmation**: call `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 3`, capture `parsed_data_summary`, `interpretation_findings`, and the running `tool_calls[]` array from Phase 2g (canonical container per `references/tools-available.md` § Container for tool_calls[]). Silent unless write fails.
+**Auto-checkpoint on confirmation**: persist the engagement body via `engagement_put` to the `market` backend (with `expected_version`; a local `checkpoint.yaml` cache mirror may be refreshed for transport-failure fallback). Set `saved_at_phase: 3`, capture `parsed_data_summary`, `interpretation_findings`, and the running `tool_calls[]` array from Phase 2g (canonical container per `references/tools-available.md` § Container for tool_calls[]). Silent unless the write fails (escalate/halt).
 
 ### Push-Back Mechanics
 
@@ -495,6 +485,6 @@ Every field must be populated. If a field has no relevant content (e.g., no prio
 
 **Checkpoint D**: "Here's the argument arc. Build the deck on this frame?" Block Phase 6 until confirmed.
 
-**Auto-checkpoint on confirmation**: call `engagement_put` (with `expected_version`) per `references/persistence-and-ledger.md` § /checkpoint command. Set `saved_at_phase: 5`, capture the confirmed `narrative_frame` block verbatim, the `scenario_chosen` from Phase 4, and the full accumulated `selection_log` (Phase 4 scenario pick at minimum). Silent unless write fails.
+**Auto-checkpoint on confirmation**: persist the engagement body via `engagement_put` to the `market` backend (with `expected_version`; a local `checkpoint.yaml` cache mirror may be refreshed for transport-failure fallback). Set `saved_at_phase: 5`, capture the confirmed `narrative_frame` block verbatim, the `scenario_chosen` from Phase 4, and the full accumulated `selection_log` (Phase 4 scenario pick at minimum). Silent unless the write fails (escalate/halt).
 
 **Phase 5 output**: Confirmed narrative frame document. This is the handoff contract between consulting and production.

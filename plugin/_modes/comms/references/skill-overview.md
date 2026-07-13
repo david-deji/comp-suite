@@ -7,7 +7,7 @@ Phase map, Phase 0 detail, and core principles. Loaded by SKILL.md alongside `in
 ## 1. Phase map
 
 ```
-Phase 0 — Config Loading   (every track: persistence test, config load, redaction scan, surface state)
+Phase 0 — Config Loading   (every track: identity + backend resolution, config load, redaction scan, surface state)
    │
    ├─→ /init        → engagement-comms-config walkthrough (no production work)
    ├─→ /brand       → comms-templates read or scaffold
@@ -31,12 +31,12 @@ Typical first-cycle workflow: `/init` → `/brand init <org-slug>` → `/ingest`
 
 Runs at every track entry except `/help`, `/resume`, `/status`. Four steps in order:
 
-### 2.1 Persistence backend test
+### 2.1 Identity + backend resolution
 
-Probe the `market` MCP backend: call `engagement_get_master` with the authenticated identity. Two outcomes:
+Resolve OAuth identity → org via `list_my_orgs`, then read the org header via `engagement_get_master`. There is no folder to configure, no backend selector, and no visibility gate — org isolation is enforced by the backend via OAuth membership. Two outcomes:
 
-- **Success** — backend reachable and OAuth identity resolves to an org membership. Proceed.
-- **Transport failure** (connection error, timeout, 5xx) — fall back to the local `$STATE_ROOT` read cache for this session. Surface: "Backend unreachable. Operating from local cache — reads only, no schema writes." Per `references/persistence-and-ledger.md` D1.
+- **Backend reachable** (identity resolves to an org) — proceed. Schema reads go MCP-first; schema writes are MCP-only and escalate on failure (D2).
+- **Transport failure** (connection error, timeout, 5xx, not-yet-authenticated) — read from the local `$STATE_ROOT` cache (D1) for this session; a tool returning not-found/empty is authoritative (never a local fallback on not-found). Writes still escalate/halt — never degrade to chat-paste.
 
 Runs once per session. Cache result for the session.
 
@@ -65,7 +65,7 @@ On detection: refuse to proceed, surface warning naming the pattern category, in
 
 One-line summary:
 
-> "Loaded engagement `<slug>` (`<cycle-name>`). `<N>` artifacts configured. Org profile: `<loaded / using bundled defaults>`. Backend: `<reachable / cache-fallback>`."
+> "Loaded engagement `<slug>` (`<cycle-name>`). `<N>` artifacts configured. Org profile: `<loaded / using bundled defaults>`. Persistence: `<market backend / local cache — transport failure>`."
 
 Then proceed to track-specific protocol.
 
@@ -93,7 +93,7 @@ Full rules: `references/bilingual-rules.md`.
 
 ### 3.4 Drift detection
 
-At every `/draft` call, compare the current hash of the source recommendation (`engagement-state.yaml` or `checkpoint.yaml`) against `last_drift_check_against_recommendation_revision` stored in `engagement-comms-config.artifacts[]`. On mismatch, surface:
+At every `/draft` call, compare the current hash of the source recommendation (the advisor engagement body read via `engagement_get`) against `last_drift_check_against_recommendation_revision` stored in `engagement-comms-config.artifacts[]`. On mismatch, surface:
 
 > "Source recommendation has changed since v(N-1) was drafted. Refresh? (`refresh` / `proceed-anyway` / `abort`)"
 
@@ -121,7 +121,7 @@ Full rules: `references/brand-mode-protocol.md` + `references/brand-kit-protocol
 
 ### 3.9 Transport-failure fallback
 
-When the `market` backend is unreachable (transport failure per §2.1), schema-state reads fall back to the local `$STATE_ROOT` cache. Schema writes are not attempted during a fallback session — the skill surfaces a warning and halts rather than writing to local cache as a substitute. Redaction still runs in full — banned patterns hard-refuse regardless.
+There is no paste-mode. On transport failure (connection error, timeout, 5xx, not-yet-authenticated), the skill reads schema state from the local `$STATE_ROOT` cache (D1); a tool returning not-found/empty is authoritative and never triggers a local fallback. Schema writes are MCP-only — on write failure the skill escalates/halts, never degrading to chat-paste (D2). Rendered binaries (PPTX/DOCX/PDF) deliver as chat-download in all cases — that is normal delivery, not a fallback. Redaction still hard-refuses banned patterns regardless of transport state.
 
 ### 3.10 Valid-combinations registry
 
@@ -133,13 +133,13 @@ The skill refuses to render a combination not in `template_assets/valid-combinat
 
 | Question | Answer |
 |----------|--------|
-| Where is the engagement config? | `engagements/<slug>` comms section in the `market` backend (`engagement_get` / `engagement_put_section`) |
-| Where is the org voice/brand profile? | `master.comms` federated section in the `market` backend (`engagement_get_master`) |
-| Where are the comms artifacts? | `engagements/<slug>/comms/` under local `$STATE_ROOT` (non-schema artifacts) |
-| Where are working drafts? | `$STATE_ROOT/_orgs/<org-slug>/engagements/<slug>/comms/_drafts/` (cleared on `/approve shipped`) |
-| Where are comms brand templates? | `branding/<org-slug>/comms-templates/` under local `$STATE_ROOT` |
-| Where are FR-CA additions? | `engagements/<slug>/comms/fr-ca-additions.yaml` |
-| Where are checkpoints? | `checkpoints/comp-comms-builder/<engagement>/checkpoint.yaml` |
+| Where is the engagement config? | `engagement-comms-configs/<slug>.yaml` — `market` MCP backend (per `persistence-and-ledger.md`) |
+| Where is the org voice/brand profile? | `org-comms-profiles/<org-slug>.yaml` — `market` MCP backend (per `persistence-and-ledger.md`) |
+| Where are the comms artifacts? | chat-download deliverables + local scratch under `$STATE_ROOT/_orgs/<slug>/comms/` |
+| Where are working drafts? | local scratch `$STATE_ROOT/_orgs/<slug>/comms/_drafts/` (cleared on `/approve shipped`) |
+| Where are comms brand templates? | org brand kit via `brand_*` tools (`branding/<org-slug>/comms-templates/` namespace) |
+| Where are FR-CA additions? | glossary library reference; resolved per the library/persistence contract |
+| Where are checkpoints? | engagement body via `engagement_put`; local `checkpoint.yaml` is a cache mirror |
 | Where is the persistence contract? | `references/persistence-and-ledger.md` (mirrored from compensation-advisor) |
 | Where is the artifact catalog? | `references/artifact-catalog.md` |
 | Where are bundled speaker registers? | `template_assets/speaker-registers/` |

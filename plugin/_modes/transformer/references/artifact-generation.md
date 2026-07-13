@@ -8,7 +8,7 @@ Loaded by SKILL.md at any track entry that produces a file artifact. Provides th
 
 ## Artifact catalog
 
-| Track | END artifact | Location (under `$STATE_ROOT`) | Owning protocol | Format |
+| Track | END artifact | Location (relative to local `$STATE_ROOT`) | Owning protocol | Format |
 |-------|--------------|------------------------------------|-----------------|--------|
 | `/init` | `team-config.yaml` | `team-configs/<slug>.yaml` | `init-mode-protocol.md` | YAML |
 | `/discover` (raw capture) | `discovery-<date>-<process>-<mode>.md` | `discovery/<slug>/YYYY-MM-DD-<process-slug>-<mode>.md` | `discovery-protocol.md` | Markdown (append-only) |
@@ -122,10 +122,12 @@ length_cap_words: 800
 
 ### Atomicity
 
-Co-dependent artifacts use the **batched-folder-write** pattern (per `persistence-and-ledger.md`):
+Schema-state writes are MCP-only with optimistic concurrency: `engagement_put` / `engagement_put_section` / `brand_put_*` read a `version` and pass it as `expected_version` (`0` to create); on stale-reject, re-read and retry the read-modify-write loop — never force (per `persistence-and-ledger.md`). On write failure, escalate/halt — never write-local-and-reconcile (D2).
 
-1. Write all artifacts in a session to a `_pending/` subfolder of the target location.
-2. After all writes succeed, move from `_pending/<filename>` to `<filename>`.
+Co-dependent local deliverables use the **batched-write** pattern:
+
+1. Write all artifacts in a session to a `_pending/` subfolder under `$STATE_ROOT`.
+2. After all writes succeed, move each from `_pending/<filename>` to `<filename>`.
 3. On failure, surface to user — leave the partial state in `_pending/` for recovery rather than half-applied across the canonical paths.
 
 Single-file artifacts can write directly without `_pending/`.
@@ -134,9 +136,9 @@ Single-file artifacts can write directly without `_pending/`.
 
 Runs before every write. Per `redaction-rules.md`. Banned-pattern detection → hard refuse, surface to user, no fallback.
 
-### Visibility check
+### Org isolation
 
-Runs before every write. Per `persistence-and-ledger.md`. Non-schema artifacts under `$STATE_ROOT` are local to the operator's machine and not shared externally.
+Enforced by the backend via OAuth identity → org membership — there is no folder to own or verify (per `persistence-and-ledger.md`). Each caller sees only their own org's schema state; no per-write visibility gate is needed.
 
 ### Audience tag check
 
@@ -144,19 +146,11 @@ Frontmatter must contain a valid `audience` tag (`comp-team-internal`, `vp-peopl
 
 ---
 
-## Chat-render fallback
+## Transport-failure fallback
 
-When the `market` backend is unreachable and no local cache is available, the skill renders every artifact body in chat with explicit save instructions:
+There is no paste-mode. Schema-state reads fall back to the local `$STATE_ROOT` cache on MCP transport failure (connection error, timeout, 5xx, not-yet-authenticated) per D1; a tool returning not-found / empty is authoritative — never fall back to local on not-found. Schema writes never degrade to chat-paste — on write failure the skill escalates/halts (D2). Non-schema deliverables write to local `$STATE_ROOT` regardless of backend state.
 
-> "Backend unreachable. Save the following as `<full path under $STATE_ROOT>`:
->
-> ```markdown
-> <artifact body>
-> ```
->
-> Confirm when saved, or say 'skip' to leave it un-persisted."
-
-The chat-render fallback does NOT skip the redaction pass — banned patterns still hard-refuse. The user cannot bypass redaction this way.
+The redaction pre-write scan still runs on every write — banned patterns hard-refuse. The user cannot bypass redaction.
 
 ---
 
@@ -164,6 +158,6 @@ The chat-render fallback does NOT skip the redaction pass — banned patterns st
 
 - Output schemas (those live in the per-template files: `current-state.md`, `diagnosis_template.md`, `transform_spec_template.md`, `roadmap_template.md`).
 - Track-specific generation logic (those live in the per-protocol files: `discovery-protocol.md`, `diagnose-protocol.md`, `transform-protocol.md`, `roadmap-protocol.md`).
-- Backend / ledger specifics (those live in `persistence-and-ledger.md`).
+- MCP backend tool specifics (those live in `persistence-and-ledger.md` — mirrored from `github.com/david-deji/compensation-advisor`).
 
 This file is the cross-cutting catalog of artifacts and the write discipline that applies to all of them.

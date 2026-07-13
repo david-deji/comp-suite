@@ -104,7 +104,7 @@ The variants for Q4-Q9 are catalogued in `template_assets/intake_variants.json`.
 
 **Adding a new variant**: edit `template_assets/intake_variants.json`. Add either a new `variants[]` entry (for a new question) or a new clause-key (for a new scope dimension on an existing question). Add new role families to `examples_by_role_family`. Add new provinces' peer lists to `peer_companies_by_province`. No edit to this protocol file is required.
 
-**Adding a new role family** (e.g., the engagement scopes to "frozen foods"): if `examples_by_role_family` does not contain the family, surface to user before generating Q4: "I don't have role examples cached for `frozen foods`. Suggest 2-3 specific roles I should reference (e.g., 'frozen-foods clerks', 'cold-storage warehouse staff'). I'll use them this engagement and add them to the catalog for next time." On user input, append to `examples_by_role_family` AND save the addition to local `$STATE_ROOT/_orgs/<slug>/engagements/<slug>/intake-additions.json` (per `references/persistence-and-ledger.md` § Where each thing lives).
+**Adding a new role family** (e.g., the engagement scopes to "frozen foods"): if `examples_by_role_family` does not contain the family, surface to user before generating Q4: "I don't have role examples cached for `frozen foods`. Suggest 2-3 specific roles I should reference (e.g., 'frozen-foods clerks', 'cold-storage warehouse staff'). I'll use them this engagement and add them to the catalog for next time." On user input, append to `examples_by_role_family` AND save the addition to the local `$STATE_ROOT/_orgs/<slug>/intake-additions.json` (non-schema scratch; resolves per `references/library-resolution.md`).
 
 ### Q8 Competitor Wage Validation (item 2.1 web grounding)
 
@@ -239,7 +239,7 @@ This is the bridge that makes intake responses persist beyond the form itself. W
 - **Do not produce a deck during Intake.** Intake is form-only.
 - **Do not edit the fixed questions** (Q1, Q2, Q3, Q7, Q10, Anything Else, sign-off). The builder's hard-coded fixed questions are the source of truth. If the user asks to change a fixed question, push back: "Q1-3, Q7, Q10, and the sign-off block are fixed across all intakes for consistency. If you want to change them permanently, that's a builder-script edit, not an intake-mode change."
 - **Do not invent peer companies for Q8.** Peer lists per province come from `template_assets/intake_variants.json` § peer_companies_by_province (overrideable by `engagement-config.benchmark.peer_companies`). If a province's peer list is missing or feels stale, edit the JSON catalog rather than improvising mid-engagement.
-- **Do not improvise variants for Q4-Q9.** Variants come from `template_assets/intake_variants.json`. If a needed variant is missing from the catalog, edit the JSON (and save to `engagements/<slug>/intake-additions.json` so future cycles inherit it). Never hand-write a variant inline — the JSON is the source of truth.
+- **Do not improvise variants for Q4-Q9.** Variants come from `template_assets/intake_variants.json`. If a needed variant is missing from the catalog, edit the JSON (and save to `$STATE_ROOT/_orgs/<slug>/intake-additions.json` so future cycles inherit it). Never hand-write a variant inline — the JSON is the source of truth.
 
 ---
 
@@ -263,5 +263,5 @@ Intake produces an `intake-form-{cycle-slug}.pdf` **file artifact** as its END d
 
 - **Variant approval loop happens in chat text** — variant proposals, reactions, and revisions are interactive prose. No artifacts during the iterations themselves.
 - **After all variants approved**, the assembled intake PDF is the file artifact. Presented via `present_files`, with cycle name and scope summary in the response text.
-- Also write both files (PDF + meta YAML) to local `$STATE_ROOT/_orgs/<slug>/intake-archive/<cycle-slug>/` (non-schema artifact; see `references/persistence-and-ledger.md` § Where each thing lives). Deliver as chat-download artifacts.
+- **Delivery**: the intake PDF delivers as a chat-download artifact (never written to a backend — per `references/persistence-and-ledger.md` § Binary deliverables); the `intake-form-{cycle-slug}-meta.yaml` sidecar is non-schema scratch written to the local `$STATE_ROOT/_orgs/<slug>/...`. The operator files the PDF into their own storage; the intended path is recorded in the meta sidecar for provenance.
 - Do not narrate the build process step-by-step. The user approved the variants; the build itself is silent.

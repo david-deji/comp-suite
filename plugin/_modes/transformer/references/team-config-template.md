@@ -1,6 +1,6 @@
 # Team Config Template
 
-The team-config YAML is the per-team durable state for `comp-team-transformer`. One config per team; the `market` MCP backend is the source of truth (persisted as the `master.transformer.*` federated section via `engagement_put_section`). A read cache lives at `$STATE_ROOT/_orgs/<slug>/`. Created by `/init`. Edited manually in v1 (no `/update` track).
+The team-config YAML is the per-team durable state for `comp-team-transformer`. One file per team, at `team-configs/<team-slug>.yaml`. Created by `/init`. Edited manually in v1 (no `/update` track).
 
 This file documents the schema field-by-field, the validation rules enforced at parse time, and the v1/v2 boundary.
 
@@ -62,8 +62,9 @@ personas:
   bundled_pack: comp-team-v1        # default (5 personas)
   custom: []                        # additional per-team personas (paths under personas/)
 
-# persistence block retired (v2): schema state persists via the market MCP backend.
-# See references/persistence-and-ledger.md for the full contract.
+# persistence: — RETIRED (v2). Schema state persists automatically to the `market`
+#   MCP backend by OAuth identity (org via membership). No folder to configure, no
+#   backend selector, no paste-mode. See references/persistence-and-ledger.md.
 
 processes:
   # Index of processes under transformation. Updated by /discover and /transform.
@@ -111,7 +112,7 @@ processes:
 - `tone` — defaults to `consulting-peer` (mirrors comp-advisor's default). May override per team.
 - `audience_default` — defaults to `comp-team-internal`. Used in markdown working artifacts.
 - `upward_audience` — defaults to `vp-people`. Used in shareable PPTX targeting executive readout.
-- `brand.org_slug` — resolves the brand kit from the `market` MCP backend via `brand_get_kit {org_slug}`. When unset, defaults to `branding/_default/`.
+- `brand.org_slug` — resolves the brand kit from the `market` backend via `brand_get_kit` / `brand_get_file`. When unset, defaults to the `_default` kit.
 - `brand: neutral` — alternative form for external-audience artifacts. Mutually exclusive with `org_slug`.
 
 ### `redaction` (required, hard rule)
@@ -133,7 +134,7 @@ Full enforcement rules in `redaction-rules.md`.
 
 ### `persistence` (retired in v2)
 
-The `persistence:` block is no longer a backend selector. Schema state persists via the `market` MCP backend (see `references/persistence-and-ledger.md`). This key may be absent from v2 configs; if present it is ignored. Do not add `drive_folder_id` or `enabled` to new configs.
+The `persistence:` block was the v1 Google-Drive backend selector — retired. Schema state now persists automatically to the `market` MCP backend by OAuth identity (org resolved via membership); there is no `drive_folder_id`, no folder visibility gate, and no paste-mode. Org isolation is enforced by the backend via OAuth identity → org membership. On MCP transport failure the skill reads schema state from the local `$STATE_ROOT` cache (D1). See `persistence-and-ledger.md`.
 
 ### `processes` (updated by `/discover` and `/transform`)
 
@@ -156,7 +157,7 @@ Enforced when team-config is loaded at Phase 0:
 1. `team.slug` matches `^[a-z][a-z0-9-]*$`. Reject otherwise.
 2. `scope.in_scope` is a non-empty list. Reject otherwise.
 3. All five `redaction.*` keys are present. Missing any key → hard fail.
-4. (v1 only — retired) `persistence.enabled` / `persistence.visibility` checks. In v2 configs this validation is skipped.
+4. (Retired.) The v1 `persistence.enabled` / `persistence.visibility` folder gate is removed — persistence is automatic via OAuth identity; there is no folder to validate.
 5. `personas.bundled_pack == comp-team-v1`. Only valid value in v1; `+nbj` deferred to v2.
 6. Every `cycle.stages[].gating` is one of `live`, `prep`, `slack`. Reject otherwise.
 7. `team.language == en` and `team.domain == compensation` (v1 constants).
